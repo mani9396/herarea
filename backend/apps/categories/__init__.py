@@ -1,0 +1,1 @@
+# Categories taxonomy domain application
