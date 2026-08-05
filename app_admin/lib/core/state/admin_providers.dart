@@ -1,16 +1,35 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_admin/domain/models/admin_models.dart';
 import 'package:app_admin/data/mock/admin_mock_data.dart';
+import 'package:app_admin/data/repositories/admin_api_repository.dart';
 
 // --- Vendors State Notifier ---
 class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
-  AdminVendorsNotifier() : super(AdminMockData.initialVendors);
+  final AdminApiRepository? _repository;
+
+  AdminVendorsNotifier([this._repository]) : super(AdminMockData.initialVendors) {
+    loadLiveVendors();
+  }
+
+  /// Synchronize with live Django REST backend if connected
+  Future<void> loadLiveVendors() async {
+    if (_repository == null) return;
+    try {
+      final liveVendors = await _repository.fetchPendingVendors();
+      if (liveVendors.isNotEmpty) {
+        state = liveVendors;
+      }
+    } catch (_) {
+      // Retain fallback realistic mock data when offline or in demonstration mode
+    }
+  }
 
   void approveVendor(String id) {
     state = [
       for (final v in state)
         if (v.id == id) v.copyWith(status: AdminStatus.approved, rejectionReason: null) else v,
     ];
+    _repository?.approveVendor(id);
   }
 
   void rejectVendor(String id, String reason) {
@@ -18,6 +37,7 @@ class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
       for (final v in state)
         if (v.id == id) v.copyWith(status: AdminStatus.rejected, rejectionReason: reason) else v,
     ];
+    _repository?.rejectVendor(id, reason);
   }
 
   void suspendVendor(String id, String reason) {
@@ -25,6 +45,7 @@ class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
       for (final v in state)
         if (v.id == id) v.copyWith(status: AdminStatus.suspended, rejectionReason: reason) else v,
     ];
+    _repository?.suspendVendor(id, reason);
   }
 
   void activateVendor(String id) {
@@ -32,11 +53,13 @@ class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
       for (final v in state)
         if (v.id == id) v.copyWith(status: AdminStatus.approved, rejectionReason: null) else v,
     ];
+    _repository?.approveVendor(id);
   }
 }
 
 final adminVendorsProvider = StateNotifierProvider<AdminVendorsNotifier, List<AdminVendorModel>>((ref) {
-  return AdminVendorsNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminVendorsNotifier(repo);
 });
 
 // --- Profile Updates State Notifier ---
@@ -187,10 +210,27 @@ final adminReviewsProvider = StateNotifierProvider<AdminReviewsNotifier, List<Ad
 
 // --- Categories State Notifier ---
 class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
-  AdminCategoriesNotifier() : super(AdminMockData.initialCategories);
+  final AdminApiRepository? _repository;
+
+  AdminCategoriesNotifier([this._repository]) : super(AdminMockData.initialCategories) {
+    loadLiveCategories();
+  }
+
+  Future<void> loadLiveCategories() async {
+    if (_repository == null) return;
+    try {
+      final liveCats = await _repository.fetchCategories();
+      if (liveCats.isNotEmpty) {
+        state = liveCats;
+      }
+    } catch (_) {
+      // Retain fallback mock taxonomy when disconnected from live database
+    }
+  }
 
   void addCategory(AdminCategoryModel cat) {
     state = [...state, cat];
+    _repository?.createCategory(cat);
   }
 
   void updateCategory(AdminCategoryModel cat) {
@@ -221,7 +261,8 @@ class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
 }
 
 final adminCategoriesProvider = StateNotifierProvider<AdminCategoriesNotifier, List<AdminCategoryModel>>((ref) {
-  return AdminCategoriesNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminCategoriesNotifier(repo);
 });
 
 // --- Notifications & Announcements ---

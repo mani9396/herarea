@@ -22,6 +22,19 @@ enum AdminStatus {
         return 'Archived';
     }
   }
+
+  String get apiCode {
+    return name.toUpperCase();
+  }
+
+  static AdminStatus fromString(String? val) {
+    if (val == null) return AdminStatus.pending;
+    final clean = val.trim().toLowerCase();
+    return AdminStatus.values.firstWhere(
+      (e) => e.name == clean || e.displayName.toLowerCase() == clean,
+      orElse: () => AdminStatus.pending,
+    );
+  }
 }
 
 class AdminVendorModel {
@@ -60,6 +73,48 @@ class AdminVendorModel {
     required this.createdAt,
     this.rejectionReason,
   });
+
+  factory AdminVendorModel.fromJson(Map<String, dynamic> json) {
+    return AdminVendorModel(
+      id: json['id']?.toString() ?? json['vendor_id']?.toString() ?? '',
+      storeName: json['store_name'] ?? json['business_name'] ?? 'Partner Studio',
+      ownerName: json['owner_name'] ?? json['user']?['full_name'] ?? 'Studio Founder',
+      email: json['email'] ?? json['user']?['email'] ?? 'studio@herarea.in',
+      phoneNumber: json['phone_number'] ?? json['user']?['phone_number'] ?? '+91 90000 00000',
+      category: json['category'] ?? json['category_name'] ?? 'Boutiques',
+      address: json['address'] ?? json['business_address'] ?? 'Hyderabad, Telangana',
+      gstNumber: json['gst_number'] ?? json['gstin'] ?? 'Unspecified',
+      panNumber: json['pan_number'] ?? json['pan'] ?? 'Unspecified',
+      documentUrl: json['document_url'] ?? json['kyc_doc'] ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
+      totalProducts: (json['total_products'] as num?)?.toInt() ?? 12,
+      totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 150000.0,
+      status: AdminStatus.fromString(json['status']?.toString()),
+      createdAt: json['created_at']?.toString().substring(0, 10) ?? '2026-08-01',
+      rejectionReason: json['rejection_reason'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'store_name': storeName,
+      'owner_name': ownerName,
+      'email': email,
+      'phone_number': phoneNumber,
+      'category': category,
+      'address': address,
+      'gst_number': gstNumber,
+      'pan_number': panNumber,
+      'document_url': documentUrl,
+      'rating': rating,
+      'total_products': totalProducts,
+      'total_revenue': totalRevenue,
+      'status': status.apiCode,
+      'created_at': createdAt,
+      'rejection_reason': rejectionReason,
+    };
+  }
 
   AdminVendorModel copyWith({
     AdminStatus? status,
@@ -138,6 +193,32 @@ class AdminProductModel {
     required this.category,
     required this.status,
   });
+
+  factory AdminProductModel.fromJson(Map<String, dynamic> json) {
+    return AdminProductModel(
+      id: json['id']?.toString() ?? '',
+      vendorName: json['vendor_name'] ?? json['store_name'] ?? 'Studio Partner',
+      title: json['title'] ?? json['name'] ?? 'Couture Item',
+      description: json['description'] ?? 'Luxury handcrafted ensemble.',
+      price: (json['price'] as num?)?.toDouble() ?? 5000.0,
+      imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600',
+      category: json['category'] ?? 'Boutiques',
+      status: AdminStatus.fromString(json['status']?.toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'vendor_name': vendorName,
+      'title': title,
+      'description': description,
+      'price': price,
+      'image_url': imageUrl,
+      'category': category,
+      'status': status.apiCode,
+    };
+  }
 
   AdminProductModel copyWith({AdminStatus? status}) {
     return AdminProductModel(
@@ -309,6 +390,28 @@ class AdminCategoryModel {
     required this.displayOrder,
     required this.isActive,
   });
+
+  factory AdminCategoryModel.fromJson(Map<String, dynamic> json) {
+    return AdminCategoryModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? 'Category',
+      iconName: json['icon_name'] ?? json['icon'] ?? 'dry_cleaning_rounded',
+      vendorCount: (json['vendor_count'] as num?)?.toInt() ?? (json['stores_count'] as num?)?.toInt() ?? 0,
+      displayOrder: (json['display_order'] as num?)?.toInt() ?? (json['order'] as num?)?.toInt() ?? 1,
+      isActive: json['is_active'] ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'icon_name': iconName,
+      'vendor_count': vendorCount,
+      'display_order': displayOrder,
+      'is_active': isActive,
+    };
+  }
 
   AdminCategoryModel copyWith({
     String? name,

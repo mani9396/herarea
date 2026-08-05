@@ -16,16 +16,27 @@ export 'widgets/status_badge.dart';
 
 // Models
 export 'models/store_model.dart';
+export 'models/user_model.dart';
+export 'models/catalog_item_model.dart';
+export 'models/booking_model.dart';
+export 'models/enquiry_model.dart';
+export 'models/paginated_response.dart';
 
 // Constants & Assets
 export 'constants/app_constants.dart';
 export 'constants/asset_constants.dart';
+export 'constants/api_endpoints.dart';
 export 'assets/shared_assets.dart';
+
+// Exceptions
+export 'exceptions/api_exception.dart';
 
 // Utilities & Services
 export 'utils/currency_formatter.dart';
 export 'utils/validation_helpers.dart';
 export 'services/api_client_interface.dart';
+export 'services/dio_api_client.dart';
+export 'services/api_providers.dart';
 export 'common/common_typedefs.dart';
 
 // Responsive

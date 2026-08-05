@@ -16,6 +16,13 @@ enum BusinessCategory {
   final String key;
 
   const BusinessCategory(this.displayName, this.description, this.iconData, this.key);
+
+  static BusinessCategory fromKey(String? key) {
+    return BusinessCategory.values.firstWhere(
+      (cat) => cat.key.toLowerCase() == key?.toLowerCase() || cat.displayName.toLowerCase() == key?.toLowerCase(),
+      orElse: () => BusinessCategory.boutiques,
+    );
+  }
 }
 
 class ReviewModel {
@@ -36,6 +43,32 @@ class ReviewModel {
     required this.date,
     this.reviewImages = const [],
   });
+
+  factory ReviewModel.fromJson(Map<String, dynamic> json) {
+    return ReviewModel(
+      id: json['id']?.toString() ?? '',
+      userName: json['user_name'] ?? json['user']?['full_name'] ?? 'HER AREA Member',
+      userAvatarUrl: json['user_avatar_url'] ?? json['user']?['avatar'] ?? 'https://i.pravatar.cc/150?u=member',
+      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      comment: json['comment'] ?? json['content'] ?? '',
+      date: json['date'] ?? json['created_at']?.toString().substring(0, 10) ?? 'Recent',
+      reviewImages: json['review_images'] != null
+          ? List<String>.from(json['review_images'] as Iterable)
+          : const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_name': userName,
+      'user_avatar_url': userAvatarUrl,
+      'rating': rating,
+      'comment': comment,
+      'date': date,
+      'review_images': reviewImages,
+    };
+  }
 }
 
 class StoreModel {
@@ -88,4 +121,69 @@ class StoreModel {
     required this.description,
     this.hasHomeMeasurement = false,
   });
+
+  factory StoreModel.fromJson(Map<String, dynamic> json) {
+    final catKey = json['category'] is Map ? json['category']['name'] : json['category_key'] ?? json['category'];
+    return StoreModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? json['store_name'] ?? 'HER AREA Boutique',
+      category: BusinessCategory.fromKey(catKey?.toString()),
+      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
+      reviewCount: (json['review_count'] as num?)?.toInt() ?? 120,
+      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 2.5,
+      address: json['address'] ?? json['street_address'] ?? 'Jubilee Hills, Hyderabad',
+      city: json['city'] ?? 'Hyderabad',
+      phoneNumber: json['phone_number'] ?? json['phone'] ?? '+91 90000 00000',
+      whatsappNumber: json['whatsapp_number'] ?? json['whatsapp'] ?? '+91 90000 00000',
+      isVerified: json['is_verified'] ?? true,
+      isSponsored: json['is_sponsored'] ?? false,
+      isOpenNow: json['is_open_now'] ?? true,
+      closingTimeText: json['closing_time_text'] ?? 'Open until 9:00 PM',
+      priceTier: json['price_tier'] ?? '₹₹₹',
+      imageUrls: json['image_urls'] != null
+          ? List<String>.from(json['image_urls'] as Iterable)
+          : const ['https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600'],
+      specialOffers: json['special_offers'] != null
+          ? List<String>.from(json['special_offers'] as Iterable)
+          : const ['10% Off on Bridal Consultations'],
+      serviceTags: json['service_tags'] != null
+          ? List<String>.from(json['service_tags'] as Iterable)
+          : const ['Custom Styling', 'Trial Suite'],
+      reviews: json['reviews'] != null
+          ? (json['reviews'] as Iterable).map((e) => ReviewModel.fromJson(e as Map<String, dynamic>)).toList()
+          : const [],
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 17.4326,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 78.4071,
+      description: json['description'] ?? 'Exclusive women’s couture and personal styling showroom.',
+      hasHomeMeasurement: json['has_home_measurement'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'category_key': category.key,
+      'rating': rating,
+      'review_count': reviewCount,
+      'distance_km': distanceKm,
+      'address': address,
+      'city': city,
+      'phone_number': phoneNumber,
+      'whatsapp_number': whatsappNumber,
+      'is_verified': isVerified,
+      'is_sponsored': isSponsored,
+      'is_open_now': isOpenNow,
+      'closing_time_text': closingTimeText,
+      'price_tier': priceTier,
+      'image_urls': imageUrls,
+      'special_offers': specialOffers,
+      'service_tags': serviceTags,
+      'reviews': reviews.map((r) => r.toJson()).toList(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'description': description,
+      'has_home_measurement': hasHomeMeasurement,
+    };
+  }
 }

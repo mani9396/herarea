@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared/models/store_model.dart';
+import 'package:shared/shared.dart';
 import 'package:her_area/domain/repositories/store_repository_interface.dart';
 import 'package:her_area/data/mock/mock_data.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class MockStoreRepository implements IStoreRepository {
   @override
@@ -44,8 +45,10 @@ class MockStoreRepository implements IStoreRepository {
   }
 }
 
-// Global Riverpod Providers for Architecture Abstraction
-final storeRepositoryProvider = Provider<IStoreRepository>((ref) => MockStoreRepository());
+// Global Riverpod Providers connected to Live Django API Repository
+final storeRepositoryProvider = Provider<IStoreRepository>((ref) {
+  return ref.watch(customerApiRepositoryProvider);
+});
 
 final allStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
   final repo = ref.read(storeRepositoryProvider);
@@ -60,9 +63,11 @@ final nearbyStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
   return repo.getNearbyStores(radius);
 });
 
-// Favorites Provider (Reactive State Management)
+// Favorites Provider with Live Backend Synchronization
 class FavoritesNotifier extends StateNotifier<Set<String>> {
-  FavoritesNotifier() : super({'store_1', 'store_2'}); // Pre-seed favorites for demonstration
+  final CustomerApiRepository? _repository;
+
+  FavoritesNotifier([this._repository]) : super({'store_1', 'store_2'}); // Pre-seed favorites for demonstration
 
   void toggleFavorite(String storeId) {
     if (state.contains(storeId)) {
@@ -70,12 +75,15 @@ class FavoritesNotifier extends StateNotifier<Set<String>> {
     } else {
       state = {...state, storeId};
     }
+    _repository?.toggleFavoriteStore(storeId);
   }
 
   bool isFavorite(String storeId) => state.contains(storeId);
 }
 
-final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>((ref) => FavoritesNotifier());
+final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>((ref) {
+  final repo = ref.watch(customerApiRepositoryProvider);
+  return FavoritesNotifier(repo);
+});
 
-// Theme Mode Provider (Light / Dark Switcher)
-// Theme mode provider has been centralized in lib/core/state/app_state_provider.dart
+// Theme Mode Provider has been centralized in lib/core/state/app_state_provider.dart

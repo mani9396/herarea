@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Add apps directory to sys.path for cleaner module discovery
 sys.path.insert(0, str(BASE_DIR / 'apps'))
-
+ 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'her-area-secure-dev-key-9a8c7b6a-e5f4-3d2c-1b0f')
 
@@ -86,28 +86,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Database Architecture: PostgreSQL + PostGIS with test / fallback SQLite engine
-DB_NAME = os.environ.get('POSTGRES_DB')
-if DB_NAME:
-    USE_POSTGIS = os.environ.get('USE_POSTGIS', 'False') == 'True'
-    DB_ENGINE = 'django.contrib.gis.db.backends.postgis' if USE_POSTGIS else 'django.db.backends.postgresql'
-    DATABASES = {
-        'default': {
-            'ENGINE': DB_ENGINE,
-            'NAME': DB_NAME,
-            'USER': os.environ.get('POSTGRES_USER', 'her_area_user'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'her_area_secret_password'),
-            'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-        }
+# Database Configuration (Local PostgreSQL)
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'herarea',
+        'USER': 'postgres',
+        'PASSWORD': '9396',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
     }
-else:
-    # Reliable default for automated CI/CD and local unit test verification
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'her_area_dev.sqlite3',
-        }
-    }
+}
+
+# else:
+#     # Reliable default for automated CI/CD and local unit test verification
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'her_area_dev.sqlite3',
+#         }
+#     }
 
 # Custom User Model definition per Phase 4 Design
 AUTH_USER_MODEL = 'accounts.User'

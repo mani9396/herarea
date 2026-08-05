@@ -22,6 +22,32 @@ class VendorProductModel {
     required this.description,
   });
 
+  factory VendorProductModel.fromJson(Map<String, dynamic> json) {
+    return VendorProductModel(
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? json['name'] ?? 'Couture Item',
+      category: json['category'] ?? json['category_name'] ?? 'Boutique Exclusive',
+      price: (json['price'] as num?) ?? 4500,
+      inStock: json['in_stock'] ?? json['is_active'] ?? true,
+      imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600',
+      ordersCount: (json['orders_count'] as num?)?.toInt() ?? (json['bookings_count'] as num?)?.toInt() ?? 0,
+      description: json['description'] ?? 'Handmade artisan apparel.',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'category': category,
+      'price': price,
+      'in_stock': inStock,
+      'image_url': imageUrl,
+      'orders_count': ordersCount,
+      'description': description,
+    };
+  }
+
   VendorProductModel copyWith({
     String? title,
     String? category,
@@ -64,6 +90,32 @@ class VendorEnquiryModel {
     required this.phoneNumber,
     required this.notes,
   });
+
+  factory VendorEnquiryModel.fromJson(Map<String, dynamic> json) {
+    return VendorEnquiryModel(
+      id: json['id']?.toString() ?? '',
+      customerName: json['customer_name'] ?? json['user_name'] ?? 'Bespoke Client',
+      customerAvatar: json['customer_avatar'] ?? json['avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+      serviceRequested: json['service_requested'] ?? json['service_title'] ?? json['product_title'] ?? 'Custom Couture Consultation',
+      dateText: json['date_text'] ?? json['appointment_time'] ?? json['created_at']?.toString().substring(0, 10) ?? 'Scheduled',
+      status: json['status']?.toString().replaceAll('_', ' ').toLowerCase() == 'confirmed' ? 'Accepted' : (json['status']?.toString() ?? 'Pending'),
+      phoneNumber: json['phone_number'] ?? json['customer_phone'] ?? '+91 98888 88888',
+      notes: json['notes'] ?? json['customer_message'] ?? 'Client requested measurement and styling assistance.',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'customer_name': customerName,
+      'customer_avatar': customerAvatar,
+      'service_requested': serviceRequested,
+      'date_text': dateText,
+      'status': status.toUpperCase(),
+      'phone_number': phoneNumber,
+      'notes': notes,
+    };
+  }
 
   VendorEnquiryModel copyWith({String? status}) {
     return VendorEnquiryModel(
