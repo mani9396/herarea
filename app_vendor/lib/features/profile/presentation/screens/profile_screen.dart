@@ -37,8 +37,8 @@ class ProfileScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(store.name, style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                            Text('Owner: Tejasi Nambiar', style: textTheme.bodySmall?.copyWith(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
-                            Text('Banjara Hills, Hyderabad', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                            Text('Owner Profile', style: textTheme.bodySmall?.copyWith(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
+                            Text(store.address, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                           ],
                         ),
                       ),
@@ -77,7 +77,10 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Confirm Sign Out',
                       description: 'You will stop receiving real-time WhatsApp & push notifications for bridal measurements.',
                       confirmText: 'Sign Out',
-                      onConfirm: () => context.go(VendorRoutePaths.login),
+                      onConfirm: () {
+                        ref.read(authApiRepositoryProvider).logout();
+                        context.go(VendorRoutePaths.login);
+                      },
                     );
                   },
                 ),

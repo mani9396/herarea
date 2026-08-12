@@ -1,0 +1,506 @@
+{
+  "timestamp": "2026-08-06T13:37:13.729440+00:00",
+  "total_tests": 44,
+  "passed_tests": 44,
+  "average_latency_ms": 21.93,
+  "results": [
+    {
+      "suite": "Auth & JWT",
+      "test": "Send Customer SMS OTP Challenge",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/otp/send/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 152,
+      "passed": true,
+      "details": "Dev OTP generated"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "Verify Customer OTP & Issue JWT",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/otp/verify/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 87,
+      "passed": true,
+      "details": "Issued JWT Access + Refresh for Role: CUSTOMER"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "Verify Vendor Studio OTP & Issue JWT",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/otp/verify/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 7,
+      "passed": true,
+      "details": "Authenticated Studio Partner"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "Verify Admin OTP & Issue JWT",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/otp/verify/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 6,
+      "passed": true,
+      "details": "Authenticated Super Admin"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "Invalid OTP Error Handling",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/otp/verify/",
+      "status": 400,
+      "expected": 400,
+      "time_ms": 5,
+      "passed": true,
+      "details": "Correctly refused invalid cryptographic OTP"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "JWT Access Token Rotation & Refresh",
+      "method": "POST",
+      "endpoint": "/api/v1/auth/token/refresh/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 24,
+      "passed": true,
+      "details": "Successfully renewed JWT Access Token"
+    },
+    {
+      "suite": "Auth & JWT",
+      "test": "Session Restoration & Identity Check",
+      "method": "GET",
+      "endpoint": "/api/v1/auth/me/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 9,
+      "passed": true,
+      "details": "Restored Session for +919700000001"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Public Promotional Campaign Banners",
+      "method": "GET",
+      "endpoint": "/api/v1/promotions/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 14,
+      "passed": true,
+      "details": "Loaded 10 live promotional banners"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Marketplace Taxonomy & Crafts",
+      "method": "GET",
+      "endpoint": "/api/v1/categories/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 17,
+      "passed": true,
+      "details": "Loaded 5 categories (Maggam, Sarees, Bridal)"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Store Showroom Discovery & Geolocation",
+      "method": "GET",
+      "endpoint": "/api/v1/stores/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 9,
+      "passed": true,
+      "details": "Loaded 5 approved partner studios"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Store Showroom Detailed Dossier",
+      "method": "GET",
+      "endpoint": "/api/v1/stores/83e349c2-7617-4d57-96f8-34d0f7eca8fb/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 8,
+      "passed": true,
+      "details": "Verified dossier for Ekam Bespoke Blouses & Styling"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Studio Weekly Working Schedule",
+      "method": "GET",
+      "endpoint": "/api/v1/stores/83e349c2-7617-4d57-96f8-34d0f7eca8fb/schedules/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 13,
+      "passed": true,
+      "details": "Loaded studio working hours"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Showroom Catalog & Services Dossier",
+      "method": "GET",
+      "endpoint": "/api/v1/products/store/83e349c2-7617-4d57-96f8-34d0f7eca8fb/dossier/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 27,
+      "passed": true,
+      "details": "Loaded integrated products and services"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Global Products & Services Catalog",
+      "method": "GET",
+      "endpoint": "/api/v1/products/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 27,
+      "passed": true,
+      "details": "Loaded 40 catalog creations"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Catalog Taxonomy Filtering",
+      "method": "GET",
+      "endpoint": "/api/v1/products/?category=03b02cf9-67ef-4427-867a-408cd68ab11e",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 17,
+      "passed": true,
+      "details": "Filtered inventory by category"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Global O2O Keyword Discovery Search",
+      "method": "GET",
+      "endpoint": "/api/v1/search/?q=Silk",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 18,
+      "passed": true,
+      "details": "Executed full-text query across stores and catalogs"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Customer Wishlist Bookmarks",
+      "method": "GET",
+      "endpoint": "/api/v1/favorites/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 29,
+      "passed": true,
+      "details": "Retrieved 2 saved favorites"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Toggle Wishlist Store Bookmark (CRUD)",
+      "method": "POST",
+      "endpoint": "/api/v1/favorites/toggle/",
+      "status": 201,
+      "expected": [
+        200,
+        201
+      ],
+      "time_ms": 23,
+      "passed": true,
+      "details": "Bookmark status: added"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Customer Real-Time Notification Feed",
+      "method": "GET",
+      "endpoint": "/api/v1/notifications/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 11,
+      "passed": true,
+      "details": "Fetched alerts & system notifications"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Mark Notifications Read All",
+      "method": "POST",
+      "endpoint": "/api/v1/notifications/read-all/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 8,
+      "passed": true,
+      "details": "Acknowledged notification queue"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Customer Appointment Bookings History",
+      "method": "GET",
+      "endpoint": "/api/v1/bookings/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 19,
+      "passed": true,
+      "details": "Fetched scheduled fitting appointments"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Customer Bespoke Product Enquiries",
+      "method": "GET",
+      "endpoint": "/api/v1/enquiries/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 18,
+      "passed": true,
+      "details": "Fetched active custom couture enquiries"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Store Verified Customer Reviews",
+      "method": "GET",
+      "endpoint": "/api/v1/stores/83e349c2-7617-4d57-96f8-34d0f7eca8fb/reviews/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 21,
+      "passed": true,
+      "details": "Loaded community feedback and ratings"
+    },
+    {
+      "suite": "Customer O2O",
+      "test": "Submit Verified Customer Review (CRUD)",
+      "method": "POST",
+      "endpoint": "/api/v1/stores/83e349c2-7617-4d57-96f8-34d0f7eca8fb/reviews/",
+      "status": 201,
+      "expected": [
+        200,
+        201
+      ],
+      "time_ms": 35,
+      "passed": true,
+      "details": "Successfully published 5-star review to PostgreSQL"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Vendor Studio Profile & Identity",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/me/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 22,
+      "passed": true,
+      "details": "Owner: Radhika Sen"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Showroom Business Details & Location",
+      "method": "GET",
+      "endpoint": "/api/v1/business/me/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 13,
+      "passed": true,
+      "details": "Showroom: Ekam Bespoke Blouses & Styling"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Vendor Approved Catalog Verification",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/catalog-check/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 9,
+      "passed": true,
+      "details": "Confirmed studio authorization for catalog indexing"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Studio Catalog Inventory Management",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/catalog/products/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 21,
+      "passed": true,
+      "details": "Fetched vendor private catalog items"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Create Catalog Product (CRUD Sync)",
+      "method": "POST",
+      "endpoint": "/api/v1/vendor/catalog/products/",
+      "status": 201,
+      "expected": [
+        200,
+        201
+      ],
+      "time_ms": 126,
+      "passed": true,
+      "details": "Persisted item & synchronized with public directory"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Studio Portfolio Gallery Management",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/catalog/gallery/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 11,
+      "passed": true,
+      "details": "Loaded studio showcase images"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Promotional Campaigns Management",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/catalog/offers/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 12,
+      "passed": true,
+      "details": "Loaded studio deals & discounts"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Create Promotional Offer (CRUD Sync)",
+      "method": "POST",
+      "endpoint": "/api/v1/vendor/catalog/offers/",
+      "status": 201,
+      "expected": [
+        200,
+        201
+      ],
+      "time_ms": 15,
+      "passed": true,
+      "details": "Created offer & synced to public promotions feed"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Studio Weekly Schedule Management",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/schedules/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 14,
+      "passed": true,
+      "details": "Loaded studio business hours configuration"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Studio Incoming Appointments Dashboard",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/bookings/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 17,
+      "passed": true,
+      "details": "Received live customer booking requests"
+    },
+    {
+      "suite": "Vendor Operations",
+      "test": "Studio Bespoke Product Enquiries Feed",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/enquiries/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 14,
+      "passed": true,
+      "details": "Received live customer couture customization inquiries"
+    },
+    {
+      "suite": "Admin Governance",
+      "test": "Admin Pending Onboarding Pipeline",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/vendors/pending/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 7,
+      "passed": true,
+      "details": "Loaded partner applications awaiting vetting"
+    },
+    {
+      "suite": "Admin Governance",
+      "test": "Admin Category Taxonomy Governance",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/categories/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 16,
+      "passed": true,
+      "details": "Retrieved system category structures"
+    },
+    {
+      "suite": "Admin Governance",
+      "test": "Admin System-Wide Appointments Monitor",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/bookings/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 17,
+      "passed": true,
+      "details": "Auditing platform appointment reservations"
+    },
+    {
+      "suite": "Admin Governance",
+      "test": "Admin System-Wide Enquiries Monitor",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/enquiries/",
+      "status": 200,
+      "expected": 200,
+      "time_ms": 16,
+      "passed": true,
+      "details": "Auditing platform custom bespoke enquiries"
+    },
+    {
+      "suite": "Admin Governance",
+      "test": "Admin Product Moderation Route",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/products/",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "time_ms": 18,
+      "passed": true,
+      "details": "Auditing platform catalog creations"
+    },
+    {
+      "suite": "RBAC & Security",
+      "test": "Enforce Vendor Role Isolation against Customer",
+      "method": "GET",
+      "endpoint": "/api/v1/vendor/me/",
+      "status": 403,
+      "expected": 403,
+      "time_ms": 5,
+      "passed": true,
+      "details": "Successfully blocked customer from studio dashboard (403 Forbidden)"
+    },
+    {
+      "suite": "RBAC & Security",
+      "test": "Enforce Admin Role Isolation against Customer",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/vendors/pending/",
+      "status": 403,
+      "expected": 403,
+      "time_ms": 3,
+      "passed": true,
+      "details": "Successfully blocked customer from admin console (403 Forbidden)"
+    },
+    {
+      "suite": "RBAC & Security",
+      "test": "Enforce Admin Role Isolation against Vendor",
+      "method": "GET",
+      "endpoint": "/api/v1/admin/categories/",
+      "status": 403,
+      "expected": 403,
+      "time_ms": 3,
+      "passed": true,
+      "details": "Successfully blocked vendor from admin category mutations (403 Forbidden)"
+    },
+    {
+      "suite": "RBAC & Security",
+      "test": "Enforce JWT Authentication on Private Endpoints",
+      "method": "GET",
+      "endpoint": "/api/v1/favorites/",
+      "status": 401,
+      "expected": 401,
+      "time_ms": 2,
+      "passed": true,
+      "details": "Successfully blocked unauthenticated user (401 Unauthorized)"
+    }
+  ]
+}

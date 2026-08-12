@@ -23,7 +23,7 @@ class _StoreTimingScreenState extends State<StoreTimingScreen> {
 
   final Map<String, TimeOfDay> _openTime = {};
   final Map<String, TimeOfDay> _closeTime = {};
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -49,12 +49,7 @@ class _StoreTimingScreenState extends State<StoreTimingScreen> {
   }
 
   void _onSaveTimings() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.push(VendorRoutePaths.verificationStatus);
-    });
+    context.push(VendorRoutePaths.verificationStatus);
   }
 
   @override

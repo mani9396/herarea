@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:shared/models/store_model.dart';
 import 'package:her_area/core/widgets/store_card.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});

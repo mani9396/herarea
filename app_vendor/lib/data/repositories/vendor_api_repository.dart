@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
-import 'package:app_vendor/data/mock/vendor_mock_data.dart';
+import 'package:app_vendor/data/models/vendor_models.dart';
+import 'package:app_vendor/features/offers/domain/models/vendor_offer.dart';
 
 class VendorApiRepository {
   final IApiClient _apiClient;
@@ -85,6 +86,20 @@ class VendorApiRepository {
     }
   }
 
+  /// Update existing item in studio showroom
+  Future<VendorProductModel?> updateProduct(VendorProductModel product) async {
+    _assertApprovedVendor();
+    try {
+      final response = await _apiClient.put(
+        ApiEndpoints.vendorProductDetail(product.id),
+        body: product.toJson(),
+      );
+      return VendorProductModel.fromJson(response);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Delete item from studio showroom
   Future<bool> deleteProduct(String productId) async {
     try {
@@ -113,10 +128,180 @@ class VendorApiRepository {
   Future<bool> updateEnquiryStatus(String enquiryId, String newStatus) async {
     try {
       final response = await _apiClient.patch(
-        ApiEndpoints.vendorBookingDetail(enquiryId),
+        ApiEndpoints.vendorBookingStatus(enquiryId),
         body: {'status': newStatus.toUpperCase()},
       );
       return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save studio business profile during onboarding or editing
+  Future<bool> saveBusinessProfile(Map<String, dynamic> profileData) async {
+    try {
+      await _apiClient.put(
+        ApiEndpoints.vendorBusinessProfile,
+        body: profileData,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save studio operating timings and schedules
+  Future<bool> saveStoreTimings(Map<String, dynamic> scheduleData) async {
+    try {
+      await _apiClient.post(
+        ApiEndpoints.vendorSchedules,
+        body: scheduleData,
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch studio showcase gallery images
+  Future<List<String>> fetchGalleryImages() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.vendorGallery);
+      final list = (response as List?) ?? (response['results'] as List?) ?? [];
+      return list.map((e) => e['image_url']?.toString() ?? e['url']?.toString() ?? '').where((u) => u.isNotEmpty).toList();
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Upload new gallery image to backend
+  Future<String?> uploadGalleryImage(String imageUrlOrPath) async {
+    _assertApprovedVendor();
+    try {
+      if (imageUrlOrPath.startsWith('http')) {
+        await _apiClient.post(ApiEndpoints.vendorGallery, body: {'image_url': imageUrlOrPath});
+        return imageUrlOrPath;
+      } else {
+        final response = await _apiClient.postMultipart(
+          ApiEndpoints.vendorGallery,
+          files: {'image': imageUrlOrPath},
+        );
+        return response['image_url']?.toString() ?? imageUrlOrPath;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Delete gallery image from backend
+  Future<bool> deleteGalleryImage(String imageIdOrUrl) async {
+    try {
+      final id = Uri.encodeComponent(imageIdOrUrl);
+      await _apiClient.delete('${ApiEndpoints.vendorGallery}$id/');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch promotional offers from backend catalog
+  Future<List<VendorOffer>> fetchOffers() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.vendorOffers);
+      final list = (response as List?) ?? (response['results'] as List?) ?? [];
+      return list.map((json) => VendorOffer.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Create new offer in backend catalog
+  Future<VendorOffer?> createOffer(VendorOffer offer) async {
+    _assertApprovedVendor();
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.vendorOffers,
+        body: offer.toJson(),
+      );
+      return VendorOffer.fromJson(response);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Update offer in backend catalog
+  Future<VendorOffer?> updateOffer(VendorOffer offer) async {
+    try {
+      final response = await _apiClient.put(
+        '${ApiEndpoints.vendorOffers}${offer.id}/',
+        body: offer.toJson(),
+      );
+      return VendorOffer.fromJson(response);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Delete offer from backend catalog
+  Future<bool> deleteOffer(String id) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.vendorOffers}$id/');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch live notifications for vendor
+  Future<List<VendorNotificationModel>> fetchNotifications() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.notifications);
+      final list = (response as List?) ?? (response['results'] as List?) ?? [];
+      return list.map((json) => VendorNotificationModel.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Mark notification as read
+  Future<bool> markNotificationAsRead(String notificationId) async {
+    try {
+      await _apiClient.patch('${ApiEndpoints.notifications}$notificationId/read/', body: {'is_unread': false});
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch vendor business statistics and analytics metrics from backend
+  Future<VendorStatsModel> fetchVendorStats() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.vendorAnalytics);
+      return VendorStatsModel.fromJson(response);
+    } catch (e) {
+      return const VendorStatsModel.empty();
+    }
+  }
+
+  /// Fetch live verified customer reviews for the vendor store
+  Future<List<VendorCustomerReviewModel>> fetchCustomerReviews(String storeId) async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.storeReviews(storeId));
+      final list = (response as List?) ?? (response['results'] as List?) ?? [];
+      return list.map((json) => VendorCustomerReviewModel.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      return const [];
+    }
+  }
+
+  /// Reply to a customer review via backend API
+  Future<bool> replyToReview(String reviewId, String reply) async {
+    try {
+      await _apiClient.post(
+        '/api/v1/vendor/reviews/$reviewId/reply/',
+        body: {'reply': reply},
+      );
+      return true;
     } catch (e) {
       return false;
     }

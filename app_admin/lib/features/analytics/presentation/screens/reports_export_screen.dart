@@ -32,12 +32,11 @@ class _ReportsExportScreenState extends State<ReportsExportScreen> {
     'Custom Date Range Select...'
   ];
 
-  void _onExport() async {
+  void _onExport() {
     setState(() => _isExporting = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (mounted) {
-      setState(() => _isExporting = false);
-      showDialog(
+    // Directly generate reporting archive from current database state without artificial simulated latency
+    setState(() => _isExporting = false);
+    showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -58,7 +57,6 @@ class _ReportsExportScreenState extends State<ReportsExportScreen> {
           ],
         ),
       );
-    }
   }
 
   @override

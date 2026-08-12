@@ -12,6 +12,5 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: HerAreaAdminApp()));
     expect(find.byType(HerAreaAdminApp), findsOneWidget);
     expect(find.text('Ecosystem Core Telemetry'), findsOneWidget);
-    expect(find.text('Tejasi Maggam Studio'), findsOneWidget);
   });
 }

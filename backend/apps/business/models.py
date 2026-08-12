@@ -28,9 +28,11 @@ class BusinessProfile(AbstractBaseModel):
     # Physical Location & Address
     address_line_1 = models.CharField(max_length=255, help_text='Street number, building, complex name')
     address_line_2 = models.CharField(max_length=255, null=True, blank=True, help_text='Floor, landmark, neighborhood')
+    area = models.CharField(max_length=100, help_text='Sub-locality or specific neighborhood zone')
     city = models.CharField(max_length=100, db_index=True)
     state = models.CharField(max_length=100)
-    pincode = models.CharField(max_length=20, db_index=True)
+    country = models.CharField(max_length=100, default='India')
+    postal_code = models.CharField(max_length=20, db_index=True)
     
     # Public Contact & Support
     contact_email = models.EmailField(help_text='Public customer inquiry support email')

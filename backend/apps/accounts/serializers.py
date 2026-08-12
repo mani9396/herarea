@@ -25,3 +25,6 @@ class OtpVerifySerializer(serializers.Serializer):
         if not value.isdigit():
             raise serializers.ValidationError("OTP code must consist entirely of digits.")
         return value
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField(required=False, allow_null=True, help_text="SimpleJWT refresh token to blacklist")

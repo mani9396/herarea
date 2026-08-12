@@ -10,7 +10,7 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'category_name', 'category_slug', 
             'business_name', 'description', 
-            'address_line_1', 'address_line_2', 'city', 'state', 'pincode', 
+            'address_line_1', 'address_line_2', 'area', 'city', 'state', 'country', 'postal_code', 
             'contact_email', 'contact_phone', 
             'latitude', 'longitude', 'business_timings', 
             'logo_url', 'cover_url', 
@@ -27,12 +27,13 @@ class PublicStoreShowroomSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     vendor_status = serializers.CharField(source='vendor.status', read_only=True)
+    distance_km = serializers.FloatField(read_only=True, required=False)
 
     class Meta:
         model = BusinessProfile
         fields = [
-            'id', 'business_name', 'description', 'category_name', 'category_slug', 'vendor_status',
-            'address_line_1', 'address_line_2', 'city', 'state', 'pincode', 
+            'id', 'business_name', 'description', 'category_name', 'category_slug', 'vendor_status', 'distance_km',
+            'address_line_1', 'address_line_2', 'area', 'city', 'state', 'country', 'postal_code', 
             'contact_email', 'contact_phone', 
             'latitude', 'longitude', 'business_timings', 
             'logo_url', 'cover_url', 'created_at'

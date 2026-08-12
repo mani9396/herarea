@@ -13,7 +13,7 @@ class AdminForgotPasswordScreen extends StatefulWidget {
 }
 
 class _AdminForgotPasswordScreenState extends State<AdminForgotPasswordScreen> {
-  final _emailController = TextEditingController(text: 'admin@herarea.in');
+  final _emailController = TextEditingController();
   bool _submitted = false;
 
   @override

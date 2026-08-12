@@ -37,6 +37,8 @@ export 'utils/validation_helpers.dart';
 export 'services/api_client_interface.dart';
 export 'services/dio_api_client.dart';
 export 'services/api_providers.dart';
+export 'services/auth_token_storage.dart';
+export 'services/auth_api_repository.dart';
 export 'common/common_typedefs.dart';
 
 // Responsive

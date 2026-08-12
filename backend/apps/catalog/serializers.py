@@ -32,6 +32,25 @@ class OfferSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class PublicPromotionSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    store_id = serializers.UUIDField(source='business_profile.id', read_only=True)
+    store_name = serializers.CharField(source='business_profile.business_name', read_only=True)
+
+    class Meta:
+        model = Offer
+        fields = ['id', 'title', 'promo_code', 'description', 'discount_percentage', 'valid_until', 'is_active', 'image_url', 'store_id', 'store_name', 'created_at']
+        read_only_fields = ['id', 'created_at', 'image_url', 'store_id', 'store_name']
+
+    def get_image_url(self, obj) -> str:
+        if obj.business_profile and obj.business_profile.cover_url:
+            return obj.business_profile.cover_url
+        gallery = obj.business_profile.gallery_images.first()
+        if gallery and gallery.image_url:
+            return gallery.image_url
+        return 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1200'
+
+
 class StoreCompleteCatalogSerializer(serializers.Serializer):
     """
     Comprehensive O2O dossier combining showroom products/services, gallery images, 

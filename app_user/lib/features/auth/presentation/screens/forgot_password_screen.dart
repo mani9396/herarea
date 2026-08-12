@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
+import 'package:shared/shared.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _inputController = TextEditingController(text: '9876543210');
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+  final _inputController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _submitted = false;
@@ -23,7 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _onSubmit() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 650)); // Simulate network recovery check
+      await ref.read(authApiRepositoryProvider).requestOtp(_inputController.text.trim(), role: 'CUSTOMER');
       if (mounted) {
         setState(() {
           _isLoading = false;

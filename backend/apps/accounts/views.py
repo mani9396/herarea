@@ -6,7 +6,7 @@ from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from apps.accounts.models import User
-from apps.accounts.serializers import UserSerializer, OtpSendSerializer, OtpVerifySerializer
+from apps.accounts.serializers import UserSerializer, OtpSendSerializer, OtpVerifySerializer, LogoutSerializer
 from apps.accounts.permissions import IsCustomerRole, IsVendorRole, IsAdminRole, IsSuperAdminRole
 
 logger = logging.getLogger('her_area')
@@ -86,6 +86,29 @@ class OtpVerifyView(APIView):
             "role": user.role,
             "is_new_user": created,
         }, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    """
+    Revoke user authentication session by blacklisting the provided rotating Refresh Token.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary="Logout & Blacklist Refresh Token",
+        description="Invalidate active session refresh token to terminate client credentials.",
+        request=LogoutSerializer,
+        responses={200: OpenApiResponse(description="Successfully logged out.")}
+    )
+    def post(self, request):
+        refresh = request.data.get('refresh') or request.data.get('refresh_token')
+        if refresh:
+            try:
+                token = RefreshToken(refresh)
+                token.blacklist()
+            except Exception as e:
+                logger.warning(f"Logout token blacklist warning: {str(e)}")
+        return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
 
 
 class UserProfileView(APIView):

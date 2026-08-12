@@ -1,31 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorLoginScreen extends StatefulWidget {
+class VendorLoginScreen extends ConsumerStatefulWidget {
   const VendorLoginScreen({super.key});
 
   @override
-  State<VendorLoginScreen> createState() => _VendorLoginScreenState();
+  ConsumerState<VendorLoginScreen> createState() => _VendorLoginScreenState();
 }
 
-class _VendorLoginScreenState extends State<VendorLoginScreen> {
-  final _phoneController = TextEditingController(text: '9811122334');
-  final _pinController = TextEditingController(text: '1234');
+class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
+  final _phoneController = TextEditingController();
+  final _pinController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
-  void _onLogin() {
+  void _onLogin() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+    final success = await ref.read(authApiRepositoryProvider).verifyOtp(
+      _pinController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      role: 'VENDOR',
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
       context.go(VendorRoutePaths.dashboard);
-    });
+    } else {
+      setState(() => _errorMessage = 'Authentication failed. Please check credentials.');
+    }
   }
 
   @override

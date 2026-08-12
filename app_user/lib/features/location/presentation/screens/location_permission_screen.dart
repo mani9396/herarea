@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 import 'package:shared/widgets/custom_button.dart';
-import 'package:her_area/data/mock/mock_data.dart';
 
 class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({super.key});
@@ -19,17 +20,77 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
 class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
   bool _isLoading = false;
 
-  void _onAllowGps() async {
+  Future<void> _onAllowGps() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 650)); // Simulate GPS triangulation
-    if (mounted) {
-      setState(() => _isLoading = false);
-      ref.read(userLocationProvider.notifier).state = const UserLocationState(
-        latitude: 17.4326,
-        longitude: 78.4071,
-        cityName: 'Jubilee Hills, Hyderabad',
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+      
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied.');
+      }
+      
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
-      context.push(RoutePaths.interestSelection);
+      
+      String areaName = 'Unknown Area';
+      
+      try {
+        final dio = Dio();
+        final response = await dio.get(
+          'https://nominatim.openstreetmap.org/reverse',
+          queryParameters: {
+            'lat': position.latitude,
+            'lon': position.longitude,
+            'format': 'json',
+          },
+        );
+        if (response.statusCode == 200) {
+          final address = response.data['address'];
+          if (address != null) {
+            final subLocality = address['suburb'] ?? address['neighbourhood'] ?? address['sublocality'] ?? '';
+            final locality = address['city'] ?? address['town'] ?? address['county'] ?? '';
+            if (subLocality.isNotEmpty && locality.isNotEmpty) {
+              areaName = '$subLocality, $locality';
+            } else if (locality.isNotEmpty) {
+              areaName = locality;
+            } else if (subLocality.isNotEmpty) {
+              areaName = subLocality;
+            }
+          }
+        }
+      } catch (_) {
+        // Fallback to Unknown Area if OSM fails
+      }
+      
+      ref.read(userLocationProvider.notifier).state = UserLocationState(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        cityName: areaName,
+      );
+      
+      if (mounted) {
+        context.push(RoutePaths.interestSelection);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -163,7 +224,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                                     ),
                                   ),
                                   subtitle: Text(
-                                    '${MockData.allStores.length}+ verified boutiques around this locality',
+                                    '50+ verified boutiques around this locality',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,

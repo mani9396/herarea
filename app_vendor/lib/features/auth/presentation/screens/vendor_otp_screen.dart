@@ -1,18 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorOtpVerificationScreen extends StatefulWidget {
+class VendorOtpVerificationScreen extends ConsumerStatefulWidget {
   const VendorOtpVerificationScreen({super.key});
 
   @override
-  State<VendorOtpVerificationScreen> createState() => _VendorOtpVerificationScreenState();
+  ConsumerState<VendorOtpVerificationScreen> createState() => _VendorOtpVerificationScreenState();
 }
 
-class _VendorOtpVerificationScreenState extends State<VendorOtpVerificationScreen> {
-  final _pinController = TextEditingController(text: '7788');
+class _VendorOtpVerificationScreenState extends ConsumerState<VendorOtpVerificationScreen> {
+  final _pinController = TextEditingController();
   int _secondsRemaining = 30;
   Timer? _timer;
   bool _isLoading = false;
@@ -42,14 +43,18 @@ class _VendorOtpVerificationScreenState extends State<VendorOtpVerificationScree
     super.dispose();
   }
 
-  void _onVerify() {
+  void _onVerify() async {
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.go(VendorRoutePaths.businessRegistration);
-      }
-    });
+    final success = await ref.read(authApiRepositoryProvider).verifyOtp(_pinController.text.trim(), role: 'VENDOR');
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      context.go(VendorRoutePaths.businessRegistration);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid verification code.'), backgroundColor: AppColors.errorRed),
+      );
+    }
   }
 
   @override

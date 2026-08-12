@@ -4,20 +4,22 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:her_area/core/widgets/store_card.dart';
 import 'package:shared/models/store_model.dart';
-import 'package:her_area/data/mock/mock_data.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:her_area/core/state/app_state_provider.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final storesAsync = ref.watch(allStoresProvider);
+    final storesAsync = ref.watch(nearbyStoresProvider);
+    final bannersAsync = ref.watch(promoBannersProvider);
+    final userLocation = ref.watch(userLocationProvider);
 
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async => ref.refresh(allStoresProvider),
+          onRefresh: () async => ref.refresh(nearbyStoresProvider),
           color: AppTheme.primaryRuby,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -44,13 +46,13 @@ class HomeDashboardScreen extends ConsumerWidget {
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           GestureDetector(
-                            onTap: () => _showLocationChangeDialog(context),
+                            onTap: () => _showLocationChangeDialog(context, ref),
                             child: Row(
                               children: [
                                 const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.primaryRuby),
                                 const SizedBox(width: 2),
                                 Text(
-                                  'Jubilee Hills, Hyderabad',
+                                  userLocation.cityName,
                                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                                 ),
                                 const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppTheme.primaryRuby),
@@ -87,50 +89,57 @@ class HomeDashboardScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: SizedBox(
                     height: 160,
-                    child: PageView.builder(
-                      itemCount: MockData.promoBanners.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            image: DecorationImage(
-                              image: NetworkImage(MockData.promoBanners[index]),
-                              fit: BoxFit.cover,
-                            ),
-                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                          ),
-                          child: Stack(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
-                                  gradient: LinearGradient(
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                    colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
-                                  ),
+                    child: bannersAsync.when(
+                      loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryRuby)),
+                      error: (err, stack) => const SizedBox.shrink(),
+                      data: (banners) {
+                        if (banners.isEmpty) return const SizedBox.shrink();
+                        return PageView.builder(
+                          itemCount: banners.length,
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                image: DecorationImage(
+                                  image: NetworkImage(banners[index]),
+                                  fit: BoxFit.cover,
                                 ),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                               ),
-                              Positioned(
-                                bottom: 16,
-                                left: 16,
-                                right: 16,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(color: AppTheme.primaryRuby, borderRadius: BorderRadius.circular(6)),
-                                      child: const Text('FESTIVE SPECIAL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.bottomCenter,
+                                        end: Alignment.topCenter,
+                                        colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                                      ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    const Text('Top Handloom Silks & Zardosi Masters Near You', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                                  ],
-                                ),
+                                  ),
+                                  Positioned(
+                                    bottom: 16,
+                                    left: 16,
+                                    right: 16,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(color: AppTheme.primaryRuby, borderRadius: BorderRadius.circular(6)),
+                                          child: const Text('FESTIVE SPECIAL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        const Text('Top Handloom Silks & Zardosi Masters Near You', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -243,9 +252,60 @@ class HomeDashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _showLocationChangeDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('GPS Accuracy: 99.8% • Locked to Jubilee Hills & Banjara Hills radius.')),
+  void _showLocationChangeDialog(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final radius = ref.watch(nearbyRadiusProvider);
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Discovery Radius', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text('${radius.toStringAsFixed(1)} km', style: const TextStyle(fontSize: 18, color: AppTheme.primaryRuby, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Adjust how far you want to search for verified stores around your current location.', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 24),
+                  Slider(
+                    value: radius,
+                    min: 1.0,
+                    max: 50.0,
+                    divisions: 49,
+                    activeColor: AppTheme.primaryRuby,
+                    onChanged: (val) {
+                      ref.read(nearbyRadiusProvider.notifier).state = val;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryRuby,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Apply Filter'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -260,22 +320,8 @@ class HomeDashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Recent Discoveries & Offers', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('No recent discoveries or live offers available at the moment.', style: TextStyle(fontSize: 15, color: Colors.grey)),
             const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: AppTheme.blushPink, child: Icon(Icons.auto_awesome, color: AppTheme.primaryRuby)),
-              title: const Text('New Maggam Specialist Added!'),
-              subtitle: const Text('Tejasi Studio just offered 10% discount for HER AREA visitors.'),
-              trailing: const Text('2h ago', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              contentPadding: EdgeInsets.zero,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: AppTheme.blushPink, child: Icon(Icons.favorite, color: AppTheme.primaryRuby)),
-              title: const Text('Vanya Sarees updated their catalog'),
-              subtitle: const Text('Explore 15 new Banarasi bridal arrivals.'),
-              trailing: const Text('1d ago', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              contentPadding: EdgeInsets.zero,
-            ),
           ],
         ),
       ),

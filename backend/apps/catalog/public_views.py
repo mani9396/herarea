@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.catalog.models import Product, GalleryImage, Offer
-from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer
+from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer, PublicPromotionSerializer
 from apps.vendors.models import VendorStatus
 from apps.business.models import BusinessProfile
 
@@ -106,3 +106,24 @@ class PublicStoreCatalogDossierView(APIView):
             "offers": OfferSerializer(offers, many=True).data
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class PublicPromotionListView(APIView):
+    """
+    Customer App Global O2O Promotions Engine: Enumerate active promotional campaigns and discount deals
+    across all officially APPROVED partner studio showrooms.
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = PublicPromotionSerializer
+
+    @extend_schema(
+        summary="List Public Marketplace Promotional Campaigns",
+        description="Enumerate active promotions and deals from APPROVED showrooms only.",
+        responses={200: PublicPromotionSerializer(many=True)}
+    )
+    def get(self, request):
+        offers = Offer.objects.filter(
+            is_active=True,
+            business_profile__vendor__status=VendorStatus.APPROVED
+        ).select_related('business_profile').order_by('-created_at')
+        return Response(PublicPromotionSerializer(offers, many=True).data, status=status.HTTP_200_OK)

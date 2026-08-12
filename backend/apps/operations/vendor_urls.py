@@ -4,7 +4,8 @@ from apps.operations.vendor_views import (
     VendorBookingListView,
     VendorBookingStatusUpdateView,
     VendorEnquiryListView,
-    VendorEnquiryResponseView
+    VendorEnquiryResponseView,
+    VendorAnalyticsView
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('bookings/<uuid:pk>/status/', VendorBookingStatusUpdateView.as_view(), name='vendor-booking-status-update'),
     path('enquiries/', VendorEnquiryListView.as_view(), name='vendor-enquiry-list'),
     path('enquiries/<uuid:pk>/respond/', VendorEnquiryResponseView.as_view(), name='vendor-enquiry-respond'),
+    path('analytics/', VendorAnalyticsView.as_view(), name='vendor-analytics'),
 ]

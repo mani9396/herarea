@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
-import 'package:her_area/data/mock/mock_data.dart';
+import 'package:shared/shared.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '9876543210');
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   void _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 650)); // Simulate authentication dispatch
+      await ref.read(authApiRepositoryProvider).requestOtp(_phoneController.text.trim(), role: 'CUSTOMER');
       if (mounted) {
         setState(() => _isLoading = false);
         context.push(RoutePaths.otpVerification);
@@ -254,9 +250,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildBrandShowcasePanel(bool isDark) {
-    final featuredStore = MockData.allStores[0];
-    final featureReview = featuredStore.reviews[0];
-
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -331,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Glassmorphic Featured Review Card from Mock Data
+              // Glassmorphic Featured Showcase Card
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -366,9 +359,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      '"${featureReview.comment}"',
-                      style: const TextStyle(
+                    const Text(
+                      '"Found the most wonderful artisans for my bridal trousseau within 3 km. Truly exceptional tailoring quality and punctuality!"',
+                      style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
@@ -382,18 +375,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         CircleAvatar(
                           radius: 18,
                           backgroundColor: AppColors.primaryRubyLight,
-                          child: Text(
-                            featureReview.userName[0],
-                            style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                          child: const Text(
+                            'A',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              featureReview.userName,
-                              style: const TextStyle(
+                            const Text(
+                              'Ananya Rao',
+                              style: TextStyle(
                                 fontFamily: AppTypography.bodyFont,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -401,7 +394,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             Text(
-                              'Client at ${featuredStore.name}',
+                              'Client at Vanya Handloom & Zari Studio',
                               style: TextStyle(
                                 fontFamily: AppTypography.bodyFont,
                                 fontSize: 11,

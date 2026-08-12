@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
+import 'package:shared/shared.dart';
 
-class AdminLoginScreen extends StatefulWidget {
+class AdminLoginScreen extends ConsumerStatefulWidget {
   const AdminLoginScreen({super.key});
 
   @override
-  State<AdminLoginScreen> createState() => _AdminLoginScreenState();
+  ConsumerState<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
 
-class _AdminLoginScreenState extends State<AdminLoginScreen> {
+class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'admin@herarea.in');
-  final _passwordController = TextEditingController(text: 'AdminSecure#2026');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -31,7 +28,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   void _onSignIn() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 900));
+      await ref.read(authApiRepositoryProvider).requestOtp('9999999999', role: 'ADMIN');
       if (mounted) {
         setState(() => _isLoading = false);
         context.push(AdminRoutePaths.otpVerification);

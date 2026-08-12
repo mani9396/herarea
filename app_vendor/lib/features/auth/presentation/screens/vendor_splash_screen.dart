@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorSplashScreen extends StatefulWidget {
+class VendorSplashScreen extends ConsumerStatefulWidget {
   const VendorSplashScreen({super.key});
 
   @override
-  State<VendorSplashScreen> createState() => _VendorSplashScreenState();
+  ConsumerState<VendorSplashScreen> createState() => _VendorSplashScreenState();
 }
 
-class _VendorSplashScreenState extends State<VendorSplashScreen> with SingleTickerProviderStateMixin {
+class _VendorSplashScreenState extends ConsumerState<VendorSplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
   late Animation<double> _scale;
@@ -18,6 +19,9 @@ class _VendorSplashScreenState extends State<VendorSplashScreen> with SingleTick
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authApiRepositoryProvider).restoreSession();
+    });
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
     _scale = Tween<double>(begin: 0.85, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
@@ -25,7 +29,11 @@ class _VendorSplashScreenState extends State<VendorSplashScreen> with SingleTick
 
     Future.delayed(const Duration(milliseconds: 2200), () {
       if (!mounted) return;
-      context.go(VendorRoutePaths.welcome);
+      if (ref.read(authSessionProvider).isAuthenticated) {
+        context.go(VendorRoutePaths.dashboard);
+      } else {
+        context.go(VendorRoutePaths.welcome);
+      }
     });
   }
 

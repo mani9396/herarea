@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:her_area/core/widgets/store_card.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class NearbyStoresScreen extends ConsumerStatefulWidget {
   const NearbyStoresScreen({super.key});
@@ -64,8 +64,8 @@ class _NearbyStoresScreenState extends ConsumerState<NearbyStoresScreen> {
                   Slider(
                     value: radius,
                     min: 1.0,
-                    max: 15.0,
-                    divisions: 28,
+                    max: 25.0,
+                    divisions: 48,
                     activeColor: AppTheme.primaryRuby,
                     inactiveColor: Colors.grey.shade300,
                     onChanged: (newRadius) => ref.read(nearbyRadiusProvider.notifier).state = newRadius,
@@ -92,8 +92,8 @@ class _NearbyStoresScreenState extends ConsumerState<NearbyStoresScreen> {
                                 Text('No stores found within ${radius.toStringAsFixed(1)} km.', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 ElevatedButton(
-                                  onPressed: () => ref.read(nearbyRadiusProvider.notifier).state = 10.0,
-                                  child: const Text('Expand Radius to 10 km'),
+                                  onPressed: () => ref.read(nearbyRadiusProvider.notifier).state = 25.0,
+                                  child: const Text('Expand Radius to 25 km'),
                                 )
                               ],
                             ),
@@ -140,9 +140,13 @@ class _NearbyStoresScreenState extends ConsumerState<NearbyStoresScreen> {
         // Simulated Markers
         ...List.generate(stores.length, (index) {
           final s = stores[index];
-          // Determine mock positioning offsets for demonstration
-          final top = 80.0 + (index * 90) % 320;
-          final left = 40.0 + (index * 110) % 240;
+          // Map live latitude and longitude coordinates to view coordinates
+          final centerLat = 17.4326;
+          final centerLon = 78.4071;
+          final latDiff = s.latitude - centerLat;
+          final lonDiff = s.longitude - centerLon;
+          final top = (180.0 - (latDiff * 8000.0)).clamp(20.0, 380.0);
+          final left = (150.0 + (lonDiff * 8000.0)).clamp(20.0, 300.0);
 
           return Positioned(
             top: top,

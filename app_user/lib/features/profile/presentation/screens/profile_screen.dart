@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:shared/shared.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -281,7 +279,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       title: const Text('Sign Out of VIP Account', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.errorRed)),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.errorRed),
-                      onTap: () => _showLogoutDialog(context),
+                      onTap: () => _showLogoutDialog(context, ref),
                     ),
                   ),
                   const SizedBox(height: 80),
@@ -368,7 +366,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -382,6 +380,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
+              ref.read(authApiRepositoryProvider).logout();
               Navigator.pop(ctx);
               context.go(RoutePaths.login);
             },

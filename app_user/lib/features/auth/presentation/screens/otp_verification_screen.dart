@@ -1,21 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
+import 'package:shared/shared.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
+class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({super.key});
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController(text: '8'));
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
+  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
   bool _isLoading = false;
   int _counter = 28;
@@ -40,10 +38,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   void _onVerify() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 700)); // Simulate mock cryptographic validation
+    final otpCode = _controllers.map((c) => c.text).join();
+    final success = await ref.read(authApiRepositoryProvider).verifyOtp(otpCode, role: 'CUSTOMER');
     if (mounted) {
       setState(() => _isLoading = false);
-      context.push(RoutePaths.locationPermission);
+      if (success) {
+        context.push(RoutePaths.locationPermission);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Invalid OTP code. Please enter valid digits.'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 

@@ -13,6 +13,8 @@ class VendorDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(vendorStoreProvider);
     final enquiries = ref.watch(vendorEnquiriesProvider);
+    final stats = ref.watch(vendorStatsProvider).valueOrNull ?? const VendorStatsModel.empty();
+    final unreadCount = ref.watch(vendorNotificationsProvider).where((n) => n.isUnread).length;
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -22,7 +24,8 @@ class VendorDashboardScreen extends ConsumerWidget {
           IconButton(
             onPressed: () => context.push(VendorRoutePaths.notifications),
             icon: Badge(
-              label: const Text('2'),
+              isLabelVisible: unreadCount > 0,
+              label: Text('$unreadCount'),
               child: const Icon(Icons.notifications_outlined),
             ),
           ),
@@ -30,18 +33,18 @@ class VendorDashboardScreen extends ConsumerWidget {
         ],
       ),
       body: ResponsiveLayout(
-        mobile: _buildContent(context, ref, store, enquiries, textTheme, false),
+        mobile: _buildContent(context, ref, store, enquiries, stats, textTheme, false),
         desktop: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),
-            child: _buildContent(context, ref, store, enquiries, textTheme, true),
+            child: _buildContent(context, ref, store, enquiries, stats, textTheme, true),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, StoreModel store, List<dynamic> enquiries, TextTheme textTheme, bool isDesktop) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, StoreModel store, List<dynamic> enquiries, VendorStatsModel stats, TextTheme textTheme, bool isDesktop) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -49,7 +52,7 @@ class VendorDashboardScreen extends ConsumerWidget {
         children: [
           _buildHeroHeader(context, store),
           const SizedBox(height: AppSpacing.xl),
-          Text('Key Performance Indicators (Last 7 Days)', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Key Performance Indicators (Live Backend Stats)', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: AppSpacing.md),
           GridView.count(
             crossAxisCount: isDesktop ? 4 : 2,
@@ -59,10 +62,10 @@ class VendorDashboardScreen extends ConsumerWidget {
             mainAxisSpacing: AppSpacing.md,
             childAspectRatio: 1.5,
             children: [
-              _buildKpiCard('1,420', 'Profile Views', '+18%', Icons.visibility_rounded, Colors.blue),
-              _buildKpiCard('48', 'Trial Inquiries', '+12%', Icons.calendar_month_rounded, AppColors.primaryRuby),
-              _buildKpiCard('124', 'WhatsApp Taps', '+25%', Icons.chat_rounded, Colors.green),
-              _buildKpiCard('₹ 1,84,500', 'Est. Lead Value', '+15%', Icons.currency_rupee_rounded, AppColors.accentGoldDark),
+              _buildKpiCard(stats.profileViews, 'Profile Views', '+18%', Icons.visibility_rounded, Colors.blue),
+              _buildKpiCard(stats.trialInquiries, 'Trial Inquiries', '+12%', Icons.calendar_month_rounded, AppColors.primaryRuby),
+              _buildKpiCard(stats.whatsappTaps, 'WhatsApp Taps', '+25%', Icons.chat_rounded, Colors.green),
+              _buildKpiCard(stats.estLeadValue, 'Est. Lead Value', '+15%', Icons.currency_rupee_rounded, AppColors.accentGoldDark),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),

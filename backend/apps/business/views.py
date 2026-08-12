@@ -17,11 +17,33 @@ class VendorBusinessProfileView(APIView):
     permission_classes = [IsVendorRole]
 
     def _get_business_profile(self, user):
-        if not hasattr(user, 'vendor_profile') or not user.vendor_profile:
-            raise exceptions.NotFound("No Vendor Profile exists for this account. Complete basic registration first.")
-        if not hasattr(user.vendor_profile, 'business_profile') or not user.vendor_profile.business_profile:
-            raise exceptions.NotFound("No Business Showroom Profile exists yet.")
-        return user.vendor_profile.business_profile
+        from apps.vendors.models import VendorProfile, VendorStatus
+        
+        vendor, created = VendorProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                'owner_name': user.full_name or "Store Owner",
+                'official_email': user.email or "",
+                'phone_number': user.phone_number,
+                'status': VendorStatus.PENDING,
+                'created_by': user,
+                'updated_by': user
+            }
+        )
+        
+        business, created = BusinessProfile.objects.get_or_create(
+            vendor=vendor,
+            defaults={
+                'business_name': "New Boutique",
+                'address_line_1': "To be updated",
+                'city': "Unknown",
+                'state': "Unknown",
+                'postal_code': "000000",
+                'contact_email': user.email or "",
+                'contact_phone': user.phone_number or ""
+            }
+        )
+        return business
 
     @extend_schema(
         summary="Get Partner Business Showroom Profile",

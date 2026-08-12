@@ -18,7 +18,7 @@ class _AddOfferScreenState extends ConsumerState<AddOfferScreen> {
   final _descController = TextEditingController();
   String _discount = '15% OFF';
   String _validDate = '30 Nov 2026';
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   void _onCreate() {
     if (_titleController.text.trim().isEmpty || _codeController.text.trim().isEmpty) {
@@ -26,24 +26,19 @@ class _AddOfferScreenState extends ConsumerState<AddOfferScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      ref.read(vendorOffersProvider.notifier).addOffer(
-        VendorOffer(
-          id: 'off_${DateTime.now().millisecondsSinceEpoch}',
-          title: _titleController.text.trim(),
-          code: _codeController.text.trim().toUpperCase(),
-          discountPercent: _discount,
-          description: _descController.text.trim().isEmpty ? 'Special promotional discount for bridal inquiries.' : _descController.text.trim(),
-          validUntil: _validDate,
-          isActive: true,
-        ),
-      );
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promotional Offer published successfully!')));
-      context.pop();
-    });
+    ref.read(vendorOffersProvider.notifier).addOffer(
+      VendorOffer(
+        id: 'off_${DateTime.now().millisecondsSinceEpoch}',
+        title: _titleController.text.trim(),
+        code: _codeController.text.trim().toUpperCase(),
+        discountPercent: _discount,
+        description: _descController.text.trim().isEmpty ? 'Special promotional discount for bridal inquiries.' : _descController.text.trim(),
+        validUntil: _validDate,
+        isActive: true,
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promotional Offer published successfully!')));
+    context.pop();
   }
 
   @override

@@ -1,19 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:app_vendor/core/state/vendor_app_state.dart';
 import 'package:shared/shared.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _ownerController = TextEditingController(text: 'Tejasi Nambiar');
-  final _whatsappController = TextEditingController(text: '9811122334');
-  final _emailController = TextEditingController(text: 'tejasi@vanyasilkstudio.com');
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
+  late TextEditingController _ownerController;
+  late TextEditingController _whatsappController;
+  late TextEditingController _emailController;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final store = ref.read(vendorStoreProvider);
+    _ownerController = TextEditingController(text: store.name);
+    _whatsappController = TextEditingController(text: store.whatsappNumber);
+    _emailController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ownerController.dispose();
+    _whatsappController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +55,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                CustomTextField(label: 'Owner Full Name', controller: _ownerController, prefixIcon: Icons.person_rounded),
+                CustomTextField(label: 'Store / Owner Name', controller: _ownerController, prefixIcon: Icons.person_rounded),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(label: 'WhatsApp Business Lead Number', controller: _whatsappController, keyboardType: TextInputType.phone, prefixIcon: Icons.chat_rounded),
                 const SizedBox(height: AppSpacing.md),
@@ -45,14 +64,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 CustomButton(
                   label: 'Update Contact Credentials 💾',
                   isLoading: _isLoading,
-                  onPressed: () {
+                  onPressed: () async {
                     final router = GoRouter.of(context);
                     setState(() => _isLoading = true);
-                    Future.delayed(const Duration(milliseconds: 500), () {
-                      if (!mounted) return;
-                      setState(() => _isLoading = false);
-                      router.pop();
-                    });
+                    final currentStore = ref.read(vendorStoreProvider);
+                    final updated = StoreModel(
+                      id: currentStore.id,
+                      name: _ownerController.text.trim(),
+                      category: currentStore.category,
+                      rating: currentStore.rating,
+                      reviewCount: currentStore.reviewCount,
+                      distanceKm: currentStore.distanceKm,
+                      address: currentStore.address,
+                      city: currentStore.city,
+                      phoneNumber: currentStore.phoneNumber,
+                      whatsappNumber: _whatsappController.text.trim(),
+                      isVerified: currentStore.isVerified,
+                      isSponsored: currentStore.isSponsored,
+                      isOpenNow: currentStore.isOpenNow,
+                      closingTimeText: currentStore.closingTimeText,
+                      priceTier: currentStore.priceTier,
+                      imageUrls: currentStore.imageUrls,
+                      specialOffers: currentStore.specialOffers,
+                      serviceTags: currentStore.serviceTags,
+                      reviews: currentStore.reviews,
+                      latitude: currentStore.latitude,
+                      longitude: currentStore.longitude,
+                      description: currentStore.description,
+                      hasHomeMeasurement: currentStore.hasHomeMeasurement,
+                    );
+                    await ref.read(vendorStoreProvider.notifier).updateStore(updated);
+                    if (!mounted) return;
+                    setState(() => _isLoading = false);
+                    router.pop();
                   },
                 ),
               ],

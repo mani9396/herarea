@@ -13,7 +13,7 @@ class UploadBrandingScreen extends StatefulWidget {
 class _UploadBrandingScreenState extends State<UploadBrandingScreen> {
   String _logoUrl = 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=300&auto=format&fit=crop';
   String _coverUrl = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop';
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   void _onUploadLogo() {
     setState(() {
@@ -30,12 +30,7 @@ class _UploadBrandingScreenState extends State<UploadBrandingScreen> {
   }
 
   void _onContinue() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.push(VendorRoutePaths.storeTiming);
-    });
+    context.push(VendorRoutePaths.storeTiming);
   }
 
   @override

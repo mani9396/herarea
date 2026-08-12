@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: HerAreaApp()));
     expect(find.byType(HerAreaApp), findsOneWidget);
 
-    // Fast-forward time to let any simulated mock network latency timers settle cleanly
+    // Fast-forward time to let any initial screen animations settle cleanly
     await tester.pumpAndSettle(const Duration(seconds: 3));
   });
 }

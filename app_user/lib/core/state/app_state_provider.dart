@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared/shared.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 /// State representing user theme preference (True for Midnight Dark Mode, False for Luxury Light Mode)
 final themeModeProvider = StateProvider<bool>((ref) => false);
@@ -39,16 +41,11 @@ class UserLocationState {
   }
 }
 
-/// State representing active member profile
-final userProfileProvider = StateProvider<UserProfileState>((ref) {
-  return const UserProfileState(
-    name: 'Priya Nambiar',
-    phone: '+91 9876543210',
-    email: 'priya.nambiar@luxuryfashion.in',
-    locality: 'Jubilee Hills, Hyderabad',
-    bio: 'Passionate handloom silk collector & ethnic couture fashion connoisseur.',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200',
-  );
+/// State representing active member profile connected to live Django backend
+final userProfileProvider = StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
+  final repo = ref.watch(customerApiRepositoryProvider);
+  final authRepo = ref.watch(authApiRepositoryProvider);
+  return UserProfileNotifier(repo, authRepo);
 });
 
 class UserProfileState {
@@ -87,34 +84,65 @@ class UserProfileState {
   }
 }
 
-/// State managing realistic customer notifications
+class UserProfileNotifier extends StateNotifier<UserProfileState> {
+  final CustomerApiRepository _repository;
+  final AuthApiRepository _authRepository;
+
+  UserProfileNotifier(this._repository, this._authRepository)
+      : super(const UserProfileState(
+          name: '',
+          phone: '',
+          email: '',
+          locality: '',
+          bio: '',
+          avatarUrl: '',
+        )) {
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    try {
+      final data = await _repository.getProfile();
+      if (data != null) {
+        state = state.copyWith(
+          name: data['full_name'] ?? data['name'] ?? data['username'] ?? state.name,
+          phone: data['phone_number'] ?? data['phone'] ?? state.phone,
+          email: data['email'] ?? state.email,
+          locality: data['city'] ?? data['locality'] ?? state.locality,
+          bio: data['bio'] ?? state.bio,
+          avatarUrl: data['avatar'] ?? data['avatar_url'] ?? state.avatarUrl,
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> updateProfile(UserProfileState newProfile) async {
+    state = newProfile;
+    try {
+      final success = await _repository.updateProfile({
+        'full_name': newProfile.name,
+        'email': newProfile.email,
+        'phone_number': newProfile.phone,
+        'city': newProfile.locality,
+        'bio': newProfile.bio,
+      });
+      return success;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _authRepository.logout();
+    } catch (_) {}
+  }
+}
+
+/// State managing realistic customer notifications with live API fetching
 final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<NotificationItemModel>>((ref) {
-  return NotificationsNotifier([
-    NotificationItemModel(
-      id: 'notif_1',
-      title: 'New Bridal Kanjivaram Collection!',
-      message: 'Vanya Kanjivaram has just launched their regal 2026 temple gold weaving lineup in Jubilee Hills.',
-      timeText: '15m ago',
-      isRead: false,
-      iconData: Icons.diamond_rounded,
-    ),
-    NotificationItemModel(
-      id: 'notif_2',
-      title: 'Private Measurement Slot Confirmed',
-      message: 'Tejasi Maggam & Zardosi Studio accepted your home consultation inquiry for Saturday at 3:00 PM.',
-      timeText: '2h ago',
-      isRead: false,
-      iconData: Icons.event_available_rounded,
-    ),
-    NotificationItemModel(
-      id: 'notif_3',
-      title: 'Exclusive HER AREA VIP Benefit',
-      message: 'Show your digital profile tag at Amba Organic Spa to receive complimentary hair ritual services.',
-      timeText: '1d ago',
-      isRead: true,
-      iconData: Icons.workspace_premium_rounded,
-    ),
-  ]);
+  final repo = ref.watch(customerApiRepositoryProvider);
+  return NotificationsNotifier(repo);
 });
 
 class NotificationItemModel {
@@ -147,14 +175,44 @@ class NotificationItemModel {
 }
 
 class NotificationsNotifier extends StateNotifier<List<NotificationItemModel>> {
-  NotificationsNotifier(super.initialState);
+  final CustomerApiRepository _repository;
+  bool _isLoading = false;
 
-  void markAllAsRead() {
-    state = state.map((item) => item.copyWith(isRead: true)).toList();
+  NotificationsNotifier(this._repository) : super([]) {
+    refresh();
   }
 
-  void toggleRead(String id) {
+  Future<void> refresh() async {
+    if (_isLoading) return;
+    _isLoading = true;
+    try {
+      final data = await _repository.getNotifications();
+      if (data.isNotEmpty) {
+        state = data.map((map) {
+          return NotificationItemModel(
+            id: map['id']?.toString() ?? '',
+            title: map['title'] ?? 'Platform Notification',
+            message: map['message'] ?? map['content'] ?? '',
+            timeText: map['created_at']?.toString().substring(0, 10) ?? 'Recent',
+            isRead: map['is_read'] as bool? ?? false,
+            iconData: Icons.notifications_active_rounded,
+          );
+        }).toList();
+        _isLoading = false;
+        return;
+      }
+    } catch (_) {}
+    _isLoading = false;
+  }
+
+  Future<void> markAllAsRead() async {
+    state = state.map((item) => item.copyWith(isRead: true)).toList();
+    await _repository.markAllNotificationsRead();
+  }
+
+  Future<void> toggleRead(String id) async {
     state = state.map((item) => item.id == id ? item.copyWith(isRead: !item.isRead) : item).toList();
+    await _repository.markNotificationRead(id);
   }
 
   void removeNotification(String id) {

@@ -15,8 +15,8 @@ class NotificationComposerScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationComposerScreenState extends ConsumerState<NotificationComposerScreen> {
-  final _titleController = TextEditingController(text: 'Festive Maggam Craft Week Kickoff! ✨');
-  final _bodyController = TextEditingController(text: 'All verified partner boutiques are now offering custom complimentary sleeve tassels for bridal trousseau fittings booked this weekend!');
+  final _titleController = TextEditingController();
+  final _bodyController = TextEditingController();
   String _targetGroup = 'All Registered Platform Users (Buyers & Studios)';
   final List<String> _targetOptions = [
     'All Registered Platform Users (Buyers & Studios)',

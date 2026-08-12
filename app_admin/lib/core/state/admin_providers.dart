@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_admin/domain/models/admin_models.dart';
-import 'package:app_admin/data/mock/admin_mock_data.dart';
 import 'package:app_admin/data/repositories/admin_api_repository.dart';
 
 // --- Vendors State Notifier ---
 class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
   final AdminApiRepository? _repository;
 
-  AdminVendorsNotifier([this._repository]) : super(AdminMockData.initialVendors) {
+  AdminVendorsNotifier([this._repository]) : super(const []) {
     loadLiveVendors();
   }
 
@@ -16,11 +15,9 @@ class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
     if (_repository == null) return;
     try {
       final liveVendors = await _repository.fetchPendingVendors();
-      if (liveVendors.isNotEmpty) {
-        state = liveVendors;
-      }
+      state = liveVendors;
     } catch (_) {
-      // Retain fallback realistic mock data when offline or in demonstration mode
+      state = const [];
     }
   }
 
@@ -64,7 +61,7 @@ final adminVendorsProvider = StateNotifierProvider<AdminVendorsNotifier, List<Ad
 
 // --- Profile Updates State Notifier ---
 class AdminProfileUpdatesNotifier extends StateNotifier<List<AdminProfileUpdateModel>> {
-  AdminProfileUpdatesNotifier() : super(AdminMockData.initialProfileUpdates);
+  AdminProfileUpdatesNotifier() : super(const []);
 
   void approveUpdate(String id) {
     state = [
@@ -87,7 +84,21 @@ final adminProfileUpdatesProvider = StateNotifierProvider<AdminProfileUpdatesNot
 
 // --- Products State Notifier ---
 class AdminProductsNotifier extends StateNotifier<List<AdminProductModel>> {
-  AdminProductsNotifier() : super(AdminMockData.initialProducts);
+  final AdminApiRepository? _repository;
+
+  AdminProductsNotifier([this._repository]) : super(const []) {
+    loadLiveProducts();
+  }
+
+  Future<void> loadLiveProducts() async {
+    if (_repository == null) return;
+    try {
+      final liveProducts = await _repository.fetchProducts();
+      state = liveProducts;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void approveProduct(String id) {
     state = [
@@ -101,20 +112,37 @@ class AdminProductsNotifier extends StateNotifier<List<AdminProductModel>> {
       for (final p in state)
         if (p.id == id) p.copyWith(status: AdminStatus.rejected) else p,
     ];
+    _repository?.deleteProduct(id);
   }
 
   void removeProduct(String id) {
     state = state.where((p) => p.id != id).toList();
+    _repository?.deleteProduct(id);
   }
 }
 
 final adminProductsProvider = StateNotifierProvider<AdminProductsNotifier, List<AdminProductModel>>((ref) {
-  return AdminProductsNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminProductsNotifier(repo);
 });
 
 // --- Gallery State Notifier ---
 class AdminGalleryNotifier extends StateNotifier<List<AdminGalleryModel>> {
-  AdminGalleryNotifier() : super(AdminMockData.initialGallery);
+  final AdminApiRepository? _repository;
+
+  AdminGalleryNotifier([this._repository]) : super(const []) {
+    loadLiveGallery();
+  }
+
+  Future<void> loadLiveGallery() async {
+    if (_repository == null) return;
+    try {
+      final liveGallery = await _repository.fetchGallery();
+      state = liveGallery;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void approveImage(String id) {
     state = [
@@ -128,20 +156,37 @@ class AdminGalleryNotifier extends StateNotifier<List<AdminGalleryModel>> {
       for (final g in state)
         if (g.id == id) g.copyWith(status: AdminStatus.rejected) else g,
     ];
+    _repository?.deleteGalleryImage(id);
   }
 
   void deleteImage(String id) {
     state = state.where((g) => g.id != id).toList();
+    _repository?.deleteGalleryImage(id);
   }
 }
 
 final adminGalleryProvider = StateNotifierProvider<AdminGalleryNotifier, List<AdminGalleryModel>>((ref) {
-  return AdminGalleryNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminGalleryNotifier(repo);
 });
 
 // --- Offers State Notifier ---
 class AdminOffersNotifier extends StateNotifier<List<AdminOfferModel>> {
-  AdminOffersNotifier() : super(AdminMockData.initialOffers);
+  final AdminApiRepository? _repository;
+
+  AdminOffersNotifier([this._repository]) : super(const []) {
+    loadLiveOffers();
+  }
+
+  Future<void> loadLiveOffers() async {
+    if (_repository == null) return;
+    try {
+      final liveOffers = await _repository.fetchOffers();
+      state = liveOffers;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void approveOffer(String id) {
     state = [
@@ -155,6 +200,7 @@ class AdminOffersNotifier extends StateNotifier<List<AdminOfferModel>> {
       for (final o in state)
         if (o.id == id) o.copyWith(status: AdminStatus.rejected) else o,
     ];
+    _repository?.deleteOffer(id);
   }
 
   void expireOffer(String id) {
@@ -162,38 +208,71 @@ class AdminOffersNotifier extends StateNotifier<List<AdminOfferModel>> {
       for (final o in state)
         if (o.id == id) o.copyWith(status: AdminStatus.archived) else o,
     ];
+    _repository?.deleteOffer(id);
   }
 }
 
 final adminOffersProvider = StateNotifierProvider<AdminOffersNotifier, List<AdminOfferModel>>((ref) {
-  return AdminOffersNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminOffersNotifier(repo);
 });
 
 // --- Customers State Notifier ---
 class AdminCustomersNotifier extends StateNotifier<List<AdminCustomerModel>> {
-  AdminCustomersNotifier() : super(AdminMockData.initialCustomers);
+  final AdminApiRepository? _repository;
+
+  AdminCustomersNotifier([this._repository]) : super(const []) {
+    loadLiveCustomers();
+  }
+
+  Future<void> loadLiveCustomers() async {
+    if (_repository == null) return;
+    try {
+      final liveCustomers = await _repository.fetchCustomers();
+      state = liveCustomers;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void toggleBlockCustomer(String id, bool blocked) {
     state = [
       for (final c in state)
         if (c.id == id) c.copyWith(isBlocked: blocked) else c,
     ];
+    _repository?.updateCustomerBlockStatus(id, blocked);
   }
 }
 
 final adminCustomersProvider = StateNotifierProvider<AdminCustomersNotifier, List<AdminCustomerModel>>((ref) {
-  return AdminCustomersNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminCustomersNotifier(repo);
 });
 
 // --- Reviews State Notifier ---
 class AdminReviewsNotifier extends StateNotifier<List<AdminReviewModel>> {
-  AdminReviewsNotifier() : super(AdminMockData.initialReviews);
+  final AdminApiRepository? _repository;
+
+  AdminReviewsNotifier([this._repository]) : super(const []) {
+    loadLiveReviews();
+  }
+
+  Future<void> loadLiveReviews() async {
+    if (_repository == null) return;
+    try {
+      final liveReviews = await _repository.fetchReviews();
+      state = liveReviews;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void deleteReview(String id) {
     state = [
       for (final r in state)
         if (r.id == id) r.copyWith(status: AdminStatus.rejected, isReported: false) else r,
     ];
+    _repository?.deleteReview(id);
   }
 
   void restoreReview(String id) {
@@ -205,14 +284,15 @@ class AdminReviewsNotifier extends StateNotifier<List<AdminReviewModel>> {
 }
 
 final adminReviewsProvider = StateNotifierProvider<AdminReviewsNotifier, List<AdminReviewModel>>((ref) {
-  return AdminReviewsNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminReviewsNotifier(repo);
 });
 
 // --- Categories State Notifier ---
 class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
   final AdminApiRepository? _repository;
 
-  AdminCategoriesNotifier([this._repository]) : super(AdminMockData.initialCategories) {
+  AdminCategoriesNotifier([this._repository]) : super(const []) {
     loadLiveCategories();
   }
 
@@ -220,11 +300,9 @@ class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
     if (_repository == null) return;
     try {
       final liveCats = await _repository.fetchCategories();
-      if (liveCats.isNotEmpty) {
-        state = liveCats;
-      }
+      state = liveCats;
     } catch (_) {
-      // Retain fallback mock taxonomy when disconnected from live database
+      state = const [];
     }
   }
 
@@ -267,7 +345,21 @@ final adminCategoriesProvider = StateNotifierProvider<AdminCategoriesNotifier, L
 
 // --- Notifications & Announcements ---
 class AdminNotificationsNotifier extends StateNotifier<List<AdminNotificationItem>> {
-  AdminNotificationsNotifier() : super(AdminMockData.initialNotifications);
+  final AdminApiRepository? _repository;
+
+  AdminNotificationsNotifier([this._repository]) : super(const []) {
+    loadLiveNotifications();
+  }
+
+  Future<void> loadLiveNotifications() async {
+    if (_repository == null) return;
+    try {
+      final liveNotifs = await _repository.fetchNotifications();
+      state = liveNotifs;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void addAnnouncement(String title, String body, String target) {
     final newItem = AdminNotificationItem(
@@ -278,16 +370,32 @@ class AdminNotificationsNotifier extends StateNotifier<List<AdminNotificationIte
       sentAt: 'Just now',
     );
     state = [newItem, ...state];
+    _repository?.broadcastNotification(title, body, target);
   }
 }
 
 final adminNotificationsProvider = StateNotifierProvider<AdminNotificationsNotifier, List<AdminNotificationItem>>((ref) {
-  return AdminNotificationsNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminNotificationsNotifier(repo);
 });
 
 // --- Recent Activity Log ---
 class AdminActivityLogNotifier extends StateNotifier<List<String>> {
-  AdminActivityLogNotifier() : super(AdminMockData.recentActivities);
+  final AdminApiRepository? _repository;
+
+  AdminActivityLogNotifier([this._repository]) : super(const []) {
+    loadLiveActivityLogs();
+  }
+
+  Future<void> loadLiveActivityLogs() async {
+    if (_repository == null) return;
+    try {
+      final liveLogs = await _repository.fetchActivityLogs();
+      state = liveLogs;
+    } catch (_) {
+      state = const [];
+    }
+  }
 
   void logActivity(String action) {
     state = [action, ...state];
@@ -295,7 +403,14 @@ class AdminActivityLogNotifier extends StateNotifier<List<String>> {
 }
 
 final adminActivityLogProvider = StateNotifierProvider<AdminActivityLogNotifier, List<String>>((ref) {
-  return AdminActivityLogNotifier();
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminActivityLogNotifier(repo);
+});
+
+// --- Platform Telemetry & Analytics Provider ---
+final adminAnalyticsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return await repo.fetchPlatformAnalytics();
 });
 
 // --- Aggregated KPI Stats Provider ---
@@ -332,6 +447,8 @@ final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
   final profileUpdates = ref.watch(adminProfileUpdatesProvider);
   final reviews = ref.watch(adminReviewsProvider);
 
+  final analytics = ref.watch(adminAnalyticsProvider).valueOrNull;
+
   double revenue = 0;
   for (final v in vendors) {
     if (v.status == AdminStatus.approved) {
@@ -340,14 +457,14 @@ final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
   }
 
   return AdminDashboardStats(
-    totalCustomers: customers.length,
-    totalVendors: vendors.length,
-    pendingVendors: vendors.where((v) => v.status == AdminStatus.pending).length,
+    totalCustomers: analytics?['kpi_metrics']?['total_customers'] ?? customers.length,
+    totalVendors: analytics?['kpi_metrics']?['total_vendors'] ?? vendors.length,
+    pendingVendors: analytics?['kpi_metrics']?['pending_vendors'] ?? vendors.where((v) => v.status == AdminStatus.pending).length,
     pendingProducts: products.where((p) => p.status == AdminStatus.pending).length,
     pendingGallery: gallery.where((g) => g.status == AdminStatus.pending).length,
     pendingOffers: offers.where((o) => o.status == AdminStatus.pending).length,
     pendingProfileUpdates: profileUpdates.where((u) => u.status == AdminStatus.pending).length,
     reportedReviews: reviews.where((r) => r.isReported && r.status == AdminStatus.pending).length,
-    totalEstimatedRevenue: revenue,
+    totalEstimatedRevenue: (analytics?['kpi_metrics']?['total_revenue'] ?? revenue).toDouble(),
   );
 });

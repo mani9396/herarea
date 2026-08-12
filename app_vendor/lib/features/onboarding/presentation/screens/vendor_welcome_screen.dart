@@ -18,13 +18,13 @@ class VendorWelcomeScreen extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSpacing.xxl),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Spacer(),
+                      const SizedBox(height: AppSpacing.lg),
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -52,7 +52,7 @@ class VendorWelcomeScreen extends StatelessWidget {
                       _buildFeatureTile('Direct WhatsApp Leads', 'Brides connect with you without intermediary platform delays.'),
                       const SizedBox(height: AppSpacing.md),
                       _buildFeatureTile('Verified Gold Badge', 'Build community trust with curated artisan portfolio galleries.'),
-                      const Spacer(),
+                      const SizedBox(height: AppSpacing.xxl),
                       CustomButton(
                         label: 'Get Started — Register Studio ✨',
                         variant: ButtonVariant.primary,

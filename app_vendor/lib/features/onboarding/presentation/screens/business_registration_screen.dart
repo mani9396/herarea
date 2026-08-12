@@ -2,30 +2,67 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
 
-class BusinessRegistrationScreen extends StatefulWidget {
+class BusinessRegistrationScreen extends ConsumerStatefulWidget {
   const BusinessRegistrationScreen({super.key});
 
   @override
-  State<BusinessRegistrationScreen> createState() => _BusinessRegistrationScreenState();
+  ConsumerState<BusinessRegistrationScreen> createState() => _BusinessRegistrationScreenState();
 }
 
-class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen> {
+class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistrationScreen> {
   final _nameController = TextEditingController(text: 'Tejasi Maggam & Zardosi Studio');
   final _descController = TextEditingController(text: 'Specialists in royal Maggam handwork, intricate French knot blouses, and bridal Aari embroidery.');
-  final _addressController = TextEditingController(text: 'Shop 12, Banjara Hills Road No 12, Hyderabad');
   String _selectedCategory = 'Maggam Work';
   String _priceTier = '₹₹₹';
   bool _hasHomeMeasurement = true;
   bool _isLoading = false;
+  double? _lat;
+  double? _lon;
+  String? _area;
+  String? _city;
+  String? _state;
+  String? _country;
+  String? _postalCode;
 
-  void _onCompleteSetup() {
+  Future<void> _onCompleteSetup() async {
+    if (_lat == null || _lon == null || _area == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a valid store location first.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.push(VendorRoutePaths.uploadBranding);
-    });
+    try {
+      final repo = ref.read(vendorApiRepositoryProvider);
+      final success = await repo.saveBusinessProfile({
+        'business_name': _nameController.text,
+        'description': _descController.text,
+        'category_name': _selectedCategory,
+        'latitude': _lat,
+        'longitude': _lon,
+        'area': _area,
+        'city': _city,
+        'state': _state,
+        'country': _country,
+        'postal_code': _postalCode,
+      });
+
+      if (success) {
+        if (mounted) context.push(VendorRoutePaths.uploadBranding);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to save profile. Please try again.')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -96,15 +133,39 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
                   onTap: () async {
-                    final addr = await context.push<String>(VendorRoutePaths.locationPicker);
-                    if (addr != null) setState(() => _addressController.text = addr);
+                    final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.locationPicker);
+                    if (res != null) {
+                      setState(() {
+                        _lat = res['latitude'] as double?;
+                        _lon = res['longitude'] as double?;
+                        _area = res['area'] as String?;
+                        _city = res['city'] as String?;
+                        _state = res['state'] as String?;
+                        _country = res['country'] as String?;
+                        _postalCode = res['postal_code'] as String?;
+                      });
+                    }
                   },
-                  child: AbsorbPointer(
-                    child: CustomTextField(
-                      label: 'Store Physical Address & Neighborhood',
-                      hintText: 'Tap to pick exact coordinate location',
-                      controller: _addressController,
-                      suffixWidget: const Icon(Icons.location_on_rounded, color: AppColors.primaryRuby),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, color: AppColors.primaryRuby),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            _area != null ? '📍 $_area\n$_city' : 'Tap to pick exact coordinate location',
+                            style: TextStyle(
+                              color: _area != null ? Colors.black87 : Colors.grey[600],
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

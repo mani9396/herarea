@@ -17,7 +17,7 @@ class CategoryManagementScreen extends ConsumerStatefulWidget {
 class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScreen> {
   void _showAddOrEditDialog({AdminCategoryModel? existing}) {
     final titleController = TextEditingController(text: existing?.name ?? '');
-    final countController = TextEditingController(text: existing?.vendorCount.toString() ?? '5');
+    final countController = TextEditingController(text: existing?.vendorCount.toString() ?? '0');
     final iconController = TextEditingController(text: existing?.iconName ?? 'brush');
 
     showDialog(

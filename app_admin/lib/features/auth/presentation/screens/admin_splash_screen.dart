@@ -1,31 +1,38 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_typography.dart';
+import 'package:shared/shared.dart';
 
-class AdminSplashScreen extends StatefulWidget {
+class AdminSplashScreen extends ConsumerStatefulWidget {
   const AdminSplashScreen({super.key});
 
   @override
-  State<AdminSplashScreen> createState() => _AdminSplashScreenState();
+  ConsumerState<AdminSplashScreen> createState() => _AdminSplashScreenState();
 }
 
-class _AdminSplashScreenState extends State<AdminSplashScreen> with SingleTickerProviderStateMixin {
+class _AdminSplashScreenState extends ConsumerState<AdminSplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authApiRepositoryProvider).restoreSession();
+    });
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     _controller.forward();
 
     Timer(const Duration(milliseconds: 2600), () {
       if (mounted) {
-        context.go(AdminRoutePaths.login);
+        if (ref.read(authSessionProvider).isAuthenticated) {
+          context.go(AdminRoutePaths.dashboard);
+        } else {
+          context.go(AdminRoutePaths.login);
+        }
       }
     });
   }

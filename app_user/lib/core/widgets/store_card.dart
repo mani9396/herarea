@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/models/store_model.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:shared/widgets/status_badge.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class StoreCard extends ConsumerWidget {
   final StoreModel store;

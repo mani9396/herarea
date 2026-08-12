@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorSignupScreen extends StatefulWidget {
+class VendorSignupScreen extends ConsumerStatefulWidget {
   const VendorSignupScreen({super.key});
 
   @override
-  State<VendorSignupScreen> createState() => _VendorSignupScreenState();
+  ConsumerState<VendorSignupScreen> createState() => _VendorSignupScreenState();
 }
 
-class _VendorSignupScreenState extends State<VendorSignupScreen> {
+class _VendorSignupScreenState extends ConsumerState<VendorSignupScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _gstController = TextEditingController();
@@ -18,7 +19,7 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  void _onRegister() {
+  void _onRegister() async {
     final nameErr = ValidationHelpers.validateRequired(_nameController.text, 'Owner Name');
     final phoneErr = ValidationHelpers.validatePhoneNumber(_phoneController.text);
     if (nameErr != null || phoneErr != null) {
@@ -33,12 +34,10 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.push(VendorRoutePaths.otpVerification);
-      }
-    });
+    await ref.read(authApiRepositoryProvider).requestOtp(_phoneController.text.trim(), role: 'VENDOR');
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    context.push(VendorRoutePaths.otpVerification);
   }
 
   @override

@@ -1,29 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
-import 'package:her_area/data/mock/mock_data.dart';
+import 'package:shared/shared.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _cityController = TextEditingController(text: 'Jubilee Hills, Hyderabad');
+  final _cityController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _agreedToTerms = true;
 
-  final List<String> _mockDiscoveryHubs = [
+  final List<String> _discoveryHubs = [
     'Jubilee Hills, Hyderabad',
     'Banjara Hills, Hyderabad',
     'Madhapur, Hitec City',
@@ -47,7 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 650)); // Simulate member profile registration
+      await ref.read(authApiRepositoryProvider).requestOtp(_phoneController.text.trim(), role: 'CUSTOMER');
       if (mounted) {
         setState(() => _isLoading = false);
         context.push(RoutePaths.otpVerification);
@@ -86,10 +82,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   Flexible(
                     child: ListView.separated(
                       shrinkWrap: true,
-                      itemCount: _mockDiscoveryHubs.length,
+                      itemCount: _discoveryHubs.length,
                       separatorBuilder: (context, index) => const Divider(height: 1),
                       itemBuilder: (context, index) {
-                        final hub = _mockDiscoveryHubs[index];
+                        final hub = _discoveryHubs[index];
                         final isSelected = _cityController.text == hub;
 
                         return ListTile(
@@ -278,7 +274,7 @@ class _SignupScreenState extends State<SignupScreen> {
             },
           ),
 
-          // City Selection (Interactive picker with mock discovery centers)
+          // City Selection (Interactive picker with discovery centers)
           CustomTextField(
             label: 'Primary Discovery Locality',
             hintText: 'Select neighborhood',
@@ -369,9 +365,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildBrandShowcasePanel(bool isDark) {
-    final artisanStore = MockData.allStores[1]; // Tejasi Maggam Studio
-    final review = artisanStore.reviews.isNotEmpty ? artisanStore.reviews[0] : null;
-
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -430,90 +423,89 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           const SizedBox(height: 48),
 
-          if (review != null)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'FEATURED MAGGAM MASTER',
-                        style: TextStyle(
-                          fontFamily: AppTypography.bodyFont,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.accentGoldLight,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '"${review.comment}"',
-                    style: const TextStyle(
-                      fontFamily: AppTypography.bodyFont,
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.white,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.accentGoldDark,
-                        child: Text(
-                          review.userName[0],
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            review.userName,
-                            style: const TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Client at ${artisanStore.name}',
-                            style: TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
+              boxShadow: const [
+                BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
+              ],
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'FEATURED MAGGAM MASTER',
+                      style: TextStyle(
+                        fontFamily: AppTypography.bodyFont,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.accentGoldLight,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '"Master artisans delivered my customized Maggam embroidery exactly on schedule. The finishing is breathtaking!"',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.accentGoldDark,
+                      child: const Text(
+                        'S',
+                        style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Srinidhi Shetty',
+                          style: TextStyle(
+                            fontFamily: AppTypography.bodyFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Client at Tejasi Maggam & Zardosi Studio',
+                          style: TextStyle(
+                            fontFamily: AppTypography.bodyFont,
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

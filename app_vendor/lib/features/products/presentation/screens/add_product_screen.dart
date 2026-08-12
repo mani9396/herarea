@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
-import 'package:app_vendor/data/mock/vendor_mock_data.dart';
 import 'package:shared/shared.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -17,7 +16,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _priceController = TextEditingController();
   final _descController = TextEditingController();
   String _category = 'Maggam Blouses';
-  bool _isLoading = false;
+  final bool _isLoading = false;
   String? _errorMessage;
 
   void _onSave() {
@@ -25,22 +24,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       setState(() => _errorMessage = 'Please enter product title and price in INR.');
       return;
     }
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      final newProd = VendorProductModel(
-        id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
-        title: _titleController.text.trim(),
-        category: _category,
-        price: num.tryParse(_priceController.text.trim()) ?? 8500,
-        inStock: true,
-        imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop',
-        ordersCount: 0,
-        description: _descController.text.trim().isEmpty ? 'Masterfully crafted silk and bead stitching for weddings.' : _descController.text.trim(),
-      );
-      ref.read(vendorProductsProvider.notifier).addProduct(newProd);
-      context.pop();
-    });
+    final newProd = VendorProductModel(
+      id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
+      title: _titleController.text.trim(),
+      category: _category,
+      price: num.tryParse(_priceController.text.trim()) ?? 8500,
+      inStock: true,
+      imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop',
+      ordersCount: 0,
+      description: _descController.text.trim().isEmpty ? 'Masterfully crafted silk and bead stitching for weddings.' : _descController.text.trim(),
+    );
+    ref.read(vendorProductsProvider.notifier).addProduct(newProd);
+    context.pop();
   }
 
   @override
