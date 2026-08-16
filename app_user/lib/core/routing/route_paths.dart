@@ -10,7 +10,9 @@ class RoutePaths {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String otpVerification = '/otp-verification';
+  static const String createPassword = '/create-password';
 
   // Main O2O Discovery Tabs (Web URL endpoints via StatefulShellRoute)
   static const String home = '/home';

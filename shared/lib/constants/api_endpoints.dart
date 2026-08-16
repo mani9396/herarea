@@ -11,8 +11,12 @@ class ApiEndpoints {
   static const String healthCheck = '/api/v1/health/';
 
   // 2. Authentication & Accounts (/api/v1/auth/)
+  static const String customerLogin = '/api/v1/auth/login/';
+  static const String customerRegister = '/api/v1/auth/register/';
   static const String requestOtp = '/api/v1/auth/otp/send/';
   static const String verifyOtp = '/api/v1/auth/otp/verify/';
+  static const String verifyOtpPurpose = '/api/v1/auth/otp/verify-purpose/';
+  static const String passwordReset = '/api/v1/auth/password-reset/';
   static const String tokenRefresh = '/api/v1/auth/token/refresh/';
   static const String logout = '/api/v1/auth/logout/';
   static const String userProfile = '/api/v1/auth/me/';

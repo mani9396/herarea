@@ -39,6 +39,7 @@ export 'services/dio_api_client.dart';
 export 'services/api_providers.dart';
 export 'services/auth_token_storage.dart';
 export 'services/auth_api_repository.dart';
+export 'providers/pending_registration_provider.dart';
 export 'common/common_typedefs.dart';
 
 // Responsive

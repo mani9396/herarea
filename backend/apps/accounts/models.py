@@ -16,6 +16,7 @@ class User(AbstractBaseUser, PermissionsMixin, AbstractTimestampUUIDModel):
     """
     phone_number = models.CharField(max_length=20, unique=True, db_index=True, help_text='Primary OTP login number')
     email = models.EmailField(unique=True, null=True, blank=True, help_text='Official account contact email')
+    full_name = models.CharField(max_length=200, null=True, blank=True, help_text='Customer display name')
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER, db_index=True)
     
     is_active = models.BooleanField(default=True, help_text='Designates whether this account is active')

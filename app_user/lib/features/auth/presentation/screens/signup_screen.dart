@@ -13,7 +13,7 @@ class SignupScreen extends ConsumerStatefulWidget {
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _cityController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
@@ -43,10 +43,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await ref.read(authApiRepositoryProvider).requestOtp(_phoneController.text.trim(), role: 'CUSTOMER');
+      
+      final email = _emailController.text.trim();
+      final fullName = _nameController.text.trim();
+      final success = await ref.read(authApiRepositoryProvider).requestOtp(email, role: 'CUSTOMER', purpose: 'REGISTRATION', fullName: fullName);
+      
       if (mounted) {
         setState(() => _isLoading = false);
-        context.push(RoutePaths.otpVerification);
+        if (success) {
+          ref.read(pendingRegistrationProvider.notifier).state = PendingRegistration(
+            fullName: _nameController.text.trim(),
+            email: email,
+            locality: _cityController.text.trim(),
+          );
+          context.push(RoutePaths.otpVerification, extra: {'purpose': 'REGISTRATION'});
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to send verification email. Please check the address and try again.'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
@@ -122,7 +141,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
+    _emailController.dispose();
     _cityController.dispose();
     super.dispose();
   }
@@ -238,37 +257,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
 
-          // Mobile Number Input
+          // Email Input
           CustomTextField(
-            label: 'Mobile Number',
-            hintText: '9876543210',
-            helperText: 'A verification code will be sent to confirm ownership.',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            prefixWidget: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                borderRadius: const BorderRadius.horizontal(left: AppSpacing.radiusMd),
-                border: Border(right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
-              ),
-              alignment: Alignment.center,
-              width: 76,
-              child: Text(
-                '+91',
-                style: TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                ),
-              ),
-            ),
+            label: 'Email Address',
+            hintText: 'e.g. priya@gmail.com',
+            helperText: 'A 6-digit verification code will be sent to confirm ownership.',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: Icons.email_outlined,
             validator: (value) {
-              if (value == null || value.trim().length < 10) {
-                return 'Please enter a valid 10-digit mobile number';
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email address';
+              }
+              final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return 'Please enter a valid email address';
               }
               return null;
             },
