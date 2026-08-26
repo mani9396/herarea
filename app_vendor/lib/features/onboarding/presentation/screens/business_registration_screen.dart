@@ -2,30 +2,95 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
+import 'package:app_vendor/core/state/vendor_app_state.dart';
 
-class BusinessRegistrationScreen extends StatefulWidget {
+class BusinessRegistrationScreen extends ConsumerStatefulWidget {
   const BusinessRegistrationScreen({super.key});
 
   @override
-  State<BusinessRegistrationScreen> createState() => _BusinessRegistrationScreenState();
+  ConsumerState<BusinessRegistrationScreen> createState() => _BusinessRegistrationScreenState();
 }
 
-class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen> {
-  final _nameController = TextEditingController(text: 'Tejasi Maggam & Zardosi Studio');
-  final _descController = TextEditingController(text: 'Specialists in royal Maggam handwork, intricate French knot blouses, and bridal Aari embroidery.');
-  final _addressController = TextEditingController(text: 'Shop 12, Banjara Hills Road No 12, Hyderabad');
-  String _selectedCategory = 'Maggam Work';
+class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistrationScreen> {
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  CategoryModel? _selectedCategory;
+  CategoryModel? _selectedSubcategory;
   String _priceTier = '₹₹₹';
   bool _hasHomeMeasurement = true;
   bool _isLoading = false;
+  double? _lat;
+  double? _lon;
+  String? _area;
+  String? _city;
+  String? _state;
+  String? _country;
+  String? _postalCode;
 
-  void _onCompleteSetup() {
+  Future<void> _onCompleteSetup() async {
+    if (_lat == null || _lon == null || _area == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a valid store location first.')),
+      );
+      return;
+    }
+
+    if (_addressController.text.trim().isEmpty || _emailController.text.trim().isEmpty || _phoneController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter store address, email, and phone number.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.push(VendorRoutePaths.uploadBranding);
-    });
+    try {
+      final repo = ref.read(vendorApiRepositoryProvider);
+      final errorMessage = await repo.createBusinessProfile({
+        'business_name': _nameController.text,
+        'description': _descController.text,
+        if (_selectedCategory != null) 'category': _selectedCategory!.id,
+        if (_selectedSubcategory != null) 'subcategory': _selectedSubcategory!.id,
+        'latitude': _lat,
+        'longitude': _lon,
+        'area': (_area?.isNotEmpty == true) ? _area : 'Unknown Area',
+        'city': (_city?.isNotEmpty == true) ? _city : 'Unknown City',
+        'state': (_state?.isNotEmpty == true) ? _state : 'Unknown State',
+        'country': (_country?.isNotEmpty == true) ? _country : 'India',
+        'postal_code': (_postalCode?.isNotEmpty == true) ? _postalCode : '000000',
+        'address_line_1': _addressController.text.isNotEmpty ? _addressController.text : ((_area?.isNotEmpty == true) ? _area : 'Store Address'),
+        'contact_email': _emailController.text.isNotEmpty ? _emailController.text : 'contact@example.com',
+        'contact_phone': _phoneController.text.isNotEmpty ? _phoneController.text : '0000000000',
+      });
+
+      if (errorMessage == null) {
+        // Refresh the store provider so the dashboard knows the store is created
+        ref.read(vendorStoreProvider.notifier).loadLiveStore();
+        if (mounted) context.push(VendorRoutePaths.uploadBranding);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: $errorMessage')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   @override
@@ -33,7 +98,7 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Setup Boutique Profile'), centerTitle: true, elevation: 0),
+      appBar: AppBar(title: const Text('Setup Store Profile'), centerTitle: true, elevation: 0),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -42,13 +107,13 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Step 1 of 2: Store Identity & Speciality', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryRuby)),
+                Text('Step 1 of 2: Store Identity & Category', style: textTheme.titleMedium?.copyWith(color: AppColors.primaryRuby)),
                 const SizedBox(height: AppSpacing.sm),
-                Text('Customize how your boutique looks to brides searching around Jubilee Hills and Banjara Hills.', style: textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
+                Text('Customize how your store appears to customers searching in your area.', style: textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
                 const SizedBox(height: AppSpacing.lg),
                 CustomTextField(
-                  label: 'Boutique / Store Brand Name',
-                  hintText: 'e.g. Vanya Kanjivaram Silks',
+                  label: 'Store Brand Name',
+                  hintText: 'e.g. Her Area Store',
                   controller: _nameController,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -57,14 +122,23 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                     Expanded(
                       child: GestureDetector(
                         onTap: () async {
-                          final res = await context.push<String>(VendorRoutePaths.categorySelection);
-                          if (res != null) setState(() => _selectedCategory = res);
+                          final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.categorySelection);
+                          if (res != null) {
+                            setState(() {
+                              _selectedCategory = res['category'];
+                              _selectedSubcategory = res['subcategory'];
+                            });
+                          }
                         },
                         child: AbsorbPointer(
                           child: CustomTextField(
-                            label: 'Artisanal Category',
+                            label: 'Category',
                             hintText: 'Select Specialty',
-                            controller: TextEditingController(text: _selectedCategory),
+                            controller: TextEditingController(
+                              text: _selectedCategory != null 
+                                ? '${_selectedCategory!.name}${_selectedSubcategory != null ? " - ${_selectedSubcategory!.name}" : ""}' 
+                                : ''
+                            ),
                             suffixWidget: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                           ),
                         ),
@@ -89,22 +163,64 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
-                  label: 'About Your Studio & Mastery (Description)',
-                  hintText: 'Describe your silk sarees, bridal stitching, or jewelry craftsmanship...',
+                  label: 'About Your Store (Description)',
+                  hintText: 'Describe your business, products, and services...',
                   controller: _descController,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Store Email',
+                  hintText: 'e.g. contact@example.com',
+                  controller: _emailController,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Store Phone',
+                  hintText: 'e.g. +91 9876543210',
+                  controller: _phoneController,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Store Address (Line 1)',
+                  hintText: 'e.g. 123 Main Street, Suite 4',
+                  controller: _addressController,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
                   onTap: () async {
-                    final addr = await context.push<String>(VendorRoutePaths.locationPicker);
-                    if (addr != null) setState(() => _addressController.text = addr);
+                    final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.locationPicker);
+                    if (res != null) {
+                      setState(() {
+                        _lat = res['latitude'] as double?;
+                        _lon = res['longitude'] as double?;
+                        _area = res['area'] as String?;
+                        _city = res['city'] as String?;
+                        _state = res['state'] as String?;
+                        _country = res['country'] as String?;
+                        _postalCode = res['postal_code'] as String?;
+                      });
+                    }
                   },
-                  child: AbsorbPointer(
-                    child: CustomTextField(
-                      label: 'Store Physical Address & Neighborhood',
-                      hintText: 'Tap to pick exact coordinate location',
-                      controller: _addressController,
-                      suffixWidget: const Icon(Icons.location_on_rounded, color: AppColors.primaryRuby),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, color: AppColors.primaryRuby),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            _area != null ? '📍 $_area\n$_city' : 'Tap to pick exact coordinate location',
+                            style: TextStyle(
+                              color: _area != null ? Colors.black87 : Colors.grey[600],
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -112,8 +228,8 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                 SwitchListTile(
                   value: _hasHomeMeasurement,
                   activeThumbColor: AppColors.primaryRuby,
-                  title: const Text('Offer Home Measurement & Trials?'),
-                  subtitle: const Text('Receive special badge displayed to VIP brides requesting in-person fittings at home.'),
+                  title: const Text('Offer Home Services / Visits?'),
+                  subtitle: const Text('Receive a special badge displayed to customers requesting in-person services at home.'),
                   onChanged: (v) => setState(() => _hasHomeMeasurement = v),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -125,10 +241,6 @@ class _BusinessRegistrationScreenState extends State<BusinessRegistrationScreen>
                     scrollDirection: Axis.horizontal,
                     children: [
                       _buildAddImageTile(),
-                      const SizedBox(width: AppSpacing.sm),
-                      _buildPreviewThumb('https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=300&auto=format&fit=crop'),
-                      const SizedBox(width: AppSpacing.sm),
-                      _buildPreviewThumb('https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=300&auto=format&fit=crop'),
                     ],
                   ),
                 ),

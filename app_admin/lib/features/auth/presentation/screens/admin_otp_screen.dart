@@ -1,20 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/widgets/custom_button.dart';
+import 'package:shared/shared.dart';
 
-class AdminOtpScreen extends StatefulWidget {
+class AdminOtpScreen extends ConsumerStatefulWidget {
   const AdminOtpScreen({super.key});
 
   @override
-  State<AdminOtpScreen> createState() => _AdminOtpScreenState();
+  ConsumerState<AdminOtpScreen> createState() => _AdminOtpScreenState();
 }
 
-class _AdminOtpScreenState extends State<AdminOtpScreen> {
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController(text: '8'));
+class _AdminOtpScreenState extends ConsumerState<AdminOtpScreen> {
+  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
   bool _isLoading = false;
   int _secondsRemaining = 45;
@@ -51,10 +50,17 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
 
   void _onVerify() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 700));
+    final otpCode = _controllers.map((c) => c.text).join();
+    final success = await ref.read(authApiRepositoryProvider).verifyOtp(otpCode, role: 'ADMIN');
     if (mounted) {
       setState(() => _isLoading = false);
-      context.go(AdminRoutePaths.dashboard);
+      if (success) {
+        context.go(AdminRoutePaths.dashboard);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Invalid verification code.'), backgroundColor: AppColors.errorRed),
+        );
+      }
     }
   }
 

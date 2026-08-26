@@ -149,6 +149,7 @@ class SettingsScreen extends ConsumerWidget {
                       description: 'You will need to re-verify via SMS OTP to sign back into your partner dashboard.',
                       confirmText: 'Logout',
                       onConfirm: () {
+                        ref.read(authApiRepositoryProvider).logout();
                         context.go(VendorRoutePaths.login);
                       },
                     );

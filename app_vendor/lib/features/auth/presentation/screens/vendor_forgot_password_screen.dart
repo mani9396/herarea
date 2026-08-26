@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 
-class VendorForgotPasswordScreen extends StatefulWidget {
+class VendorForgotPasswordScreen extends ConsumerStatefulWidget {
   const VendorForgotPasswordScreen({super.key});
 
   @override
-  State<VendorForgotPasswordScreen> createState() => _VendorForgotPasswordScreenState();
+  ConsumerState<VendorForgotPasswordScreen> createState() => _VendorForgotPasswordScreenState();
 }
 
-class _VendorForgotPasswordScreenState extends State<VendorForgotPasswordScreen> {
+class _VendorForgotPasswordScreenState extends ConsumerState<VendorForgotPasswordScreen> {
   final _phoneController = TextEditingController();
   bool _isSent = false;
   bool _isLoading = false;
 
-  void _onReset() {
+  void _onReset() async {
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isSent = true;
-      });
+    await ref.read(authApiRepositoryProvider).requestOtp(_phoneController.text.trim(), role: 'VENDOR');
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _isSent = true;
     });
   }
 

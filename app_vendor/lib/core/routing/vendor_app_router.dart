@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:app_vendor/features/auth/presentation/screens/vendor_splash_screen.dart';
 import 'package:app_vendor/features/auth/presentation/screens/vendor_login_screen.dart';
+import 'package:app_vendor/features/auth/presentation/screens/vendor_force_password_screen.dart';
 import 'package:app_vendor/features/auth/presentation/screens/vendor_signup_screen.dart';
-import 'package:app_vendor/features/auth/presentation/screens/vendor_otp_screen.dart';
 import 'package:app_vendor/features/auth/presentation/screens/vendor_forgot_password_screen.dart';
 import 'package:app_vendor/features/onboarding/presentation/screens/business_registration_screen.dart';
 import 'package:app_vendor/features/onboarding/presentation/screens/category_selection_screen.dart';
@@ -36,6 +36,8 @@ import 'package:app_vendor/features/analytics/presentation/screens/earnings_scre
 import 'package:app_vendor/features/profile/presentation/screens/profile_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/settings_screen.dart';
+import 'package:app_vendor/features/subscription/presentation/screens/active_subscription_screen.dart';
+import 'package:app_vendor/features/subscription/presentation/screens/plan_selection_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/account_settings_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/notification_settings_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/help_support_screen.dart';
@@ -72,8 +74,8 @@ final vendorRouter = GoRouter(
       builder: (context, state) => const VendorSignupScreen(),
     ),
     GoRoute(
-      path: VendorRoutePaths.otpVerification,
-      builder: (context, state) => const VendorOtpVerificationScreen(),
+      path: VendorRoutePaths.forcePasswordChange,
+      builder: (context, state) => const VendorForcePasswordChangeScreen(),
     ),
     GoRoute(
       path: VendorRoutePaths.forgotPassword,
@@ -212,6 +214,14 @@ final vendorRouter = GoRouter(
     GoRoute(
       path: VendorRoutePaths.termsConditions,
       builder: (context, state) => const TermsConditionsScreen(),
+    ),
+    GoRoute(
+      path: VendorRoutePaths.planSelection,
+      builder: (context, state) => const PlanSelectionScreen(),
+    ),
+    GoRoute(
+      path: VendorRoutePaths.activeSubscription,
+      builder: (context, state) => const ActiveSubscriptionScreen(),
     ),
 
     // Stateful Shell Route for 5 primary management tabs

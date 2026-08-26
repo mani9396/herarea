@@ -57,25 +57,31 @@ class OffersManagementScreen extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
+                              if (offer.promoCode != null && offer.promoCode!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryRuby.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(color: AppColors.primaryRuby),
+                                  ),
+                                  child: Text(
+                                    offer.promoCode!,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby, fontSize: 13, letterSpacing: 1),
+                                  ),
+                                ),
+                              const Spacer(),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryRuby.withValues(alpha: 0.1),
+                                  color: offer.status == 'APPROVED' ? AppColors.success.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(15),
-                                  border: Border.all(color: AppColors.primaryRuby),
+                                  border: Border.all(color: offer.status == 'APPROVED' ? AppColors.success : Colors.orange),
                                 ),
                                 child: Text(
-                                  offer.code,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby, fontSize: 13, letterSpacing: 1),
+                                  offer.status,
+                                  style: TextStyle(fontWeight: FontWeight.bold, color: offer.status == 'APPROVED' ? AppColors.success : Colors.orange, fontSize: 13),
                                 ),
-                              ),
-                              const Spacer(),
-                              Text('Status:', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                              const SizedBox(width: 8),
-                              Switch(
-                                value: offer.isActive,
-                                activeThumbColor: AppColors.success,
-                                onChanged: (_) => ref.read(vendorOffersProvider.notifier).toggleStatus(offer.id),
                               ),
                             ],
                           ),
@@ -94,33 +100,42 @@ class OffersManagementScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentGold.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                              if (offer.discountValue != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentGold.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    offer.discountValue!,
+                                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.accentGold, fontSize: 16),
+                                  ),
                                 ),
-                                child: Text(
-                                  offer.discountPercent,
-                                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.accentGoldDark, fontSize: 15),
-                                ),
-                              ),
                             ],
                           ),
-                          const Divider(height: 28),
+                          const SizedBox(height: AppSpacing.md),
+                          const Divider(),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Valid until ${offer.validUntil}', style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-                              Wrap(
-                                spacing: AppSpacing.sm,
-                                children: [
-                                  OutlinedButton.icon(
-                                    onPressed: () => context.push(VendorRoutePaths.buildEditOfferPath(offer.id)),
-                                    icon: const Icon(Icons.edit_rounded, size: 16),
-                                    label: const Text('Edit / Manage', style: TextStyle(fontSize: 12)),
-                                  ),
-                                ],
+                              const Icon(Icons.event_available_rounded, size: 16, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Valid till: ${offer.endDate ?? "No expiry"}',
+                                style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                              const Spacer(),
+                              if (offer.status == 'DRAFT' || offer.status == 'REJECTED')
+                                TextButton.icon(
+                                  onPressed: () => ref.read(vendorOffersProvider.notifier).submitForApproval(offer.id),
+                                  icon: const Icon(Icons.send_rounded, size: 16),
+                                  label: const Text('Submit for Approval'),
+                                  style: TextButton.styleFrom(foregroundColor: AppColors.primaryRuby),
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                tooltip: 'Delete Offer',
+                                onPressed: () => ref.read(vendorOffersProvider.notifier).removeOffer(offer.id),
                               ),
                             ],
                           ),

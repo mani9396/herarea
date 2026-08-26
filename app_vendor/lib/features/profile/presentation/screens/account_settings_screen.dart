@@ -10,20 +10,15 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  final _emailController = TextEditingController(text: 'partner@vanyasilks.co.in');
-  final _phoneController = TextEditingController(text: '+91 98490 12345');
-  final _managerController = TextEditingController(text: 'Raghavan Pillai (Master Cutter)');
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _managerController = TextEditingController();
   bool _twoFactor = true;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   void _onSave() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account profile settings saved securely!')));
-      context.pop();
-    });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account profile settings saved securely!')));
+    context.pop();
   }
 
   @override

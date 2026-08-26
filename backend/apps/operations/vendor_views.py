@@ -9,9 +9,10 @@ from apps.operations.serializers import (
     VendorScheduleSerializer, 
     AppointmentBookingSerializer, 
     VendorBookingStatusUpdateSerializer, 
-    ProductEnquirySerializer, 
+    ProductEnquirySerializer,
     VendorEnquiryResponseSerializer
 )
+from apps.interactions.models import Review
 from apps.notifications.services import NotificationEngine
 from apps.notifications.models import NotificationType
 
@@ -178,3 +179,30 @@ class VendorEnquiryResponseView(APIView):
             action_url="/user/enquiries"
         )
         return Response(ProductEnquirySerializer(enquiry).data, status=status.HTTP_200_OK)
+
+
+class VendorAnalyticsView(APIView):
+    """
+    Studio specific dashboard telemetry: Aggregates total bookings, enquiries, and reviews for this studio.
+    """
+    permission_classes = [IsApprovedVendor]
+
+    @extend_schema(summary="Retrieve Studio KPI Analytics")
+    def get(self, request):
+        store = request.user.vendor_profile.business_profile
+        
+        total_bookings = AppointmentBooking.objects.filter(business_profile=store).count()
+        total_enquiries = ProductEnquiry.objects.filter(business_profile=store).count()
+        total_reviews = Review.objects.filter(store=store).count()
+        
+        # We can estimate revenue or return 0 if no direct payments exist yet
+        total_estimated_revenue = 0
+        
+        data = {
+            "total_bookings": total_bookings,
+            "total_enquiries": total_enquiries,
+            "total_reviews": total_reviews,
+            "total_revenue": total_estimated_revenue
+        }
+        
+        return Response(data, status=status.HTTP_200_OK)

@@ -16,7 +16,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late TextEditingController _titleController;
   late TextEditingController _priceController;
   late TextEditingController _descController;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -50,17 +50,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   isLoading: _isLoading,
                   onPressed: () {
                     final router = GoRouter.of(context);
-                    setState(() => _isLoading = true);
-                    Future.delayed(const Duration(milliseconds: 500), () {
-                      if (!mounted) return;
-                      final existing = ref.read(vendorProductsProvider).firstWhere((p) => p.id == widget.productId);
-                      ref.read(vendorProductsProvider.notifier).updateProduct(existing.copyWith(
-                        title: _titleController.text.trim(),
-                        price: num.tryParse(_priceController.text.trim()) ?? existing.price,
-                        description: _descController.text.trim(),
-                      ));
-                      router.pop();
-                    });
+                    final existing = ref.read(vendorProductsProvider).firstWhere((p) => p.id == widget.productId);
+                    ref.read(vendorProductsProvider.notifier).updateProduct(existing.copyWith(
+                      title: _titleController.text.trim(),
+                      price: num.tryParse(_priceController.text.trim()) ?? existing.price,
+                      description: _descController.text.trim(),
+                    ));
+                    router.pop();
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),

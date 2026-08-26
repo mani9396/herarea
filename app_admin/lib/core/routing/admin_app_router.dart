@@ -18,6 +18,7 @@ import 'package:app_admin/features/dashboard/presentation/screens/admin_dashboar
 import 'package:app_admin/features/vendors/presentation/screens/vendor_list_screen.dart';
 import 'package:app_admin/features/vendors/presentation/screens/vendor_details_screen.dart';
 import 'package:app_admin/features/vendors/presentation/screens/profile_approvals_screen.dart';
+import 'package:app_admin/features/vendors/presentation/screens/store_approvals_screen.dart';
 
 // Moderation
 import 'package:app_admin/features/moderation/presentation/screens/moderation_hub_screen.dart';
@@ -36,12 +37,14 @@ import 'package:app_admin/features/analytics/presentation/screens/analytics_hub_
 import 'package:app_admin/features/analytics/presentation/screens/reports_export_screen.dart';
 
 // Settings & Support
-import 'package:app_admin/features/settings/presentation/screens/admin_settings_screen.dart';
-import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
+import 'package:app_admin/features/subscriptions/presentation/screens/plan_management_screen.dart';
+import 'package:app_admin/features/subscriptions/presentation/screens/payment_history_screen.dart';
 import 'package:app_admin/features/settings/presentation/screens/notification_composer_screen.dart';
 import 'package:app_admin/features/settings/presentation/screens/roles_permissions_screen.dart';
 import 'package:app_admin/features/settings/presentation/screens/system_states_showcase_screen.dart';
 import 'package:app_admin/features/settings/presentation/screens/admin_legal_screen.dart';
+import 'package:app_admin/features/settings/presentation/screens/admin_settings_screen.dart';
+import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'rootNav');
 
@@ -133,9 +136,24 @@ final GoRouter adminAppRouter = GoRouter(
       builder: (context, state) => const ProfileApprovalsScreen(),
     ),
     GoRoute(
+      path: AdminRoutePaths.storeApprovals,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StoreApprovalsScreen(),
+    ),
+    GoRoute(
       path: AdminRoutePaths.productModeration,
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ProductModerationScreen(),
+    ),
+    GoRoute(
+      path: AdminRoutePaths.planManagement,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PlanManagementScreen(),
+    ),
+    GoRoute(
+      path: AdminRoutePaths.paymentHistory,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PaymentHistoryScreen(),
     ),
     GoRoute(
       path: AdminRoutePaths.galleryModeration,

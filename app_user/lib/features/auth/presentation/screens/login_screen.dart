@@ -1,39 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
-import 'package:her_area/data/mock/mock_data.dart';
+import 'package:shared/shared.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '9876543210');
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  String? _errorMessage;
 
   void _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 650)); // Simulate authentication dispatch
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      final success = await ref.read(authApiRepositoryProvider).loginWithPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
       if (mounted) {
         setState(() => _isLoading = false);
-        context.push(RoutePaths.otpVerification);
+        if (success) {
+          context.go(RoutePaths.home);
+        } else {
+          setState(() => _errorMessage = 'Invalid email or password. Please try again.');
+        }
       }
     }
   }
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -139,39 +148,37 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: AppSpacing.xxl),
 
-          // Mobile Number Input with Country Code Prefix Badge
+          // Email Input
           CustomTextField(
-            label: 'Registered Mobile Number',
-            hintText: 'Enter 10-digit number',
-            helperText: 'We will send an SMS authentication token to verify this number.',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            prefixWidget: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                borderRadius: const BorderRadius.horizontal(left: AppSpacing.radiusMd),
-                border: Border(
-                  right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                ),
-              ),
-              alignment: Alignment.center,
-              width: 76,
-              child: Text(
-                '+91',
-                style: TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                ),
-              ),
-            ),
+            label: 'Email Address',
+            hintText: 'Enter your registered email',
+            helperText: 'We will send a 6-digit verification code to this email.',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: Icons.email_outlined,
             validator: (value) {
-              if (value == null || value.trim().length < 10) {
-                return 'Please enter a valid 10-digit mobile number';
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email address';
+              }
+              final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Password Input
+          CustomTextField(
+            label: 'Password',
+            hintText: 'Enter your password',
+            controller: _passwordController,
+            isPassword: true,
+            prefixIcon: Icons.lock_outline_rounded,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
               }
               return null;
             },
@@ -197,11 +204,23 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(
+                  fontFamily: AppTypography.bodyFont,
+                  color: AppColors.error,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           const SizedBox(height: AppSpacing.lg),
 
           CustomButton(
-            label: 'Get Verification OTP',
-            icon: Icons.security_rounded,
+            label: 'Sign In',
+            icon: Icons.login_rounded,
             isLoading: _isLoading,
             onPressed: _onLogin,
           ),
@@ -254,9 +273,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildBrandShowcasePanel(bool isDark) {
-    final featuredStore = MockData.allStores[0];
-    final featureReview = featuredStore.reviews[0];
-
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -331,7 +347,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Glassmorphic Featured Review Card from Mock Data
+              // Glassmorphic Featured Showcase Card
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -366,9 +382,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      '"${featureReview.comment}"',
-                      style: const TextStyle(
+                    const Text(
+                      '"Found the most wonderful artisans for my bridal trousseau within 3 km. Truly exceptional tailoring quality and punctuality!"',
+                      style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
@@ -382,18 +398,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         CircleAvatar(
                           radius: 18,
                           backgroundColor: AppColors.primaryRubyLight,
-                          child: Text(
-                            featureReview.userName[0],
-                            style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                          child: const Text(
+                            'A',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              featureReview.userName,
-                              style: const TextStyle(
+                            const Text(
+                              'Ananya Rao',
+                              style: TextStyle(
                                 fontFamily: AppTypography.bodyFont,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -401,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             Text(
-                              'Client at ${featuredStore.name}',
+                              'Client at Vanya Handloom & Zari Studio',
                               style: TextStyle(
                                 fontFamily: AppTypography.bodyFont,
                                 fontSize: 11,

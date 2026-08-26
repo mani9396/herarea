@@ -1,44 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorSignupScreen extends StatefulWidget {
+class VendorSignupScreen extends ConsumerStatefulWidget {
   const VendorSignupScreen({super.key});
 
   @override
-  State<VendorSignupScreen> createState() => _VendorSignupScreenState();
+  ConsumerState<VendorSignupScreen> createState() => _VendorSignupScreenState();
 }
 
-class _VendorSignupScreenState extends State<VendorSignupScreen> {
+class _VendorSignupScreenState extends ConsumerState<VendorSignupScreen> {
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _gstController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  
   bool _agreedToTerms = false;
   bool _isLoading = false;
   String? _errorMessage;
 
-  void _onRegister() {
+  void _onRegister() async {
     final nameErr = ValidationHelpers.validateRequired(_nameController.text, 'Owner Name');
+    final emailErr = ValidationHelpers.validateEmail(_emailController.text);
     final phoneErr = ValidationHelpers.validatePhoneNumber(_phoneController.text);
-    if (nameErr != null || phoneErr != null) {
-      setState(() => _errorMessage = nameErr ?? phoneErr);
+    final passErr = ValidationHelpers.validatePassword(_passwordController.text);
+    
+    if (nameErr != null || emailErr != null || phoneErr != null || passErr != null) {
+      setState(() => _errorMessage = nameErr ?? emailErr ?? phoneErr ?? passErr);
       return;
     }
+    
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() => _errorMessage = 'Passwords do not match.');
+      return;
+    }
+
     if (!_agreedToTerms) {
       setState(() => _errorMessage = 'You must agree to Partner O2O Terms & Conditions.');
       return;
     }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.push(VendorRoutePaths.otpVerification);
-      }
-    });
+
+    final success = await ref.read(authApiRepositoryProvider).vendorSelfRegister(
+      ownerName: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration successful! Please login.')),
+      );
+      context.go(VendorRoutePaths.login);
+    } else {
+      setState(() => _errorMessage = 'Registration failed. Email or Phone number might already be in use.');
+    }
   }
 
   @override
@@ -82,7 +110,7 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 Text('Owner Basic Details', style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: AppSpacing.xs),
-                Text('We will verify your phone via OTP in the next step.', style: textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
+                Text('Set up your account credentials.', style: textTheme.bodyMedium?.copyWith(color: Colors.grey[600])),
                 const SizedBox(height: AppSpacing.lg),
                 if (_errorMessage != null) ...[
                   ErrorView(title: 'Validation Error', message: _errorMessage!, onRetry: null),
@@ -96,7 +124,15 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
-                  label: 'Business Mobile Number (WhatsApp Supported)',
+                  label: 'Official Business Email',
+                  hintText: 'partner@example.com',
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: Icons.email_outlined,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Business Mobile Number',
                   hintText: '10-digit number',
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
@@ -104,10 +140,19 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
-                  label: 'GSTIN / Business Registration ID (Optional)',
-                  hintText: 'e.g. 36AAAAA0000A1Z5',
-                  controller: _gstController,
-                  prefixIcon: Icons.receipt_long_outlined,
+                  label: 'Secure Password',
+                  hintText: 'Min 8 chars, 1 uppercase, 1 number',
+                  controller: _passwordController,
+                  isPassword: true,
+                  prefixIcon: Icons.lock_outline,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                CustomTextField(
+                  label: 'Confirm Password',
+                  hintText: 'Re-enter your password',
+                  controller: _confirmPasswordController,
+                  isPassword: true,
+                  prefixIcon: Icons.lock_outline,
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
@@ -137,7 +182,7 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 CustomButton(
-                  label: 'Proceed to OTP Verification ➡️',
+                  label: 'Create Partner Account ➡️',
                   isLoading: _isLoading,
                   onPressed: _onRegister,
                 ),
@@ -147,7 +192,7 @@ class _VendorSignupScreenState extends State<VendorSignupScreen> {
                   children: [
                     Text("Already registered? ", style: textTheme.bodyMedium),
                     InkWell(
-                      onTap: () => context.pop(),
+                      onTap: () => context.go(VendorRoutePaths.login),
                       child: Text("Login Here", style: textTheme.bodyMedium?.copyWith(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
                     ),
                   ],

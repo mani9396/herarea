@@ -48,8 +48,7 @@ class VendorOnboardingRegistrationSerializer(serializers.Serializer):
         required=False,
         help_text="Daily operational schedule specification"
     )
-    logo_url = serializers.URLField(required=False, allow_blank=True, default="")
-    cover_url = serializers.URLField(required=False, allow_blank=True, default="")
+
 
 
 class AdminVendorActionSerializer(serializers.Serializer):
@@ -58,3 +57,27 @@ class AdminVendorActionSerializer(serializers.Serializer):
         required=True, 
         help_text="Mandatory governance feedback detailing reasons for studio application rejection or account suspension."
     )
+
+class AdminVendorCreateSerializer(serializers.Serializer):
+    """
+    Schema for Admin to securely provision a new partner studio vendor account.
+    """
+    owner_name = serializers.CharField(max_length=150, help_text="Full legal studio owner name")
+    official_email = serializers.EmailField(help_text="Official business correspondence email")
+    phone_number = serializers.CharField(max_length=20, help_text="Primary business mobile handset")
+    business_name = serializers.CharField(max_length=200, help_text="Official studio showroom brand title")
+
+class VendorSelfRegistrationSerializer(serializers.Serializer):
+    """
+    Schema for Vendor to self-register their account.
+    """
+    owner_name = serializers.CharField(max_length=150, help_text="Full legal studio owner name")
+    email = serializers.EmailField(help_text="Official business correspondence email")
+    phone_number = serializers.CharField(max_length=20, help_text="Primary business mobile handset")
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        if data.get('password') != data.get('confirm_password'):
+            raise serializers.ValidationError({"confirm_password": "Passwords must match."})
+        return data

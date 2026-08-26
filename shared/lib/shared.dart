@@ -18,8 +18,10 @@ export 'widgets/status_badge.dart';
 export 'models/store_model.dart';
 export 'models/user_model.dart';
 export 'models/catalog_item_model.dart';
+export 'models/offer_model.dart';
 export 'models/booking_model.dart';
 export 'models/enquiry_model.dart';
+export 'models/subscription_model.dart';
 export 'models/paginated_response.dart';
 
 // Constants & Assets
@@ -37,7 +39,11 @@ export 'utils/validation_helpers.dart';
 export 'services/api_client_interface.dart';
 export 'services/dio_api_client.dart';
 export 'services/api_providers.dart';
+export 'services/auth_token_storage.dart';
+export 'services/auth_api_repository.dart';
+export 'providers/pending_registration_provider.dart';
 export 'common/common_typedefs.dart';
 
 // Responsive
 export 'responsive/responsive_layout.dart';
+export 'models/category_model.dart';

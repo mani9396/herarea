@@ -2,12 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared/constants/app_constants.dart';
+import 'package:shared/shared.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:her_area/data/mock/mock_data.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -35,9 +32,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
   void initState() {
     super.initState();
 
-    // Warm up the mock discovery engine providers during splash boot-up
+    // Warm up discovery engine and restore persisted session
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(allStoresProvider);
+      ref.read(authApiRepositoryProvider).restoreSession();
     });
 
     _pulseController = AnimationController(
@@ -88,20 +86,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
   void _navigateToLogin() {
     if (mounted && !_navigated) {
       _navigated = true;
-      context.go(RoutePaths.login);
+      if (ref.read(authSessionProvider).isAuthenticated) {
+        context.go(RoutePaths.home);
+      } else {
+        context.go(RoutePaths.login);
+      }
     }
   }
 
   String _getDynamicStatusMessage(double progress) {
-    final storeCount = MockData.allStores.length;
-    final primaryCity = MockData.allStores.isNotEmpty ? MockData.allStores.first.city : 'Hyderabad';
-
     if (progress < 0.25) {
-      return 'Initializing Mock O2O Discovery Engine...';
+      return 'Initializing Live O2O Discovery Engine...';
     } else if (progress < 0.55) {
-      return 'Curating $storeCount+ Verified Boutiques & Bridal Studios...';
+      return 'Curating 50+ Verified Boutiques & Bridal Studios...';
     } else if (progress < 0.85) {
-      return 'Connecting Maggam & Saree Specialists in $primaryCity...';
+      return 'Connecting Maggam & Saree Specialists in Hyderabad...';
     } else {
       return 'Ready for Luxury Local Discovery';
     }
@@ -287,7 +286,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
 
                         const SizedBox(height: 32),
 
-                        // 5. Dynamic Mock Data Engine Initialization Status
+                        // 5. Dynamic Discovery Engine Initialization Status
                         Opacity(
                           opacity: _statusOpacity.value,
                           child: Padding(
@@ -333,7 +332,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            'MOCK DISCOVERY ENGINE',
+                                            'LIVE DISCOVERY ENGINE',
                                             style: TextStyle(
                                               fontFamily: AppTypography.bodyFont,
                                               fontSize: 11,
@@ -355,7 +354,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                             ),
                                           ),
                                           child: Text(
-                                            'MOCK MODE',
+                                            'PRODUCTION MODE',
                                             style: TextStyle(
                                               fontFamily: AppTypography.bodyFont,
                                               fontSize: 9,

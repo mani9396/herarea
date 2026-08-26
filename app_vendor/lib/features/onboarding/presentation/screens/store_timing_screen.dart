@@ -23,7 +23,7 @@ class _StoreTimingScreenState extends State<StoreTimingScreen> {
 
   final Map<String, TimeOfDay> _openTime = {};
   final Map<String, TimeOfDay> _closeTime = {};
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -49,12 +49,7 @@ class _StoreTimingScreenState extends State<StoreTimingScreen> {
   }
 
   void _onSaveTimings() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.push(VendorRoutePaths.verificationStatus);
-    });
+    context.push(VendorRoutePaths.verificationStatus);
   }
 
   @override
@@ -126,18 +121,40 @@ class _StoreTimingScreenState extends State<StoreTimingScreen> {
             GestureDetector(
               onTap: () => _pickTime(day, true),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: AppColors.primaryRuby.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-                child: Text(op, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryRuby.withValues(alpha: 0.08), 
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primaryRuby.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(op, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby)),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryRuby),
+                  ],
+                ),
               ),
             ),
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('to', style: TextStyle(color: Colors.grey))),
+            const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('to', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
             GestureDetector(
               onTap: () => _pickTime(day, false),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: AppColors.primaryRuby.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-                child: Text(cl, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryRuby.withValues(alpha: 0.08), 
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primaryRuby.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(cl, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby)),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryRuby),
+                  ],
+                ),
               ),
             ),
           ],

@@ -5,16 +5,17 @@ import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 import 'package:shared/widgets/custom_button.dart';
-import 'package:her_area/data/mock/mock_data.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
-class InterestSelectionScreen extends StatefulWidget {
+class InterestSelectionScreen extends ConsumerStatefulWidget {
   const InterestSelectionScreen({super.key});
 
   @override
-  State<InterestSelectionScreen> createState() => _InterestSelectionScreenState();
+  ConsumerState<InterestSelectionScreen> createState() => _InterestSelectionScreenState();
 }
 
-class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
+class _InterestSelectionScreenState extends ConsumerState<InterestSelectionScreen> {
   final Set<String> _selected = {
     'Sarees & Handlooms',
     'Maggam & Zardosi Work',
@@ -69,6 +70,20 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isWide = MediaQuery.sizeOf(context).width >= 750;
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final storesAsync = ref.watch(allStoresProvider);
+    final storeCount = storesAsync.valueOrNull?.length ?? 6;
+    final defaultCategories = const [
+      'Sarees & Handlooms',
+      'Maggam & Zardosi Work',
+      'Designer Boutiques',
+      'Bridal Jewelry',
+      'Custom Tailoring',
+      'Luxury Pret & Western',
+      'Lehengas & Anarkalis',
+      'Footwear & Accessories',
+    ];
+    final categoriesList = categoriesAsync.valueOrNull?.map((e) => e.name).toList() ?? defaultCategories;
 
     return Scaffold(
       appBar: AppBar(
@@ -84,7 +99,7 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
             onPressed: () {
               setState(() {
                 _selected.clear();
-                _selected.addAll(MockData.userInterestsDefault);
+                _selected.addAll(categoriesList);
               });
             },
             style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
@@ -148,7 +163,7 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
 
                           // Live Customization Banner
                           Semantics(
-                            label: 'Curating ${MockData.allStores.length} neighborhood boutiques across ${_selected.length} active style categories.',
+                            label: 'Curating $storeCount neighborhood boutiques across ${_selected.length} active style categories.',
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                               decoration: BoxDecoration(
@@ -173,7 +188,7 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
                                   const SizedBox(width: AppSpacing.md),
                                   Expanded(
                                     child: Text(
-                                      'Curating ${MockData.allStores.length} neighborhood boutiques across ${_selected.length} active style categories.',
+                                      'Curating $storeCount neighborhood boutiques across ${_selected.length} active style categories.',
                                       style: TextStyle(
                                         fontFamily: AppTypography.bodyFont,
                                         fontSize: 14,
@@ -204,9 +219,9 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
                                     mainAxisSpacing: 16,
                                     childAspectRatio: 2.8,
                                   ),
-                                  itemCount: MockData.userInterestsDefault.length,
+                                  itemCount: categoriesList.length,
                                   itemBuilder: (context, index) {
-                                    final interest = MockData.userInterestsDefault[index];
+                                    final interest = categoriesList[index];
                                     return _buildInterestCard(interest, isDark);
                                   },
                                 );
@@ -215,7 +230,7 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
                               return Wrap(
                                 spacing: 12,
                                 runSpacing: 14,
-                                children: MockData.userInterestsDefault.map((interest) {
+                                children: categoriesList.map((interest) {
                                   return _buildInterestChip(interest, isDark);
                                 }).toList(),
                               );

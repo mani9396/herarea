@@ -1,24 +1,28 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
+import 'package:shared/shared.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({super.key});
+class OtpVerificationScreen extends ConsumerStatefulWidget {
+  final String purpose;
+
+  const OtpVerificationScreen({
+    super.key,
+    required this.purpose,
+  });
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController(text: '8'));
-  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
+  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
-  int _counter = 28;
+  bool _isResending = false;
+  int _counter = 60;
   Timer? _timer;
 
   @override
@@ -40,11 +44,65 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   void _onVerify() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 700)); // Simulate mock cryptographic validation
+    final otpCode = _controllers.map((c) => c.text).join();
+    if (otpCode.length < 6) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Please enter all 6 digits of the verification code.'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+    
+    final email = AuthApiRepository.lastAttemptedIdentifier;
+    final result = await ref.read(authApiRepositoryProvider).verifyOtpForPurpose(email, otpCode, widget.purpose);
+    
     if (mounted) {
       setState(() => _isLoading = false);
-      context.push(RoutePaths.locationPermission);
+      if (result != null) {
+        if (widget.purpose == 'REGISTRATION') {
+          context.push(RoutePaths.createPassword);
+        } else if (widget.purpose == 'PASSWORD_RESET') {
+          context.push(RoutePaths.resetPassword, extra: {'reset_token': result});
+        }
+      } else {
+        // Clear all boxes
+        for (var c in _controllers) { c.clear(); }
+        if (_focusNodes.isNotEmpty) _focusNodes[0].requestFocus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid or expired code. Please check your email and try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
+  }
+
+  void _onResend() async {
+    if (_isResending) return;
+    final identifier = AuthApiRepository.lastAttemptedIdentifier;
+    if (identifier.isEmpty) return;
+    setState(() { _isResending = true; });
+    await ref.read(authApiRepositoryProvider).requestOtp(identifier, role: 'CUSTOMER', purpose: widget.purpose);
+    if (mounted) {
+      setState(() {
+        _isResending = false;
+        _counter = 60;
+      });
+      _startTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A new verification code has been sent to your email.'), backgroundColor: AppColors.success),
+      );
+    }
+  }
+
+  String _maskEmail(String email) {
+    final parts = email.split('@');
+    if (parts.length != 2) return email;
+    final name = parts[0];
+    final domain = parts[1];
+    if (name.length <= 2) return '${name[0]}***@$domain';
+    return '${name[0]}${'*' * (name.length - 2)}${name[name.length - 1]}@$domain';
   }
 
   @override
@@ -121,7 +179,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     Text(
-                      'Enter 4-Digit Security OTP',
+                      'Enter 6-Digit Verification Code',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             fontFamily: AppTypography.displayFont,
                             fontWeight: FontWeight.w800,
@@ -135,16 +193,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
                               height: 1.5,
                             ),
-                        children: const [
-                          TextSpan(text: 'We have dispatched an encrypted 4-digit verification code to your mobile device ending in '),
+                        children: [
+                          const TextSpan(text: 'We sent a verification code to your email '),
                           TextSpan(
-                            text: '+91 ******3210',
-                            style: TextStyle(
+                            text: _maskEmail(AuthApiRepository.lastAttemptedIdentifier),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryRuby,
                               fontFamily: AppTypography.bodyFont,
                             ),
                           ),
+                          const TextSpan(text: '. Check your inbox (and spam folder).'),
                         ],
                       ),
                     ),
@@ -154,10 +213,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     Semantics(
                       label: '4 digit one time password entry field',
                       child: Row(
-                        children: List.generate(4, (index) {
+                        children: List.generate(6, (index) {
                           return Expanded(
                             child: Padding(
-                              padding: EdgeInsets.only(right: index == 3 ? 0 : AppSpacing.md),
+                              padding: EdgeInsets.only(right: index == 5 ? 0 : AppSpacing.sm),
                               child: AspectRatio(
                                 aspectRatio: 0.95,
                                 child: TextFormField(
@@ -168,7 +227,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   maxLength: 1,
                                   style: const TextStyle(
                                     fontFamily: AppTypography.displayFont,
-                                    fontSize: 28,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.primaryRuby,
                                   ),
@@ -190,7 +249,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     ),
                                   ),
                                   onChanged: (val) {
-                                    if (val.isNotEmpty && index < 3) {
+                                    if (val.isNotEmpty && index < 5) {
                                       _focusNodes[index + 1].requestFocus();
                                     } else if (val.isEmpty && index > 0) {
                                       _focusNodes[index - 1].requestFocus();
@@ -239,14 +298,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               ),
                             )
                           : TextButton.icon(
-                              onPressed: () {
-                                setState(() => _counter = 30);
-                                _startTimer();
-                              },
+                              onPressed: _onResend,
                               style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-                              icon: const Icon(Icons.refresh_rounded, size: 18, color: AppColors.primaryRuby),
+                              icon: _isResending
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryRuby))
+                                  : const Icon(Icons.refresh_rounded, size: 18, color: AppColors.primaryRuby),
                               label: const Text(
-                                'Resend New OTP Code Now',
+                                'Resend Verification Code',
                                 style: TextStyle(
                                   fontFamily: AppTypography.bodyFont,
                                   color: AppColors.primaryRuby,
@@ -262,7 +320,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         onPressed: () => context.pop(),
                         style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
                         child: Text(
-                          'Entered incorrect number? Change contact',
+                          'Wrong email? Go back and change it',
                           style: TextStyle(
                             fontFamily: AppTypography.bodyFont,
                             color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,

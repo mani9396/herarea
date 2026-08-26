@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_dialog.dart';
+import 'package:shared/shared.dart';
 
-class AdminSettingsScreen extends StatelessWidget {
+class AdminSettingsScreen extends ConsumerWidget {
   const AdminSettingsScreen({super.key});
 
-  void _onSignOut(BuildContext context) {
+  void _onSignOut(BuildContext context, WidgetRef ref) {
     CustomDialog.show(
       context: context,
       title: 'Terminate Admin Console Session? 🔒',
       description: 'You are about to lock your superadmin authentication credentials. Any non-broadcasted drafts will be cleared from session memory.',
       confirmText: 'Sign Out & Lock',
       cancelText: 'Remain Online',
-      onConfirm: () => context.go(AdminRoutePaths.login),
+      onConfirm: () {
+        ref.read(authApiRepositoryProvider).logout();
+        context.go(AdminRoutePaths.login);
+      },
     );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Portal Settings & System Configuration'),
@@ -54,9 +55,9 @@ class AdminSettingsScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Dhanisha IT Executive', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
+                              const Text('Administrator Profile', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
                               const SizedBox(height: 2),
-                              const Text('dhanisha.admin@herarea.in • Hyderabad HQ', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Text('Superadmin Governance HQ', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600, fontSize: 13)),
                               const SizedBox(height: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -80,7 +81,14 @@ class AdminSettingsScreen extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 _buildSettingsItem(context, 'Role-Based Access Control (RBAC)', 'Manage staff permissions for moderators and finance officers', Icons.security_rounded, AppColors.primaryRuby, () => context.push(AdminRoutePaths.rolesPermissions)),
                 const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm),
                 _buildSettingsItem(context, 'System UI States Showcase', 'Inspect empty queues, 403 forbidden access, and network error views', Icons.devices_other_rounded, Colors.amber.shade800, () => context.push(AdminRoutePaths.systemStatesShowcase)),
+                const SizedBox(height: AppSpacing.xl),
+                const Text('Platform Monetization & Subscriptions', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
+                const SizedBox(height: AppSpacing.md),
+                _buildSettingsItem(context, 'Listing Plans', 'Manage subscription plans and pricing for vendors', Icons.monetization_on_rounded, Colors.green, () => context.push(AdminRoutePaths.planManagement)),
+                const SizedBox(height: AppSpacing.sm),
+                _buildSettingsItem(context, 'Payment History', 'View transaction records and verified Razorpay payments', Icons.history_rounded, Colors.purple, () => context.push(AdminRoutePaths.paymentHistory)),
                 const SizedBox(height: AppSpacing.xl),
                 const Text('Legal Governance & Compliance', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
                 const SizedBox(height: AppSpacing.md),
@@ -99,7 +107,7 @@ class AdminSettingsScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.logout_rounded),
                   label: const Text('Lock & Sign Out from Admin Console', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  onPressed: () => _onSignOut(context),
+                  onPressed: () => _onSignOut(context, ref),
                 ),
                 const SizedBox(height: AppSpacing.xxl),
                 Center(

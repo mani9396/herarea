@@ -4,7 +4,9 @@ import 'package:her_area/features/onboarding/presentation/screens/splash_screen.
 import 'package:her_area/features/auth/presentation/screens/login_screen.dart';
 import 'package:her_area/features/auth/presentation/screens/signup_screen.dart';
 import 'package:her_area/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:her_area/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:her_area/features/auth/presentation/screens/otp_verification_screen.dart';
+import 'package:her_area/features/auth/presentation/screens/create_password_screen.dart';
 import 'package:her_area/features/location/presentation/screens/location_permission_screen.dart';
 import 'package:her_area/features/onboarding/presentation/screens/interest_selection_screen.dart';
 import 'package:her_area/features/home/presentation/screens/main_wrapper_screen.dart';
@@ -15,6 +17,7 @@ import 'package:her_area/features/store/presentation/screens/store_details_scree
 import 'package:her_area/features/search/presentation/screens/search_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/profile_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/favorites_screen.dart';
+import 'package:her_area/features/profile/presentation/screens/recently_viewed_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/notifications_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/settings_screen.dart';
@@ -29,7 +32,25 @@ final appRouter = GoRouter(
     GoRoute(path: RoutePaths.login, builder: (context, state) => const LoginScreen()),
     GoRoute(path: RoutePaths.signup, builder: (context, state) => const SignupScreen()),
     GoRoute(path: RoutePaths.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
-    GoRoute(path: RoutePaths.otpVerification, builder: (context, state) => const OtpVerificationScreen()),
+    GoRoute(
+      path: RoutePaths.recentlyViewed,
+      builder: (context, state) => const RecentlyViewedScreen(),
+    ),
+    GoRoute(
+      path: RoutePaths.resetPassword, 
+      builder: (context, state) {
+        final resetToken = (state.extra as Map<String, dynamic>?)?['reset_token'] as String? ?? '';
+        return ResetPasswordScreen(resetToken: resetToken);
+      }
+    ),
+    GoRoute(
+      path: RoutePaths.otpVerification, 
+      builder: (context, state) {
+        final purpose = (state.extra as Map<String, dynamic>?)?['purpose'] as String? ?? 'LOGIN';
+        return OtpVerificationScreen(purpose: purpose);
+      }
+    ),
+    GoRoute(path: RoutePaths.createPassword, builder: (context, state) => const CreatePasswordScreen()),
     GoRoute(path: RoutePaths.locationPermission, builder: (context, state) => const LocationPermissionScreen()),
     GoRoute(path: RoutePaths.interestSelection, builder: (context, state) => const InterestSelectionScreen()),
     

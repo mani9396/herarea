@@ -25,6 +25,10 @@ class AdminStatusChip extends StatelessWidget {
         backgroundColor = const Color(0xFFFFEBEE);
         textColor = const Color(0xFFC62828);
         break;
+      case AdminStatus.hidden:
+        backgroundColor = const Color(0xFFF3E5F5);
+        textColor = const Color(0xFF6A1B9A);
+        break;
       case AdminStatus.draft:
       case AdminStatus.archived:
         backgroundColor = const Color(0xFFECEFF1);

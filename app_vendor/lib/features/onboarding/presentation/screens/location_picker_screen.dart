@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   const LocationPickerScreen({super.key});
@@ -10,100 +14,248 @@ class LocationPickerScreen extends StatefulWidget {
 }
 
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
-  String _selectedNeighborhood = 'Banjara Hills';
-  final _pincodeController = TextEditingController(text: '500034');
   bool _isLocating = false;
+  bool _showMap = false;
+  
+  double? _lat;
+  double? _lon;
+  String? _area;
+  String? _city;
+  String? _state;
+  String? _country;
+  String? _postalCode;
 
-  void _onUseCurrentLocation() {
-    setState(() => _isLocating = true);
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (mounted) {
-        setState(() {
-          _isLocating = false;
-          _selectedNeighborhood = 'Jubilee Hills';
-          _pincodeController.text = '500033';
-        });
+  final MapController _mapController = MapController();
+  LatLng _currentMapCenter = const LatLng(17.3850, 78.4867); // Default to Hyderabad
+
+  Future<void> _onUseCurrentLocation() async {
+    setState(() {
+      _isLocating = true;
+      _showMap = false;
+    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw Exception('Location services are disabled.');
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw Exception('Location permissions are denied');
       }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied.');
+      }
+
+      Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+      await _geocodeLocation(position.latitude, position.longitude);
+      
+      if (_lat != null && _lon != null) {
+        _currentMapCenter = LatLng(_lat!, _lon!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
+    }
+  }
+
+  Future<void> _geocodeLocation(double lat, double lon) async {
+    setState(() {
+      _lat = lat;
+      _lon = lon;
+    });
+
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'lat': lat,
+          'lon': lon,
+          'format': 'json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final address = response.data['address'];
+        if (address != null) {
+          setState(() {
+            _area = address['suburb'] ?? address['neighbourhood'] ?? address['sublocality'];
+            _city = address['city'] ?? address['town'] ?? address['county'];
+            _state = address['state'];
+            _country = address['country'];
+            _postalCode = address['postcode'];
+          });
+          return;
+        }
+      }
+      
+      throw Exception('Could not resolve location');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not determine address from coordinates. Proceeding with raw coordinates.')));
+      }
+    }
+  }
+
+  void _onConfirmMapPin() async {
+    setState(() => _isLocating = true);
+    await _geocodeLocation(_currentMapCenter.latitude, _currentMapCenter.longitude);
+    setState(() {
+      _isLocating = false;
+      _showMap = false; // Go back to summary view to confirm
+    });
+  }
+
+  void _onConfirmLocation() {
+    if (_lat == null || _lon == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a valid location first.')));
+      return;
+    }
+    
+    context.pop({
+      'latitude': _lat,
+      'longitude': _lon,
+      'area': _area ?? 'Unknown Area',
+      'city': _city ?? 'Unknown City',
+      'state': _state ?? '',
+      'country': _country ?? 'India',
+      'postal_code': _postalCode ?? '',
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pin Studio Location'), centerTitle: true, elevation: 0),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+      appBar: AppBar(title: const Text('Store Location'), centerTitle: true, elevation: 0),
+      body: _showMap ? _buildMapPicker() : _buildSummaryView(),
+    );
+  }
+
+  Widget _buildSummaryView() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                height: 220,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  image: const DecorationImage(
-                    image: NetworkImage('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600&auto=format&fit=crop'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.location_on_rounded, size: 48, color: AppColors.primaryRuby),
-                    Positioned(
-                      bottom: 12, right: 12,
-                      child: FloatingActionButton.small(
-                        backgroundColor: Colors.white,
-                        onPressed: _onUseCurrentLocation,
-                        child: _isLocating ? const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.my_location_rounded, color: AppColors.primaryRuby),
-                      ),
-                    ),
-                  ],
-                ),
+              CustomButton(
+                label: '(Recommended) Use Current Location 📍',
+                isLoading: _isLocating,
+                onPressed: _onUseCurrentLocation,
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
+              const SizedBox(height: AppSpacing.md),
+              CustomButton(
+                label: 'Pick Store on Map 🗺️',
+                onPressed: () {
+                  setState(() => _showMap = true);
+                },
+                isOutlined: true,
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              
+              if (_lat != null) ...[
+                const Text('Store Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Hyderabad Bridal Zones', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: AppSpacing.xs),
-                      const Text('Select your primary commercial neighborhood for distance sorting.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                      const SizedBox(height: AppSpacing.md),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedNeighborhood,
-                        decoration: InputDecoration(
-                          labelText: 'Commercial Zone',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: AppColors.primaryRuby),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              _area ?? 'Unknown Area', 
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 32.0),
+                        child: Text(
+                          '${_city ?? ''}\n${_state ?? ''}\n${_country ?? ''}\n${_postalCode ?? ''}'.trim(),
+                          style: const TextStyle(fontSize: 14, color: Colors.black87),
                         ),
-                        items: ['Banjara Hills', 'Jubilee Hills', 'HiTech City', 'Gachibowli', 'Begumpet', 'Ameerpet', 'Balanagar']
-                            .map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedNeighborhood = val);
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      CustomTextField(
-                        label: 'Postal Pincode',
-                        controller: _pincodeController,
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      CustomButton(
-                        label: 'Confirm Location Tag 📍',
-                        onPressed: () {
-                          context.pop('Shop 12, $_selectedNeighborhood, Hyderabad');
-                        },
                       ),
                     ],
                   ),
                 ),
-              ),
+                const Spacer(),
+                CustomButton(
+                  label: 'Confirm Location',
+                  onPressed: _onConfirmLocation,
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMapPicker() {
+    return Stack(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: _currentMapCenter,
+            initialZoom: 15.0,
+            onPositionChanged: (MapCamera camera, bool hasGesture) {
+              _currentMapCenter = camera.center;
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.herarea.vendor',
+            ),
+          ],
+        ),
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 40.0), // Adjust for pin pointing to center
+            child: Icon(Icons.location_on_rounded, size: 48, color: AppColors.primaryRuby),
+          ),
+        ),
+        Positioned(
+          bottom: 20,
+          left: 20,
+          right: 20,
+          child: CustomButton(
+            label: 'Confirm Pin Location',
+            isLoading: _isLocating,
+            onPressed: _onConfirmMapPin,
+          ),
+        ),
+        Positioned(
+          top: 20,
+          left: 20,
+          child: FloatingActionButton(
+            mini: true,
+            backgroundColor: Colors.white,
+            onPressed: () => setState(() => _showMap = false),
+            child: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+          ),
+        )
+      ],
     );
   }
 }

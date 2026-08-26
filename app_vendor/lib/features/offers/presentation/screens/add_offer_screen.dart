@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:app_vendor/features/offers/domain/models/vendor_offer.dart';
 import 'package:app_vendor/features/offers/state/offers_provider.dart';
 import 'package:shared/shared.dart';
+import 'package:intl/intl.dart';
 
 class AddOfferScreen extends ConsumerStatefulWidget {
   const AddOfferScreen({super.key});
@@ -17,8 +17,8 @@ class _AddOfferScreenState extends ConsumerState<AddOfferScreen> {
   final _codeController = TextEditingController();
   final _descController = TextEditingController();
   String _discount = '15% OFF';
-  String _validDate = '30 Nov 2026';
-  bool _isLoading = false;
+  DateTime? _validDate;
+  final bool _isLoading = false;
 
   void _onCreate() {
     if (_titleController.text.trim().isEmpty || _codeController.text.trim().isEmpty) {
@@ -26,24 +26,20 @@ class _AddOfferScreenState extends ConsumerState<AddOfferScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      ref.read(vendorOffersProvider.notifier).addOffer(
-        VendorOffer(
-          id: 'off_${DateTime.now().millisecondsSinceEpoch}',
-          title: _titleController.text.trim(),
-          code: _codeController.text.trim().toUpperCase(),
-          discountPercent: _discount,
-          description: _descController.text.trim().isEmpty ? 'Special promotional discount for bridal inquiries.' : _descController.text.trim(),
-          validUntil: _validDate,
-          isActive: true,
-        ),
-      );
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promotional Offer published successfully!')));
-      context.pop();
-    });
+    ref.read(vendorOffersProvider.notifier).addOffer(
+      OfferModel(
+        id: '', // Backend handles ID
+        title: _titleController.text.trim(),
+        promoCode: _codeController.text.trim().toUpperCase(),
+        discountValue: _discount,
+        offerType: 'PERCENTAGE',
+        description: _descController.text.trim().isEmpty ? 'Special promotional discount for bridal inquiries.' : _descController.text.trim(),
+        endDate: _validDate != null ? DateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").format(_validDate!.toUtc()) : null,
+        status: 'DRAFT',
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promotional Offer saved as DRAFT successfully!')));
+    context.pop();
   }
 
   @override
@@ -116,14 +112,14 @@ class _AddOfferScreenState extends ConsumerState<AddOfferScreen> {
                       lastDate: DateTime(2028),
                     );
                     if (picked != null && mounted) {
-                      setState(() => _validDate = '${picked.day}/${picked.month}/${picked.year}');
+                      setState(() => _validDate = picked);
                     }
                   },
                   child: AbsorbPointer(
                     child: CustomTextField(
                       label: 'Valid Until Expiration Date',
                       hintText: 'Tap to choose calendar date',
-                      controller: TextEditingController(text: _validDate),
+                      controller: TextEditingController(text: _validDate != null ? DateFormat('dd MMM yyyy').format(_validDate!) : ''),
                       suffixWidget: const Icon(Icons.calendar_month_rounded, color: AppColors.primaryRuby),
                     ),
                   ),

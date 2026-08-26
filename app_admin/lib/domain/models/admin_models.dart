@@ -4,7 +4,8 @@ enum AdminStatus {
   approved,
   rejected,
   suspended,
-  archived;
+  archived,
+  hidden;
 
   String get displayName {
     switch (this) {
@@ -20,6 +21,8 @@ enum AdminStatus {
         return 'Suspended';
       case AdminStatus.archived:
         return 'Archived';
+      case AdminStatus.hidden:
+        return 'Hidden';
     }
   }
 
@@ -86,9 +89,9 @@ class AdminVendorModel {
       gstNumber: json['gst_number'] ?? json['gstin'] ?? 'Unspecified',
       panNumber: json['pan_number'] ?? json['pan'] ?? 'Unspecified',
       documentUrl: json['document_url'] ?? json['kyc_doc'] ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
-      totalProducts: (json['total_products'] as num?)?.toInt() ?? 12,
-      totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 150000.0,
+      rating: num.tryParse(json['rating']?.toString() ?? '')?.toDouble() ?? 4.8,
+      totalProducts: num.tryParse(json['total_products']?.toString() ?? '')?.toInt() ?? 12,
+      totalRevenue: num.tryParse(json['total_revenue']?.toString() ?? '')?.toDouble() ?? 150000.0,
       status: AdminStatus.fromString(json['status']?.toString()),
       createdAt: json['created_at']?.toString().substring(0, 10) ?? '2026-08-01',
       rejectionReason: json['rejection_reason'],
@@ -182,6 +185,7 @@ class AdminProductModel {
   final String imageUrl;
   final String category;
   final AdminStatus status;
+  final String? adminRemarks;
 
   const AdminProductModel({
     required this.id,
@@ -192,6 +196,7 @@ class AdminProductModel {
     required this.imageUrl,
     required this.category,
     required this.status,
+    this.adminRemarks,
   });
 
   factory AdminProductModel.fromJson(Map<String, dynamic> json) {
@@ -200,10 +205,11 @@ class AdminProductModel {
       vendorName: json['vendor_name'] ?? json['store_name'] ?? 'Studio Partner',
       title: json['title'] ?? json['name'] ?? 'Couture Item',
       description: json['description'] ?? 'Luxury handcrafted ensemble.',
-      price: (json['price'] as num?)?.toDouble() ?? 5000.0,
+      price: num.tryParse(json['price']?.toString() ?? '')?.toDouble() ?? 5000.0,
       imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600',
       category: json['category'] ?? 'Boutiques',
       status: AdminStatus.fromString(json['status']?.toString()),
+      adminRemarks: json['admin_remarks'],
     );
   }
 
@@ -217,10 +223,11 @@ class AdminProductModel {
       'image_url': imageUrl,
       'category': category,
       'status': status.apiCode,
+      'admin_remarks': adminRemarks,
     };
   }
 
-  AdminProductModel copyWith({AdminStatus? status}) {
+  AdminProductModel copyWith({AdminStatus? status, String? adminRemarks}) {
     return AdminProductModel(
       id: id,
       vendorName: vendorName,
@@ -230,6 +237,7 @@ class AdminProductModel {
       imageUrl: imageUrl,
       category: category,
       status: status ?? this.status,
+      adminRemarks: adminRemarks ?? this.adminRemarks,
     );
   }
 }
@@ -251,6 +259,28 @@ class AdminGalleryModel {
     required this.uploadedAt,
   });
 
+  factory AdminGalleryModel.fromJson(Map<String, dynamic> json) {
+    return AdminGalleryModel(
+      id: json['id']?.toString() ?? '',
+      vendorName: json['vendor_name'] ?? json['store_name'] ?? 'Partner Studio',
+      title: json['title'] ?? json['caption'] ?? 'Showcase Photo',
+      imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600',
+      status: AdminStatus.fromString(json['status']?.toString()),
+      uploadedAt: json['uploaded_at']?.toString() ?? json['created_at']?.toString().substring(0, 10) ?? '2026-08-01',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'vendor_name': vendorName,
+      'title': title,
+      'image_url': imageUrl,
+      'status': status.apiCode,
+      'uploaded_at': uploadedAt,
+    };
+  }
+
   AdminGalleryModel copyWith({AdminStatus? status}) {
     return AdminGalleryModel(
       id: id,
@@ -267,29 +297,58 @@ class AdminOfferModel {
   final String id;
   final String vendorName;
   final String title;
-  final String code;
-  final int discountPercentage;
-  final String validUntil;
+  final String promoCode;
+  final String discountValue;
+  final String startDate;
+  final String endDate;
   final AdminStatus status;
 
   const AdminOfferModel({
     required this.id,
     required this.vendorName,
     required this.title,
-    required this.code,
-    required this.discountPercentage,
-    required this.validUntil,
+    required this.promoCode,
+    required this.discountValue,
+    required this.startDate,
+    required this.endDate,
     required this.status,
   });
+
+  factory AdminOfferModel.fromJson(Map<String, dynamic> json) {
+    return AdminOfferModel(
+      id: json['id']?.toString() ?? '',
+      vendorName: json['vendor_name'] ?? json['store_name'] ?? 'Partner Studio',
+      title: json['title'] ?? 'Special Offer',
+      promoCode: json['promo_code'] ?? 'HERAREA20',
+      discountValue: json['discount_value']?.toString() ?? '20% OFF',
+      startDate: json['start_date']?.toString() ?? '',
+      endDate: json['end_date']?.toString() ?? 'No Expiry',
+      status: AdminStatus.fromString(json['status']?.toString()),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'vendor_name': vendorName,
+      'title': title,
+      'promo_code': promoCode,
+      'discount_value': discountValue,
+      'start_date': startDate,
+      'end_date': endDate,
+      'status': status.apiCode,
+    };
+  }
 
   AdminOfferModel copyWith({AdminStatus? status}) {
     return AdminOfferModel(
       id: id,
       vendorName: vendorName,
       title: title,
-      code: code,
-      discountPercentage: discountPercentage,
-      validUntil: validUntil,
+      promoCode: promoCode,
+      discountValue: discountValue,
+      startDate: startDate,
+      endDate: endDate,
       status: status ?? this.status,
     );
   }
@@ -319,6 +378,39 @@ class AdminCustomerModel {
     required this.joinedAt,
     required this.recentActivity,
   });
+
+  factory AdminCustomerModel.fromJson(Map<String, dynamic> json) {
+    return AdminCustomerModel(
+      id: json['id']?.toString() ?? '',
+      fullName: json['full_name'] ?? json['name'] ?? 'Customer',
+      email: json['email'] ?? 'customer@herarea.in',
+      phoneNumber: json['phone_number'] ?? '+91 98000 00000',
+      city: json['city'] ?? 'Hyderabad, Telangana',
+      totalInquiries: num.tryParse(json['total_inquiries']?.toString() ?? '')?.toInt() ?? 1,
+      totalOrders: num.tryParse(json['total_orders']?.toString() ?? '')?.toInt() ?? 2,
+      isBlocked: json['is_blocked'] == true || json['is_active'] == false,
+      joinedAt: json['joined_at']?.toString() ?? json['created_at']?.toString().substring(0, 10) ?? '2026-08-01',
+      recentActivity: (json['recent_activity'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [
+        'Authenticated account via SMS OTP challenge',
+        'Explored bridal boutiques & designer sarees',
+      ],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'full_name': fullName,
+      'email': email,
+      'phone_number': phoneNumber,
+      'city': city,
+      'total_inquiries': totalInquiries,
+      'total_orders': totalOrders,
+      'is_blocked': isBlocked,
+      'joined_at': joinedAt,
+      'recent_activity': recentActivity,
+    };
+  }
 
   AdminCustomerModel copyWith({bool? isBlocked}) {
     return AdminCustomerModel(
@@ -359,6 +451,36 @@ class AdminReviewModel {
     required this.date,
   });
 
+  factory AdminReviewModel.fromJson(Map<String, dynamic> json) {
+    final rawDate = json['created_at']?.toString() ?? json['date']?.toString() ?? '';
+    final dateDisplay = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+    return AdminReviewModel(
+      id: json['id']?.toString() ?? '',
+      vendorName: json['vendor_name'] ?? json['store_name'] ?? 'Partner Studio',
+      customerName: json['customer_name'] ?? json['customer_phone'] ?? 'Customer',
+      rating: num.tryParse(json['rating']?.toString() ?? '')?.toDouble() ?? 5.0,
+      comment: json['comment'] ?? '',
+      isReported: json['is_reported'] == true,
+      reportReason: json['report_reason']?.toString(),
+      status: AdminStatus.fromString(json['status']?.toString() ?? 'PENDING'),
+      date: dateDisplay.isEmpty ? 'Unknown' : dateDisplay,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'vendor_name': vendorName,
+      'customer_name': customerName,
+      'rating': rating,
+      'comment': comment,
+      'is_reported': isReported,
+      'report_reason': reportReason,
+      'status': status.apiCode,
+      'date': date,
+    };
+  }
+
   AdminReviewModel copyWith({AdminStatus? status, bool? isReported}) {
     return AdminReviewModel(
       id: id,
@@ -396,8 +518,8 @@ class AdminCategoryModel {
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? 'Category',
       iconName: json['icon_name'] ?? json['icon'] ?? 'dry_cleaning_rounded',
-      vendorCount: (json['vendor_count'] as num?)?.toInt() ?? (json['stores_count'] as num?)?.toInt() ?? 0,
-      displayOrder: (json['display_order'] as num?)?.toInt() ?? (json['order'] as num?)?.toInt() ?? 1,
+      vendorCount: num.tryParse(json['vendor_count']?.toString() ?? '')?.toInt() ?? num.tryParse(json['stores_count']?.toString() ?? '')?.toInt() ?? 0,
+      displayOrder: num.tryParse(json['display_order']?.toString() ?? '')?.toInt() ?? num.tryParse(json['order']?.toString() ?? '')?.toInt() ?? 1,
       isActive: json['is_active'] ?? true,
     );
   }
@@ -445,4 +567,24 @@ class AdminNotificationItem {
     required this.targetGroup,
     required this.sentAt,
   });
+
+  factory AdminNotificationItem.fromJson(Map<String, dynamic> json) {
+    return AdminNotificationItem(
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? 'System Notice',
+      body: json['body'] ?? json['message'] ?? 'Notification details.',
+      targetGroup: json['target_group'] ?? json['targetGroup'] ?? 'All Users',
+      sentAt: json['sent_at']?.toString() ?? json['sentAt']?.toString() ?? 'Just now',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'body': body,
+      'target_group': targetGroup,
+      'sent_at': sentAt,
+    };
+  }
 }

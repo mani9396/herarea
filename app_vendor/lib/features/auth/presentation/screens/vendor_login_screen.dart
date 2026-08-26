@@ -1,31 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
 
-class VendorLoginScreen extends StatefulWidget {
+class VendorLoginScreen extends ConsumerStatefulWidget {
   const VendorLoginScreen({super.key});
 
   @override
-  State<VendorLoginScreen> createState() => _VendorLoginScreenState();
+  ConsumerState<VendorLoginScreen> createState() => _VendorLoginScreenState();
 }
 
-class _VendorLoginScreenState extends State<VendorLoginScreen> {
-  final _phoneController = TextEditingController(text: '9811122334');
-  final _pinController = TextEditingController(text: '1234');
+class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
+  final _identifierController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
-  void _onLogin() {
+  void _onLogin() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      context.go(VendorRoutePaths.dashboard);
-    });
+    final success = await ref.read(authApiRepositoryProvider).loginWithPassword(
+      _identifierController.text.trim(),
+      _passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      final user = ref.read(authSessionProvider).currentUser;
+      if (user?.mustChangePassword == true) {
+        context.go(VendorRoutePaths.forcePasswordChange); // Need to define this route
+      } else {
+        context.go(VendorRoutePaths.dashboard);
+      }
+    } else {
+      setState(() => _errorMessage = 'Authentication failed. Please check your credentials.');
+    }
   }
 
   @override
@@ -120,24 +132,23 @@ class _VendorLoginScreenState extends State<VendorLoginScreen> {
           const SizedBox(height: AppSpacing.lg),
           Text('Partner Portal Login', style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: AppSpacing.xs),
-          Text('Enter your business mobile number to access your O2O dashboard.', style: textTheme.bodyMedium?.copyWith(color: AppColors.neutralCharcoal.withValues(alpha: 0.6))),
+          Text('Enter your registered email and password to access your O2O dashboard.', style: textTheme.bodyMedium?.copyWith(color: AppColors.neutralCharcoal.withValues(alpha: 0.6))),
           const SizedBox(height: AppSpacing.xl),
           if (_errorMessage != null) ...[
             ErrorView(title: 'Authentication Error', message: _errorMessage!, onRetry: null),
             const SizedBox(height: AppSpacing.md),
           ],
           CustomTextField(
-            label: 'Business Mobile Number',
-            hintText: 'Enter 10 digit mobile number',
-            controller: _phoneController,
-            prefixWidget: const Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14), child: Text('+91', style: TextStyle(fontWeight: FontWeight.bold))),
-            keyboardType: TextInputType.phone,
+            label: 'Business Email / Mobile Number',
+            hintText: 'Enter email or mobile number',
+            controller: _identifierController,
+            keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: AppSpacing.md),
           CustomTextField(
-            label: 'Security PIN / Password',
-            hintText: 'Enter 4-digit partner PIN',
-            controller: _pinController,
+            label: 'Password',
+            hintText: 'Enter your password',
+            controller: _passwordController,
             isPassword: true,
           ),
           Align(

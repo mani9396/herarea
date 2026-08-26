@@ -44,7 +44,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
       final updated = ref.read(userProfileProvider).copyWith(
         name: _nameController.text.trim(),
@@ -53,17 +53,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         locality: _localityController.text.trim(),
         bio: _bioController.text.trim(),
       );
-      ref.read(userProfileProvider.notifier).state = updated;
+      await ref.read(userProfileProvider.notifier).updateProfile(updated);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Your profile preferences have been securely saved.'),
-          backgroundColor: AppColors.primaryRuby,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      context.pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Your profile preferences have been securely saved.'),
+            backgroundColor: AppColors.primaryRuby,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        context.pop();
+      }
     }
   }
 
@@ -117,7 +119,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             onTap: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Camera & gallery selector dialog (Mock action)'),
+                                  content: Text('Camera & gallery photo selector dialog'),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );

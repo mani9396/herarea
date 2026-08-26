@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
-import 'package:app_vendor/data/mock/vendor_mock_data.dart';
 import 'package:shared/shared.dart';
 
 class AddProductScreen extends ConsumerStatefulWidget {
@@ -16,31 +15,44 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
   final _descController = TextEditingController();
-  String _category = 'Maggam Blouses';
+  String? _category;
   bool _isLoading = false;
   String? _errorMessage;
 
-  void _onSave() {
-    if (_titleController.text.trim().isEmpty || _priceController.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Please enter product title and price in INR.');
+  void _onSave() async {
+    if (_titleController.text.isEmpty || _priceController.text.isEmpty || _category == null) {
+      setState(() => _errorMessage = 'Please provide product title, price, and select a category.');
       return;
     }
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      final newProd = VendorProductModel(
-        id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
-        title: _titleController.text.trim(),
-        category: _category,
-        price: num.tryParse(_priceController.text.trim()) ?? 8500,
-        inStock: true,
-        imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop',
-        ordersCount: 0,
-        description: _descController.text.trim().isEmpty ? 'Masterfully crafted silk and bead stitching for weddings.' : _descController.text.trim(),
-      );
-      ref.read(vendorProductsProvider.notifier).addProduct(newProd);
-      context.pop();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    final newProd = VendorProductModel(
+      id: 'PROD-${DateTime.now().millisecondsSinceEpoch}',
+      title: _titleController.text.trim(),
+      category: _category!,
+      price: double.tryParse(_priceController.text.trim()) ?? 0,
+      isAvailable: true,
+      imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop',
+      ordersCount: 0,
+      description: _descController.text.trim().isEmpty ? 'Masterfully crafted silk and bead stitching for weddings.' : _descController.text.trim(),
+    );
+
+    try {
+      await ref.read(vendorProductsProvider.notifier).addProduct(newProd);
+      if (mounted) {
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -70,16 +82,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _category,
-                        decoration: InputDecoration(
-                          labelText: 'Category',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        items: ['Maggam Blouses', 'Aari Embroidery', 'Saree Styling', 'Antique Jewellery', 'Bridal Dupattas']
-                            .map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                        onChanged: (v) {
-                          if (v != null) setState(() => _category = v);
+                      child: Consumer(
+                        builder: (context, ref, child) {
+                          final catsAsync = ref.watch(vendorCategoriesProvider);
+                          return catsAsync.when(
+                            data: (cats) {
+                              if (cats.isEmpty) return const Text('No categories');
+                              return DropdownButtonFormField<String>(
+                                value: _category,
+                                decoration: InputDecoration(
+                                  labelText: 'Category',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                items: cats.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                                onChanged: (v) {
+                                  if (v != null) setState(() => _category = v);
+                                },
+                              );
+                            },
+                            loading: () => const CircularProgressIndicator(),
+                            error: (e, s) => const Text('Error'),
+                          );
                         },
                       ),
                     ),

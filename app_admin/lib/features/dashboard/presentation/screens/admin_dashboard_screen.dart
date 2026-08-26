@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
 import 'package:app_admin/core/state/admin_providers.dart';
+import 'package:app_admin/core/state/admin_subscription_state.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
@@ -14,6 +15,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(adminDashboardStatsProvider);
     final recentActivities = ref.watch(adminActivityLogProvider);
+    final adminRevenueAsync = ref.watch(adminRevenueProvider);
 
     return Scaffold(
       body: Center(
@@ -42,11 +44,11 @@ class AdminDashboardScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'Marketplace Revenue Overview (UI Demo)',
+                            'Marketplace Revenue Overview (Verified Subscriptions)',
                             style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          _buildRevenueOverviewCard(),
+                          _buildRevenueOverviewCard(adminRevenueAsync),
                         ],
                       ),
                     ),
@@ -201,6 +203,14 @@ class AdminDashboardScreen extends ConsumerWidget {
         ),
         _buildPendingCard(
           context,
+          'Store Approvals',
+          '${stats.pendingVendors}', // Reusing pendingVendors for now or could be a new stat
+          Icons.store_rounded,
+          Colors.green.shade700,
+          () => context.push(AdminRoutePaths.storeApprovals),
+        ),
+        _buildPendingCard(
+          context,
           'Product Approvals',
           '${stats.pendingProducts}',
           Icons.checkroom_rounded,
@@ -296,7 +306,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRevenueOverviewCard() {
+  Widget _buildRevenueOverviewCard(AsyncValue<double> adminRevenueAsync) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -308,12 +318,16 @@ class AdminDashboardScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total Gross Merchandise Volume (GMV)', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    SizedBox(height: 4),
-                    Text('₹12,45,000', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primaryRuby)),
+                    const Text('Total Revenue (Verified Subscriptions)', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    adminRevenueAsync.when(
+                      loading: () => const CircularProgressIndicator(),
+                      error: (e, st) => const Text('Error', style: TextStyle(color: Colors.red)),
+                      data: (rev) => Text('₹${rev.toStringAsFixed(0)}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primaryRuby)),
+                    ),
                   ],
                 ),
                 Container(
@@ -326,24 +340,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                     children: [
                       Icon(Icons.trending_up_rounded, color: Colors.green, size: 18),
                       SizedBox(width: 4),
-                      Text('+18.4% vs Jun', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text('Live', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Simulated visual bar chart using styled containers
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildChartBar('Feb', 60, Colors.grey.shade400),
-                _buildChartBar('Mar', 85, Colors.grey.shade400),
-                _buildChartBar('Apr', 75, Colors.grey.shade400),
-                _buildChartBar('May', 110, Colors.grey.shade400),
-                _buildChartBar('Jun', 135, Colors.grey.shade400),
-                _buildChartBar('Jul', 175, AppColors.primaryRuby),
               ],
             ),
             const SizedBox(height: 16),
@@ -362,23 +362,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildChartBar(String label, double height, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 32,
-          height: height,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-      ],
-    );
-  }
+
 
   Widget _buildActivityLogCard(List<String> activities) {
     return Card(

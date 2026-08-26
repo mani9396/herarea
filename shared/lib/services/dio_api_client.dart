@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:shared/constants/api_endpoints.dart';
 import 'package:shared/constants/app_constants.dart';
 import 'package:shared/exceptions/api_exception.dart';
@@ -10,9 +11,16 @@ import 'package:shared/services/api_client_interface.dart';
 class DioApiClient implements IApiClient {
   final Dio _dio;
   String? _authToken;
+  String? _refreshToken;
+  final void Function(String newAccess, String? newRefresh)? onTokenRefreshed;
+  final void Function()? onRefreshFailed;
 
-  DioApiClient({Dio? dioOverride, String baseUrl = ApiEndpoints.defaultBaseUrl})
-      : _dio = dioOverride ?? Dio(
+  DioApiClient({
+    Dio? dioOverride,
+    String baseUrl = ApiEndpoints.defaultBaseUrl,
+    this.onTokenRefreshed,
+    this.onRefreshFailed,
+  })  : _dio = dioOverride ?? Dio(
           BaseOptions(
             baseUrl: baseUrl,
             connectTimeout: const Duration(seconds: AppConstants.connectTimeoutSeconds),
@@ -31,18 +39,60 @@ class DioApiClient implements IApiClient {
         }
         return handler.next(options);
       },
-      onError: (DioException e, handler) {
+      onError: (DioException e, handler) async {
+        if (e.response?.statusCode == 401 &&
+            _refreshToken != null &&
+            _refreshToken!.isNotEmpty &&
+            e.requestOptions.path != ApiEndpoints.tokenRefresh &&
+            !e.requestOptions.path.contains('token/refresh')) {
+          try {
+            final refreshDio = Dio(BaseOptions(
+              baseUrl: _dio.options.baseUrl,
+              headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            ));
+            final refreshResponse = await refreshDio.post(
+              ApiEndpoints.tokenRefresh,
+              data: {'refresh': _refreshToken},
+            );
+
+            if (refreshResponse.statusCode == 200 && refreshResponse.data is Map) {
+              final responseData = refreshResponse.data as Map;
+              final newAccess = responseData['access'] as String?;
+              final newRefresh = (responseData['refresh'] as String?) ?? _refreshToken;
+
+              if (newAccess != null && newAccess.isNotEmpty) {
+                _authToken = newAccess;
+                _refreshToken = newRefresh;
+                onTokenRefreshed?.call(newAccess, newRefresh);
+
+                e.requestOptions.headers['Authorization'] = 'Bearer $_authToken';
+                final retryResponse = await _dio.fetch(e.requestOptions);
+                return handler.resolve(retryResponse);
+              }
+            }
+          } catch (_) {
+            _authToken = null;
+            _refreshToken = null;
+            onRefreshFailed?.call();
+          }
+        }
         return handler.next(e);
       },
     ));
   }
 
   @override
-  void setAuthToken(String? token) {
+  void setAuthToken(String? token, {String? refreshToken}) {
     _authToken = token;
+    if (refreshToken != null) {
+      _refreshToken = refreshToken;
+    } else if (token == null) {
+      _refreshToken = null;
+    }
   }
 
   String? get currentToken => _authToken;
+  String? get currentRefreshToken => _refreshToken;
   bool get isAuthenticated => _authToken != null && _authToken!.isNotEmpty;
 
   @override
@@ -78,7 +128,9 @@ class DioApiClient implements IApiClient {
       }
       if (files != null) {
         for (final entry in files.entries) {
-          mapData[entry.key] = await MultipartFile.fromFile(entry.value);
+          final xFile = XFile(entry.value);
+          final bytes = await xFile.readAsBytes();
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
         }
       }
       final formData = FormData.fromMap(mapData);
@@ -92,6 +144,34 @@ class DioApiClient implements IApiClient {
       throw _handleDioError(e);
     } catch (e) {
       throw ApiException(message: 'Unexpected file upload error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> putMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields}) async {
+    try {
+      final mapData = <String, dynamic>{};
+      if (fields != null) {
+        mapData.addAll(fields);
+      }
+      if (files != null) {
+        for (final entry in files.entries) {
+          final xFile = XFile(entry.value);
+          final bytes = await xFile.readAsBytes();
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
+        }
+      }
+      final formData = FormData.fromMap(mapData);
+      final response = await _dio.put(
+        endpoint,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return _formatResponse(response);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw ApiException(message: 'Unexpected file update error: ${e.toString()}');
     }
   }
 

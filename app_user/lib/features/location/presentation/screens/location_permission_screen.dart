@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 import 'package:shared/widgets/custom_button.dart';
-import 'package:her_area/data/mock/mock_data.dart';
 
 class LocationPermissionScreen extends ConsumerStatefulWidget {
   const LocationPermissionScreen({super.key});
@@ -19,181 +20,81 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
 class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
   bool _isLoading = false;
 
-  void _onAllowGps() async {
+  Future<void> _onAllowGps() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 650)); // Simulate GPS triangulation
-    if (mounted) {
-      setState(() => _isLoading = false);
-      ref.read(userLocationProvider.notifier).state = const UserLocationState(
-        latitude: 17.4326,
-        longitude: 78.4071,
-        cityName: 'Jubilee Hills, Hyderabad',
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+      
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied.');
+      }
+      
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
-      context.push(RoutePaths.interestSelection);
+      
+      String areaName = 'Unknown Area';
+      
+      try {
+        final dio = Dio();
+        final response = await dio.get(
+          'https://nominatim.openstreetmap.org/reverse',
+          queryParameters: {
+            'lat': position.latitude,
+            'lon': position.longitude,
+            'format': 'json',
+          },
+        );
+        if (response.statusCode == 200) {
+          final address = response.data['address'];
+          if (address != null) {
+            final subLocality = address['suburb'] ?? address['neighbourhood'] ?? address['sublocality'] ?? '';
+            final locality = address['city'] ?? address['town'] ?? address['county'] ?? '';
+            if (subLocality.isNotEmpty && locality.isNotEmpty) {
+              areaName = '$subLocality, $locality';
+            } else if (locality.isNotEmpty) {
+              areaName = locality;
+            } else if (subLocality.isNotEmpty) {
+              areaName = subLocality;
+            }
+          }
+        }
+      } catch (_) {
+        // Fallback to Unknown Area if OSM fails
+      }
+      
+      ref.read(userLocationProvider.notifier).setLocation(UserLocationState(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        cityName: areaName,
+      ));
+      
+      if (mounted) {
+        context.push(RoutePaths.interestSelection);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _showManualLocationDialog() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    final allLocalities = [
-      const UserLocationState(latitude: 17.4326, longitude: 78.4071, cityName: 'Jubilee Hills, Hyderabad'),
-      const UserLocationState(latitude: 17.4126, longitude: 78.4371, cityName: 'Banjara Hills, Hyderabad'),
-      const UserLocationState(latitude: 17.4486, longitude: 78.3911, cityName: 'Madhapur, Hitec City'),
-      const UserLocationState(latitude: 17.4346, longitude: 78.3811, cityName: 'Inorbit Road, Cyberabad'),
-      const UserLocationState(latitude: 17.4400, longitude: 78.4800, cityName: 'Begumpet & Somajiguda'),
-      const UserLocationState(latitude: 17.4455, longitude: 78.3489, cityName: 'Gachibowli Financial District'),
-    ];
-
-    List<UserLocationState> filteredLocalities = List.from(allLocalities);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (bottomContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.8,
-                maxWidth: 640,
-              ),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Select Neighborhood Hub',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontFamily: AppTypography.displayFont,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          tooltip: 'Close neighborhood selector',
-                          onPressed: () => Navigator.pop(bottomContext),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Choose an active HER AREA zone to discover nearby designers and tailoring masters.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    TextField(
-                      onChanged: (val) {
-                        setModalState(() {
-                          if (val.trim().isEmpty) {
-                            filteredLocalities = List.from(allLocalities);
-                          } else {
-                            filteredLocalities = allLocalities
-                                .where((loc) => loc.cityName.toLowerCase().contains(val.toLowerCase()))
-                                .toList();
-                          }
-                        });
-                      },
-                      style: TextStyle(fontFamily: AppTypography.bodyFont, color: isDark ? AppColors.textHighDark : AppColors.textHighLight),
-                      decoration: InputDecoration(
-                        hintText: 'Search locality (e.g. Jubilee Hills, Hitec City)...',
-                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryRuby),
-                        filled: true,
-                        fillColor: isDark ? AppColors.backgroundDark : AppColors.surfaceVariantLight.withValues(alpha: 0.4),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'ACTIVE O2O CURATION CENTERS (${filteredLocalities.length})',
-                      style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.2),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-
-                    Flexible(
-                      child: filteredLocalities.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Text(
-                                  'No matching neighborhood found in our current test data.',
-                                  style: TextStyle(color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: filteredLocalities.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final loc = filteredLocalities[index];
-                                final isSelected = ref.read(userLocationProvider).cityName == loc.cityName;
-
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? AppColors.primaryRuby : (isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.location_on_rounded,
-                                      size: 20,
-                                      color: isSelected ? Colors.white : AppColors.primaryRuby,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    loc.cityName,
-                                    style: TextStyle(
-                                      fontFamily: AppTypography.bodyFont,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                      fontSize: 15,
-                                      color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${MockData.allStores.length}+ verified boutiques around this locality',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
-                                    ),
-                                  ),
-                                  trailing: isSelected
-                                      ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryRuby, size: 22)
-                                      : Icon(
-                                          Icons.arrow_forward_ios_rounded,
-                                          size: 16,
-                                          color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
-                                        ),
-                                  onTap: () {
-                                    ref.read(userLocationProvider.notifier).state = loc;
-                                    Navigator.pop(bottomContext);
-                                    context.push(RoutePaths.interestSelection);
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -304,13 +205,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                       isLoading: _isLoading,
                       onPressed: _onAllowGps,
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    CustomButton(
-                      label: 'Select Neighborhood Manually',
-                      icon: Icons.map_outlined,
-                      variant: ButtonVariant.outline,
-                      onPressed: _showManualLocationDialog,
-                    ),
+
                     const SizedBox(height: AppSpacing.md),
                   ],
                 ),

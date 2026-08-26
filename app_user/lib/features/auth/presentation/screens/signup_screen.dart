@@ -1,42 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
-import 'package:shared/theme/app_colors.dart';
-import 'package:shared/theme/app_spacing.dart';
-import 'package:shared/theme/app_typography.dart';
-import 'package:shared/widgets/custom_button.dart';
-import 'package:shared/widgets/custom_text_field.dart';
-import 'package:her_area/data/mock/mock_data.dart';
+import 'package:shared/shared.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _cityController = TextEditingController(text: 'Jubilee Hills, Hyderabad');
+  final _emailController = TextEditingController();
+  final _dobController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  
   bool _isLoading = false;
-  bool _agreedToTerms = true;
-
-  final List<String> _mockDiscoveryHubs = [
-    'Jubilee Hills, Hyderabad',
-    'Banjara Hills, Hyderabad',
-    'Madhapur, Hitec City',
-    'Inorbit Road, Cyberabad',
-    'Begumpet & Somajiguda',
-    'Gachibowli Financial District',
-  ];
+  bool _agreedToTerms = false;
+  bool _agreedToPrivacyPolicy = false;
+  
+  String? _selectedGender;
+  DateTime? _selectedDate;
 
   void _onSignup() async {
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please accept the Terms of Service to create your member account.'),
+          content: const Text('Please accept the Terms & Conditions to create your member account.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    if (!_agreedToPrivacyPolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please accept the Privacy Policy to create your member account.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -47,87 +51,68 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 650)); // Simulate member profile registration
+      
+      final email = _emailController.text.trim();
+      final fullName = _nameController.text.trim();
+      final dobStr = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      final gender = _selectedGender == 'Female' ? 'FEMALE' : _selectedGender == 'Male' ? 'MALE' : 'PREFER_NOT_TO_SAY';
+      
+      final success = await ref.read(authApiRepositoryProvider).requestOtp(email, role: 'CUSTOMER', purpose: 'REGISTRATION', fullName: fullName);
+      
       if (mounted) {
         setState(() => _isLoading = false);
-        context.push(RoutePaths.otpVerification);
+        if (success) {
+          ref.read(pendingRegistrationProvider.notifier).state = PendingRegistration(
+            fullName: fullName,
+            email: email,
+            dateOfBirth: dobStr,
+            gender: gender,
+          );
+          context.push(RoutePaths.otpVerification, extra: {'purpose': 'REGISTRATION'});
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to send verification email. Please check the address and try again.'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
 
-  void _showLocalityPicker() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    showModalBottomSheet(
+  Future<void> _selectDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
       context: context,
-      backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (bottomContext) {
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Select Discovery Locality',
-                    style: theme.textTheme.headlineSmall?.copyWith(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'We use this as your default center when matching you with nearby boutiques.',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight),
-                  ),
-                  const SizedBox(height: 16),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _mockDiscoveryHubs.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final hub = _mockDiscoveryHubs[index];
-                        final isSelected = _cityController.text == hub;
-
-                        return ListTile(
-                          leading: Icon(
-                            Icons.location_on_rounded,
-                            color: isSelected ? AppColors.primaryRuby : (isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight),
-                          ),
-                          title: Text(
-                            hub,
-                            style: TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                            ),
-                          ),
-                          trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryRuby) : null,
-                          onTap: () {
-                            setState(() => _cityController.text = hub);
-                            Navigator.pop(bottomContext);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+      initialDate: DateTime.now().subtract(const Duration(days: 18 * 365)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: AppColors.primaryRuby,
             ),
           ),
+          child: child!,
         );
       },
     );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
-    _cityController.dispose();
+    _emailController.dispose();
+    _dobController.dispose();
     super.dispose();
   }
 
@@ -242,53 +227,108 @@ class _SignupScreenState extends State<SignupScreen> {
             },
           ),
 
-          // Mobile Number Input
+          // Email Input
           CustomTextField(
-            label: 'Mobile Number',
-            hintText: '9876543210',
-            helperText: 'A verification code will be sent to confirm ownership.',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            maxLength: 10,
-            prefixWidget: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                borderRadius: const BorderRadius.horizontal(left: AppSpacing.radiusMd),
-                border: Border(right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
-              ),
-              alignment: Alignment.center,
-              width: 76,
-              child: Text(
-                '+91',
-                style: TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                ),
-              ),
-            ),
+            label: 'Email Address',
+            hintText: 'e.g. priya@gmail.com',
+            helperText: 'A 6-digit verification code will be sent to confirm ownership.',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: Icons.email_outlined,
             validator: (value) {
-              if (value == null || value.trim().length < 10) {
-                return 'Please enter a valid 10-digit mobile number';
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email address';
+              }
+              final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return 'Please enter a valid email address';
               }
               return null;
             },
           ),
 
-          // City Selection (Interactive picker with mock discovery centers)
+          // Date of Birth
           CustomTextField(
-            label: 'Primary Discovery Locality',
-            hintText: 'Select neighborhood',
-            helperText: 'You can switch between neighborhoods anytime in Settings.',
-            controller: _cityController,
+            label: 'Date of Birth',
+            hintText: 'Select your date of birth',
+            controller: _dobController,
             readOnly: true,
-            prefixIcon: Icons.my_location_rounded,
-            suffixWidget: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryRuby),
-            onTap: _showLocalityPicker,
+            prefixIcon: Icons.calendar_today_rounded,
+            onTap: _selectDateOfBirth,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty || _selectedDate == null) {
+                return 'Please select your date of birth';
+              }
+              if (_selectedDate!.isAfter(DateTime.now())) {
+                return 'Date of birth cannot be in the future';
+              }
+              return null;
+            },
           ),
+          const SizedBox(height: AppSpacing.lg),
+          
+          // Gender
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'Gender',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                  ),
+                ),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                hint: Text(
+                  'Select gender',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
+                  ),
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryRuby, width: 2),
+                  ),
+                  prefixIcon: const Icon(Icons.people_outline_rounded, color: AppColors.primaryRuby),
+                ),
+                items: ['Female', 'Male', 'Prefer not to say']
+                    .map((label) => DropdownMenuItem(
+                          value: label,
+                          child: Text(label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() => _selectedGender = value);
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select your gender';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // Terms of Service Checkbox
           Row(
@@ -316,10 +356,46 @@ class _SignupScreenState extends State<SignupScreen> {
                         height: 1.4,
                       ),
                       children: const [
-                        TextSpan(text: 'I agree to the '),
-                        TextSpan(text: 'Terms of Service', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
-                        TextSpan(text: ' & '),
+                        TextSpan(text: 'I agree to the HER AREA '),
+                        TextSpan(text: 'Terms & Conditions', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(text: '.'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Privacy Policy Checkbox
+          Row(
+            children: [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(
+                  value: _agreedToPrivacyPolicy,
+                  activeColor: AppColors.primaryRuby,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  onChanged: (val) => setState(() => _agreedToPrivacyPolicy = val ?? false),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontFamily: AppTypography.bodyFont,
+                        fontSize: 13,
+                        color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                        height: 1.4,
+                      ),
+                      children: const [
+                        TextSpan(text: 'I agree to the HER AREA '),
                         TextSpan(text: 'Privacy Policy', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(text: '.'),
                       ],
                     ),
                   ),
@@ -369,9 +445,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildBrandShowcasePanel(bool isDark) {
-    final artisanStore = MockData.allStores[1]; // Tejasi Maggam Studio
-    final review = artisanStore.reviews.isNotEmpty ? artisanStore.reviews[0] : null;
-
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -430,90 +503,89 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           const SizedBox(height: 48),
 
-          if (review != null)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'FEATURED MAGGAM MASTER',
-                        style: TextStyle(
-                          fontFamily: AppTypography.bodyFont,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.accentGoldLight,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '"${review.comment}"',
-                    style: const TextStyle(
-                      fontFamily: AppTypography.bodyFont,
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.white,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.accentGoldDark,
-                        child: Text(
-                          review.userName[0],
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            review.userName,
-                            style: const TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'Client at ${artisanStore.name}',
-                            style: TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
+              boxShadow: const [
+                BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
+              ],
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'FEATURED MAGGAM MASTER',
+                      style: TextStyle(
+                        fontFamily: AppTypography.bodyFont,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.accentGoldLight,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '"Master artisans delivered my customized Maggam embroidery exactly on schedule. The finishing is breathtaking!"',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.accentGoldDark,
+                      child: const Text(
+                        'S',
+                        style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Srinidhi Shetty',
+                          style: TextStyle(
+                            fontFamily: AppTypography.bodyFont,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Client at Tejasi Maggam & Zardosi Studio',
+                          style: TextStyle(
+                            fontFamily: AppTypography.bodyFont,
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -13,9 +13,9 @@ class AdminProfileScreen extends StatefulWidget {
 }
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
-  final _nameController = TextEditingController(text: 'Dhanisha IT Executive');
-  final _phoneController = TextEditingController(text: '+91 98765 43210');
-  final _deptController = TextEditingController(text: 'Founder & Superadmin Governance HQ');
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _deptController = TextEditingController();
 
   @override
   void dispose() {

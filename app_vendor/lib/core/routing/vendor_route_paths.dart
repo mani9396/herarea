@@ -6,6 +6,7 @@ class VendorRoutePaths {
   static const String welcome = '/welcome';
   static const String login = '/login';
   static const String signup = '/signup';
+  static const String forcePasswordChange = '/force-password-change';
   static const String otpVerification = '/otp-verification';
   static const String forgotPassword = '/forgot-password';
   
@@ -29,6 +30,11 @@ class VendorRoutePaths {
   static const String editProduct = '/products/edit/:id';
   static const String productDetails = '/products/details/:id';
   static const String gallery = '/gallery';
+  
+  // Subscriptions
+  static const String planSelection = '/plan-selection';
+  static const String activeSubscription = '/my-subscription';
+  
   static const String offers = '/offers';
   static const String addOffer = '/offers/add';
   static const String editOffer = '/offers/edit/:id';

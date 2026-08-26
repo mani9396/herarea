@@ -31,6 +31,13 @@ class CatalogItemModel {
   final List<String> availableSizes; // Only for PRODUCT
   final List<String> availableColors; // Only for PRODUCT
   final bool requiresBooking; // True for SERVICE, false or optional for PRODUCT
+  
+  // Phase 11 Fields
+  final String status;
+  final String? adminRemarks;
+  final String? category;
+  final String? categoryName;
+  final String? subcategory;
 
   const CatalogItemModel({
     required this.id,
@@ -48,6 +55,11 @@ class CatalogItemModel {
     this.availableSizes = const ['S', 'M', 'L', 'XL', 'Custom Draping'],
     this.availableColors = const ['Ruby Red', 'Emerald Green', 'Royal Blue', 'Rose Gold'],
     this.requiresBooking = false,
+    this.status = 'DRAFT',
+    this.adminRemarks,
+    this.category,
+    this.categoryName,
+    this.subcategory,
   });
 
   bool get isService => itemType == CatalogItemType.service;
@@ -66,8 +78,8 @@ class CatalogItemModel {
       additionalImages: json['additional_images'] != null
           ? List<String>.from(json['additional_images'] as Iterable)
           : const [],
-      isAvailable: json['is_available'] ?? true,
-      durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 60,
+      isAvailable: (json['stock_status'] != 'OUT_OF_STOCK') && (json['is_available'] ?? true),
+      durationMinutes: (json['duration_minutes'] ?? json['service_duration_minutes'] as num?)?.toInt() ?? 60,
       availableSizes: json['available_sizes'] != null
           ? List<String>.from(json['available_sizes'] as Iterable)
           : const ['S', 'M', 'L', 'Custom'],
@@ -75,6 +87,11 @@ class CatalogItemModel {
           ? List<String>.from(json['available_colors'] as Iterable)
           : const ['Red', 'Green', 'Gold'],
       requiresBooking: json['requires_booking'] ?? (json['item_type'] == 'SERVICE'),
+      status: json['status'] ?? 'DRAFT',
+      adminRemarks: json['admin_remarks'],
+      category: json['category']?.toString(),
+      categoryName: json['category_name']?.toString(),
+      subcategory: json['subcategory']?.toString(),
     );
   }
 
@@ -84,6 +101,7 @@ class CatalogItemModel {
       'store_id': storeId,
       'store_name': storeName,
       'title': title,
+      'name': title,
       'description': description,
       'item_type': itemType.value,
       'price': price,
@@ -91,10 +109,15 @@ class CatalogItemModel {
       'image_url': imageUrl,
       'additional_images': additionalImages,
       'is_available': isAvailable,
-      'duration_minutes': durationMinutes,
+      'stock_status': isAvailable ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      'service_duration_minutes': durationMinutes,
       'available_sizes': availableSizes,
       'available_colors': availableColors,
       'requires_booking': requiresBooking,
+      'status': status,
+      'admin_remarks': adminRemarks,
+      'category': category,
+      'subcategory': subcategory,
     };
   }
 }

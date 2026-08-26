@@ -1,20 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app_vendor/data/mock/vendor_mock_data.dart';
+import 'package:app_vendor/data/models/vendor_models.dart';
 import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
 import 'package:shared/shared.dart';
+
+export 'package:app_vendor/data/models/vendor_models.dart';
 
 // Theme mode provider for Vendor App
 final vendorThemeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
+
 // Active store profile provider
-final vendorStoreProvider = StateProvider<StoreModel>((ref) => VendorMockData.vendorStoreProfile);
+class VendorStoreNotifier extends StateNotifier<StoreModel?> {
+  final VendorApiRepository? _repository;
+  VendorStoreNotifier([this._repository]) : super(null) {
+    loadLiveStore();
+  }
+
+  Future<void> loadLiveStore() async {
+    if (_repository == null) return;
+    try {
+      final liveStore = await _repository.fetchMyStore();
+      state = liveStore; // will be null if 404
+    } catch (_) {
+      state = null;
+    }
+  }
+
+  Future<void> updateStore(StoreModel newStore) async {
+    state = newStore;
+    if (_repository != null) {
+      await _repository.updateStore(newStore);
+    }
+  }
+}
+
+final vendorStoreProvider = StateNotifierProvider<VendorStoreNotifier, StoreModel?>((ref) {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return VendorStoreNotifier(repo);
+});
+
+// Categories Provider for Store Creation/Editing
+final vendorCategoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return repo.fetchCategories();
+});
 
 // Reactive Product Catalog Provider
 class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
   final VendorApiRepository? _repository;
 
-  VendorProductsNotifier([this._repository]) : super(VendorMockData.initialProducts) {
+  VendorProductsNotifier([this._repository]) : super([]) {
     loadLiveProducts();
   }
 
@@ -23,17 +59,29 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
     if (_repository == null) return;
     try {
       final liveProducts = await _repository.fetchProducts();
-      if (liveProducts.isNotEmpty) {
-        state = liveProducts;
-      }
+      state = liveProducts;
     } catch (_) {
-      // Keep realistic fallback catalog when disconnected or demonstrating offline
+      state = [];
     }
   }
 
-  void addProduct(VendorProductModel product) {
+  Future<void> addProduct(VendorProductModel product) async {
+    // Add locally for optimistic UI
     state = [product, ...state];
-    _repository?.createProduct(product);
+    if (_repository == null) return;
+    try {
+      final created = await _repository!.createProduct(product);
+      if (created != null) {
+        state = [
+          for (final p in state)
+            if (p.id == product.id) created else p,
+        ];
+      }
+    } catch (e) {
+      // Revert if failed
+      state = state.where((p) => p.id != product.id).toList();
+      rethrow;
+    }
   }
 
   void updateProduct(VendorProductModel updated) {
@@ -41,13 +89,38 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
       for (final p in state)
         if (p.id == updated.id) updated else p,
     ];
+    _repository?.updateProduct(updated);
   }
 
-  void toggleStock(String id) {
+  void toggleAvailability(String id) {
     state = [
       for (final p in state)
-        if (p.id == id) p.copyWith(inStock: !p.inStock) else p,
+        if (p.id == id) p.copyWith(isAvailable: !p.isAvailable) else p,
     ];
+    final target = state.where((p) => p.id == id).firstOrNull;
+    if (target != null) {
+      _repository?.updateProduct(target);
+    }
+  }
+  
+  Future<void> submitProduct(String id) async {
+    if (_repository == null) return;
+    try {
+      final updated = await _repository!.submitProduct(id);
+      state = [
+        for (final p in state)
+          if (p.id == id) updated else p,
+      ];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> submitAllDrafts() async {
+    final drafts = state.where((p) => p.status == 'DRAFT' || p.status == 'REJECTED').toList();
+    for (final draft in drafts) {
+      await submitProduct(draft.id);
+    }
   }
 
   void deleteProduct(String id) {
@@ -65,7 +138,7 @@ final vendorProductsProvider = StateNotifierProvider<VendorProductsNotifier, Lis
 class VendorEnquiriesNotifier extends StateNotifier<List<VendorEnquiryModel>> {
   final VendorApiRepository? _repository;
 
-  VendorEnquiriesNotifier([this._repository]) : super(VendorMockData.initialEnquiries) {
+  VendorEnquiriesNotifier([this._repository]) : super([]) {
     loadLiveEnquiries();
   }
 
@@ -74,11 +147,9 @@ class VendorEnquiriesNotifier extends StateNotifier<List<VendorEnquiryModel>> {
     if (_repository == null) return;
     try {
       final liveEnquiries = await _repository.fetchEnquiries();
-      if (liveEnquiries.isNotEmpty) {
-        state = liveEnquiries;
-      }
+      state = liveEnquiries;
     } catch (_) {
-      // Keep fallback inquiry data when offline
+      state = [];
     }
   }
 
@@ -98,7 +169,17 @@ final vendorEnquiriesProvider = StateNotifierProvider<VendorEnquiriesNotifier, L
 
 // Reactive Notifications Provider
 class VendorNotificationsNotifier extends StateNotifier<List<VendorNotificationModel>> {
-  VendorNotificationsNotifier() : super(VendorMockData.initialNotifications);
+  final VendorApiRepository? _repository;
+
+  VendorNotificationsNotifier([this._repository]) : super([]) {
+    loadLiveNotifications();
+  }
+
+  Future<void> loadLiveNotifications() async {
+    if (_repository == null) return;
+    final live = await _repository.fetchNotifications();
+    state = live;
+  }
 
   void markAllAsRead() {
     state = [
@@ -112,10 +193,86 @@ class VendorNotificationsNotifier extends StateNotifier<List<VendorNotificationM
           isUnread: false,
         ),
     ];
+    for (final n in state) {
+      _repository?.markNotificationAsRead(n.id);
+    }
   }
 }
 
-final vendorNotificationsProvider = StateNotifierProvider<VendorNotificationsNotifier, List<VendorNotificationModel>>((ref) => VendorNotificationsNotifier());
+final vendorNotificationsProvider = StateNotifierProvider<VendorNotificationsNotifier, List<VendorNotificationModel>>((ref) {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return VendorNotificationsNotifier(repo);
+});
+
+// Reactive Store Showcase Gallery Provider
+class VendorGalleryNotifier extends StateNotifier<List<StoreMediaModel>> {
+  final VendorApiRepository? _repository;
+  VendorGalleryNotifier(this._repository) : super([]) {
+    loadLiveGallery();
+  }
+
+  Future<void> loadLiveGallery() async {
+    if (_repository == null) return;
+    final images = await _repository.fetchGalleryImages();
+    state = images;
+  }
+
+  Future<void> addImage(String filePath) async {
+    final newMedia = await _repository?.uploadGalleryImage(filePath);
+    if (newMedia != null) {
+      state = [newMedia, ...state];
+    }
+  }
+
+  Future<void> removeImageAt(int index) async {
+    if (index >= 0 && index < state.length) {
+      final media = state[index];
+      state = [...state]..removeAt(index);
+      await _repository?.deleteGalleryImage(media.id);
+    }
+  }
+}
+
+final vendorGalleryProvider = StateNotifierProvider<VendorGalleryNotifier, List<StoreMediaModel>>((ref) {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return VendorGalleryNotifier(repo);
+});
+
+// Reactive Analytics Stats Provider
+final vendorStatsProvider = FutureProvider<VendorStatsModel>((ref) async {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return repo.fetchVendorStats();
+});
+
+// Reactive Customer Reviews Provider
+class VendorReviewsNotifier extends StateNotifier<List<VendorCustomerReviewModel>> {
+  final VendorApiRepository? _repository;
+  final String _storeId;
+
+  VendorReviewsNotifier(this._repository, this._storeId) : super([]) {
+    loadLiveReviews();
+  }
+
+  Future<void> loadLiveReviews() async {
+    if (_repository == null) return;
+    final live = await _repository.fetchCustomerReviews(_storeId);
+    state = live;
+  }
+
+  Future<void> replyToReview(String reviewId, String replyText) async {
+    state = [
+      for (final r in state)
+        if (r.id == reviewId) r.copyWith(vendorReply: replyText) else r,
+    ];
+    await _repository?.replyToReview(reviewId, replyText);
+  }
+}
+
+final vendorReviewsProvider = StateNotifierProvider<VendorReviewsNotifier, List<VendorCustomerReviewModel>>((ref) {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  final store = ref.watch(vendorStoreProvider);
+  return VendorReviewsNotifier(repo, store?.id ?? '');
+});
 
 // Business Settings State Provider
 final vendorVacationModeProvider = StateProvider<bool>((ref) => false);

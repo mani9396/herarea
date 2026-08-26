@@ -16,7 +16,7 @@ class _EditOfferScreenState extends ConsumerState<EditOfferScreen> {
   late TextEditingController _titleController;
   late TextEditingController _codeController;
   late TextEditingController _descController;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
@@ -24,7 +24,7 @@ class _EditOfferScreenState extends ConsumerState<EditOfferScreen> {
     final offers = ref.read(vendorOffersProvider);
     final offer = offers.firstWhere((o) => o.id == widget.offerId, orElse: () => offers.first);
     _titleController = TextEditingController(text: offer.title);
-    _codeController = TextEditingController(text: offer.code);
+    _codeController = TextEditingController(text: offer.promoCode ?? '');
     _descController = TextEditingController(text: offer.description);
   }
 
@@ -37,25 +37,20 @@ class _EditOfferScreenState extends ConsumerState<EditOfferScreen> {
   }
 
   void _onUpdate() {
-    setState(() => _isLoading = true);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      final offers = ref.read(vendorOffersProvider);
-      final index = offers.indexWhere((o) => o.id == widget.offerId);
-      if (index != -1) {
-        final current = offers[index];
-        ref.read(vendorOffersProvider.notifier).updateOffer(
-          current.copyWith(
-            title: _titleController.text.trim(),
-            code: _codeController.text.trim().toUpperCase(),
-            description: _descController.text.trim(),
-          ),
-        );
-      }
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer updated successfully!')));
-      context.pop();
-    });
+    final offers = ref.read(vendorOffersProvider);
+    final index = offers.indexWhere((o) => o.id == widget.offerId);
+    if (index != -1) {
+      final current = offers[index];
+      ref.read(vendorOffersProvider.notifier).updateOffer(
+        current.copyWith(
+          title: _titleController.text.trim(),
+          promoCode: _codeController.text.trim().toUpperCase(),
+          description: _descController.text.trim(),
+        ),
+      );
+    }
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer updated successfully!')));
+    context.pop();
   }
 
   void _onDelete() {

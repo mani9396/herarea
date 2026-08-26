@@ -16,6 +16,6 @@ void main() {
 
     // Fast-forward time to let the splash screen timer and animation finish
     await tester.pumpAndSettle(const Duration(seconds: 3));
-    expect(find.text('Partner Portal Login'), findsOneWidget);
+    expect(find.text('Existing Partner? Login Here'), findsOneWidget);
   });
 }

@@ -25,7 +25,7 @@ class CustomerInteractionsAndO2OSearchTests(TestCase):
             "address_line_1": "Indiranagar 100 Feet Road",
             "city": "Bengaluru",
             "state": "Karnataka",
-            "pincode": "560038",
+            "postal_code": "560038",
             "contact_email": "booking@aanya.in",
             "contact_phone": "+919900000001"
         }

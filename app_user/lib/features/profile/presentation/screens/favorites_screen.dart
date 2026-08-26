@@ -7,7 +7,7 @@ import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 import 'package:shared/widgets/empty_state_widget.dart';
 import 'package:her_area/core/widgets/store_card.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});

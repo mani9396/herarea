@@ -223,7 +223,7 @@ class _SystemStatesShowcaseScreenState extends State<SystemStatesShowcaseScreen>
             child: ErrorView(
               message: 'No active Internet connection detected. Your O2O partner studio data cannot synchronize with the bridal lead server.',
               onRetry: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checking network status... Internet restored in mock mode!')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checking network status... Internet restored successfully!')));
               },
             ),
           ),

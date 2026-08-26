@@ -9,7 +9,7 @@ import 'package:shared/widgets/custom_button.dart';
 import 'package:shared/widgets/empty_state_widget.dart';
 import 'package:her_area/core/widgets/store_card.dart';
 import 'package:shared/models/store_model.dart';
-import 'package:her_area/data/mock/mock_store_repository.dart';
+import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -83,14 +83,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       if (_onlyOpenNow && !s.isOpenNow) return false;
       if (s.distanceKm > _maxDistance) return false;
       if (_minRating > 0.0 && s.rating < _minRating) return false;
-      if (_selectedCategory != 'All' && !s.category.displayName.toLowerCase().contains(_selectedCategory.toLowerCase())) {
+      if (_selectedCategory != 'All' && !s.category.name.toLowerCase().contains(_selectedCategory.toLowerCase())) {
         return false;
       }
 
       if (_query.isNotEmpty) {
         final q = _query.toLowerCase();
         final matchesName = s.name.toLowerCase().contains(q);
-        final matchesCat = s.category.displayName.toLowerCase().contains(q);
+        final matchesCat = s.category.name.toLowerCase().contains(q);
         final matchesDesc = s.description.toLowerCase().contains(q);
         final matchesTags = s.serviceTags.any((tag) => tag.toLowerCase().contains(q));
         if (!matchesName && !matchesCat && !matchesDesc && !matchesTags) return false;

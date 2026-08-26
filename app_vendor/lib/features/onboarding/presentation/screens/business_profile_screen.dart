@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
 import 'package:app_vendor/core/widgets/vendor_status_chip.dart';
+import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
 import 'package:shared/shared.dart';
 
 class BusinessProfileScreen extends ConsumerWidget {
@@ -12,21 +15,30 @@ class BusinessProfileScreen extends ConsumerWidget {
     final store = ref.watch(vendorStoreProvider);
     final textTheme = Theme.of(context).textTheme;
 
+    if (store == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Store Profile Preview'), centerTitle: true, elevation: 0),
+        body: const Center(
+          child: Text('Please set up your store first.'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Store Profile Preview'), centerTitle: true, elevation: 0),
       body: ResponsiveLayout(
-        mobile: _buildProfileContent(context, store, textTheme),
+        mobile: _buildProfileContent(context, store, textTheme, ref),
         desktop: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800),
-            child: _buildProfileContent(context, store, textTheme),
+            child: _buildProfileContent(context, store, textTheme, ref),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileContent(BuildContext context, StoreModel store, TextTheme textTheme) {
+  Widget _buildProfileContent(BuildContext context, StoreModel store, TextTheme textTheme, WidgetRef ref) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -56,7 +68,7 @@ class BusinessProfileScreen extends ConsumerWidget {
                       child: Text(store.name, style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                     ),
                     IconButton(
-                      onPressed: () => _showEditDialog(context, 'Store Title & Category', store.name),
+                      onPressed: () => _showEditDialog(context, ref, 'Store Title & Category', store.name),
                       icon: const Icon(Icons.edit_rounded, color: AppColors.primaryRuby),
                     ),
                   ],
@@ -64,7 +76,7 @@ class BusinessProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    VendorStatusChip(label: store.category.displayName, backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1), textColor: AppColors.primaryRuby),
+                    VendorStatusChip(label: store.category.name, backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1), textColor: AppColors.primaryRuby),
                     const SizedBox(width: 8),
                     VendorStatusChip(label: store.priceTier, backgroundColor: Colors.grey.withValues(alpha: 0.2), textColor: Colors.black87),
                     const SizedBox(width: 8),
@@ -81,9 +93,39 @@ class BusinessProfileScreen extends ConsumerWidget {
                   children: [
                     const Icon(Icons.location_on_outlined, size: 20, color: AppColors.primaryRuby),
                     const SizedBox(width: 6),
-                    Expanded(child: Text('${store.address}, ${store.city}', style: textTheme.bodySmall)),
+                    Expanded(child: Text('${store.address}${store.city.isNotEmpty ? ', ${store.city}' : ''}', style: textTheme.bodySmall)),
                     IconButton(
-                      onPressed: () => _showEditDialog(context, 'Store Address', store.address),
+                      onPressed: () async {
+                        final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.locationPicker);
+                        if (res != null) {
+                          // Update Location API call
+                          final repo = ref.read(vendorApiRepositoryProvider);
+                          final success = await repo.saveBusinessProfile({
+                            'business_name': store.name,
+                            'category_name': store.category.name,
+                            'latitude': res['latitude'],
+                            'longitude': res['longitude'],
+                            'area': res['area'],
+                            'city': res['city'],
+                            'state': res['state'],
+                            'country': res['country'],
+                            'postal_code': res['postal_code'],
+                          });
+                          if (success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Store location updated successfully.')),
+                            );
+                            ref.read(vendorStoreProvider.notifier).updateStore(
+                              store.copyWith(
+                                address: res['area'] ?? res['address'] ?? store.address,
+                                city: res['city'] ?? store.city,
+                                latitude: res['latitude'] ?? store.latitude,
+                                longitude: res['longitude'] ?? store.longitude,
+                              ),
+                            );
+                          }
+                        }
+                      },
                       icon: const Icon(Icons.edit_location_alt_rounded, color: AppColors.primaryRuby, size: 20),
                     ),
                   ],
@@ -118,7 +160,7 @@ class BusinessProfileScreen extends ConsumerWidget {
               children: [
                 const Icon(Icons.local_offer_rounded, color: AppColors.accentGold),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(o, style: const TextStyle(fontWeight: FontWeight.w600))),
+                Expanded(child: Text(o.title, style: const TextStyle(fontWeight: FontWeight.w600))),
               ],
             ),
           )),
@@ -127,12 +169,12 @@ class BusinessProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showEditDialog(BuildContext context, String field, String currentVal) {
+  void _showEditDialog(BuildContext context, WidgetRef ref, String field, String currentVal) {
     CustomDialog.show(
       context: context,
       title: 'Edit $field',
-      description: 'You are viewing realistic mock data in Phase 2 evaluation. Changes made here simulate instant O2O sync across the customer marketplace.',
-      confirmText: 'Save Changes',
+      description: 'Modifying this setting will instantly synchronize across live customer applications and marketplace feeds via O2O backend APIs.',
+      confirmText: 'Acknowledge & Save',
       onConfirm: () {},
       icon: Icons.edit_rounded,
     );

@@ -10,7 +10,9 @@ class RoutePaths {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String otpVerification = '/otp-verification';
+  static const String createPassword = '/create-password';
 
   // Main O2O Discovery Tabs (Web URL endpoints via StatefulShellRoute)
   static const String home = '/home';
@@ -21,8 +23,10 @@ class RoutePaths {
 
   // Customer Profile & Auxiliary Features
   static const String favorites = '/favorites';
+  static const String myReviews = '/my-reviews';
   static const String notifications = '/notifications';
   static const String editProfile = '/edit-profile';
+  static const String recentlyViewed = '/recently-viewed';
   static const String settings = '/settings';
   static const String helpSupport = '/help-support';
   static const String about = '/about';
