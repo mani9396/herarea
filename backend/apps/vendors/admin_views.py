@@ -7,11 +7,32 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from apps.accounts.permissions import IsAdminRole
 from apps.vendors.models import VendorProfile, VendorStatus, KycDocStatus
-from apps.vendors.serializers import VendorProfileSerializer, AdminVendorActionSerializer
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+from apps.accounts.models import User, UserRole
+from apps.business.models import BusinessProfile
+from apps.vendors.serializers import VendorProfileSerializer, AdminVendorActionSerializer, AdminVendorCreateSerializer
 from apps.notifications.services import NotificationEngine
 from apps.notifications.models import NotificationType
 
 logger = logging.getLogger('her_area')
+
+class AdminAllVendorsListView(APIView):
+    """
+    Governance directory: Enumerate all partner studio vendor accounts regardless of status.
+    """
+    permission_classes = [IsAdminRole]
+    serializer_class = VendorProfileSerializer
+
+    @extend_schema(
+        summary="List All Vendor Studio Applications",
+        description="Retrieve all partner studios including PENDING, APPROVED, REJECTED, SUSPENDED states.",
+        responses={200: VendorProfileSerializer(many=True)}
+    )
+    def get(self, request):
+        vendors = VendorProfile.objects.all().select_related('business_profile', 'user').prefetch_related('kyc_documents').order_by('-created_at')
+        serializer = VendorProfileSerializer(vendors, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class AdminPendingVendorsListView(APIView):
     """
@@ -26,7 +47,7 @@ class AdminPendingVendorsListView(APIView):
         responses={200: VendorProfileSerializer(many=True)}
     )
     def get(self, request):
-        vendors = VendorProfile.objects.filter(status=VendorStatus.PENDING).select_related('business_profile', 'user').prefetch_related('kyc_documents')
+        vendors = VendorProfile.objects.filter(status=VendorStatus.PENDING).select_related('business_profile', 'user').prefetch_related('kyc_documents').order_by('-created_at')
         serializer = VendorProfileSerializer(vendors, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -170,3 +191,103 @@ class AdminVendorSuspendView(APIView):
         )
         response_serializer = VendorProfileSerializer(vendor)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+class AdminVendorCreateView(APIView):
+    """
+    Secure endpoint for Admin to provision new partner studio vendor accounts.
+    Generates temporary credentials, sets must_change_password flag, and delivers via email.
+    """
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(
+        summary="Provision New Partner Studio",
+        description="Creates a Vendor User, Profile, and Business Profile stub. Securely generates and emails a temporary password.",
+        request=AdminVendorCreateSerializer,
+        responses={201: OpenApiResponse(description="Returns one-time temporary password.")}
+    )
+    def post(self, request):
+        serializer = AdminVendorCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        email = data['official_email'].lower()
+        if User.objects.filter(email=email).exists():
+            raise exceptions.ValidationError({"official_email": ["A user with this email already exists."]})
+            
+        phone = data['phone_number']
+        if User.objects.filter(phone_number=phone).exists():
+            raise exceptions.ValidationError({"phone_number": ["A user with this phone number already exists."]})
+
+        # 12-char secure temporary password
+        temp_password = get_random_string(12, allowed_chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()')
+
+        with transaction.atomic():
+            user = User.objects.create(
+                phone_number=phone,
+                email=email,
+                full_name=data['owner_name'],
+                role=UserRole.VENDOR,
+                is_active=True,
+                is_verified=True,
+                must_change_password=True,
+            )
+            user.set_password(temp_password)
+            user.save()
+
+            vendor = VendorProfile.objects.create(
+                user=user,
+                owner_name=data['owner_name'],
+                official_email=email,
+                phone_number=phone,
+                status=VendorStatus.PENDING,
+                created_by=request.user,
+                updated_by=request.user
+            )
+
+            BusinessProfile.objects.create(
+                vendor=vendor,
+                business_name=data['business_name'],
+                address_line_1='',
+                city='',
+                state='',
+                postal_code='',
+                contact_email=email,
+                contact_phone=phone,
+                created_by=request.user,
+                updated_by=request.user
+            )
+
+        # Secure Email Delivery (Using existing ZeptoMail SMTP setup)
+        try:
+            send_mail(
+                subject='HER AREA — Vendor Account Created',
+                message=f'''Hello {data["owner_name"]},
+
+Your HER AREA Vendor account has been created by the HER AREA Admin team.
+
+Your temporary login credentials are:
+
+Email: {email}
+Temporary Password: {temp_password}
+
+Please sign in to the HER AREA Vendor application and change your password after your first login.
+
+For security, please do not share your credentials with anyone.
+
+Regards,
+HER AREA Team''',
+                from_email=None,
+                recipient_list=[email],
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send vendor credential email to {email}: {e}")
+
+        logger.info(f"Admin {request.user.phone_number} successfully provisioned Vendor {email}")
+        
+        # We return the temp password ONCE for Admin display. It is NOT stored in plaintext in the DB.
+        return Response({
+            "message": "Vendor created successfully.",
+            "vendor_email": email,
+            "temporary_password": temp_password
+        }, status=status.HTTP_201_CREATED)

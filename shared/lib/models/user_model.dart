@@ -27,6 +27,7 @@ class UserModel {
   final String? avatarUrl;
   final String? studioStatus; // PENDING, APPROVED, REJECTED, SUSPENDED (for vendors)
   final String? rejectionReason;
+  final bool mustChangePassword;
 
   const UserModel({
     required this.id,
@@ -39,10 +40,11 @@ class UserModel {
     this.avatarUrl,
     this.studioStatus,
     this.rejectionReason,
+    this.mustChangePassword = false,
   });
 
-  bool get isApprovedVendor => role == UserRole.vendor && studioStatus == 'APPROVED';
-  bool get isPendingVendor => role == UserRole.vendor && (studioStatus == 'PENDING' || studioStatus == null);
+  bool get isApprovedVendor => role == UserRole.vendor && (studioStatus == 'APPROVED' || studioStatus == 'PUBLISHED');
+  bool get isPendingVendor => role == UserRole.vendor && (studioStatus == 'PENDING' || studioStatus == 'PENDING_APPROVAL' || studioStatus == null);
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -56,6 +58,7 @@ class UserModel {
       avatarUrl: json['avatar_url'] ?? json['avatar'],
       studioStatus: json['studio_status'] ?? json['status'],
       rejectionReason: json['rejection_reason'],
+      mustChangePassword: json['must_change_password'] == true,
     );
   }
 
@@ -71,6 +74,7 @@ class UserModel {
       'avatar_url': avatarUrl,
       'studio_status': studioStatus,
       'rejection_reason': rejectionReason,
+      'must_change_password': mustChangePassword,
     };
   }
 
@@ -81,6 +85,7 @@ class UserModel {
     String? avatarUrl,
     String? studioStatus,
     String? rejectionReason,
+    bool? mustChangePassword,
   }) {
     return UserModel(
       id: id,
@@ -93,6 +98,7 @@ class UserModel {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       studioStatus: studioStatus ?? this.studioStatus,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 }

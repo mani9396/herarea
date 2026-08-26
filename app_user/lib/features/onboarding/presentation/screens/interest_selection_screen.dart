@@ -83,7 +83,7 @@ class _InterestSelectionScreenState extends ConsumerState<InterestSelectionScree
       'Lehengas & Anarkalis',
       'Footwear & Accessories',
     ];
-    final categoriesList = categoriesAsync.valueOrNull ?? defaultCategories;
+    final categoriesList = categoriesAsync.valueOrNull?.map((e) => e.name).toList() ?? defaultCategories;
 
     return Scaffold(
       appBar: AppBar(

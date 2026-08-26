@@ -12,6 +12,7 @@ abstract class IApiClient {
   
   /// Multipart file uploads for gallery visuals, store documents, and KYC verifications
   Future<Map<String, dynamic>> postMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields});
+  Future<Map<String, dynamic>> putMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields});
   
   /// Inject JWT / OAuth token and refresh token issued by Django authentication endpoints
   void setAuthToken(String? token, {String? refreshToken});

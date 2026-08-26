@@ -73,7 +73,8 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
         password: _passwordController.text,
         confirmPassword: _confirmPasswordController.text,
         fullName: pendingReg.fullName,
-        locality: pendingReg.locality,
+        dateOfBirth: pendingReg.dateOfBirth,
+        gender: pendingReg.gender,
       );
 
       if (mounted) {

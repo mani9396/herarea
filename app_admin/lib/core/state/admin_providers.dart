@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_admin/domain/models/admin_models.dart';
+import 'package:shared/models/category_model.dart';
 import 'package:app_admin/data/repositories/admin_api_repository.dart';
 
 // --- Vendors State Notifier ---
@@ -14,7 +15,7 @@ class AdminVendorsNotifier extends StateNotifier<List<AdminVendorModel>> {
   Future<void> loadLiveVendors() async {
     if (_repository == null) return;
     try {
-      final liveVendors = await _repository.fetchPendingVendors();
+      final liveVendors = await _repository.fetchAllVendors();
       state = liveVendors;
     } catch (_) {
       state = const [];
@@ -98,6 +99,29 @@ class AdminProductsNotifier extends StateNotifier<List<AdminProductModel>> {
     } catch (_) {
       state = const [];
     }
+  }
+
+  Future<void> moderateProduct(String id, String action, String remarks) async {
+    if (_repository == null) return;
+    try {
+      final updatedProduct = await _repository!.moderateProduct(id, action, remarks);
+      state = [
+        for (final p in state)
+          if (p.id == id) updatedProduct else p,
+      ];
+    } catch (_) {
+      // Keep old state or handle error
+    }
+  }
+
+  Future<void> deleteProduct(String id) async {
+    if (_repository == null) return;
+    try {
+      final success = await _repository!.deleteProduct(id);
+      if (success) {
+        state = state.where((p) => p.id != id).toList();
+      }
+    } catch (_) {}
   }
 
   void approveProduct(String id) {
@@ -281,6 +305,35 @@ class AdminReviewsNotifier extends StateNotifier<List<AdminReviewModel>> {
         if (r.id == id) r.copyWith(status: AdminStatus.approved, isReported: false) else r,
     ];
   }
+
+  Future<void> approveReview(String id) async {
+    // Optimistic update
+    state = [
+      for (final r in state)
+        if (r.id == id) r.copyWith(status: AdminStatus.approved, isReported: false) else r,
+    ];
+    await _repository?.approveReview(id);
+    // Reload live data to ensure consistency
+    await loadLiveReviews();
+  }
+
+  Future<void> rejectReview(String id) async {
+    state = [
+      for (final r in state)
+        if (r.id == id) r.copyWith(status: AdminStatus.rejected, isReported: false) else r,
+    ];
+    await _repository?.rejectReview(id);
+    await loadLiveReviews();
+  }
+
+  Future<void> hideReview(String id) async {
+    state = [
+      for (final r in state)
+        if (r.id == id) r.copyWith(status: AdminStatus.pending, isReported: false) else r,
+    ];
+    await _repository?.hideReview(id);
+    await loadLiveReviews();
+  }
 }
 
 final adminReviewsProvider = StateNotifierProvider<AdminReviewsNotifier, List<AdminReviewModel>>((ref) {
@@ -288,37 +341,45 @@ final adminReviewsProvider = StateNotifierProvider<AdminReviewsNotifier, List<Ad
   return AdminReviewsNotifier(repo);
 });
 
-// --- Categories State Notifier ---
-class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
-  final AdminApiRepository? _repository;
 
-  AdminCategoriesNotifier([this._repository]) : super(const []) {
-    loadLiveCategories();
+// --- Categories State Notifier ---
+class AdminCategoriesNotifier extends StateNotifier<List<CategoryModel>> {
+  final AdminApiRepository _api;
+
+  AdminCategoriesNotifier(this._api) : super([]) {
+    _loadCategories();
   }
 
-  Future<void> loadLiveCategories() async {
-    if (_repository == null) return;
+  Future<void> _loadCategories() async {
     try {
-      final liveCats = await _repository.fetchCategories();
-      state = liveCats;
-    } catch (_) {
-      state = const [];
+      final categories = await _api.fetchCategories();
+      state = categories;
+    } catch (e) {
+      // Typically, errors are handled by a dedicated UI error handler, 
+      // but state can just remain empty or we can add a loading/error state if needed.
     }
   }
 
-  void addCategory(AdminCategoryModel cat) {
-    state = [...state, cat];
-    _repository?.createCategory(cat);
+  void addCategory(CategoryModel cat) async {
+    final created = await _api.createCategory(cat);
+    if (created != null) {
+      state = [...state, created];
+    }
   }
 
-  void updateCategory(AdminCategoryModel cat) {
-    state = [
-      for (final c in state)
-        if (c.id == cat.id) cat else c,
-    ];
+  void updateCategory(CategoryModel cat) {
+    // TODO: implement actual API PUT request for updates
+    // For now we optimistically update state:
+    final index = state.indexWhere((c) => c.id == cat.id);
+    if (index != -1) {
+      final list = List<CategoryModel>.from(state);
+      list[index] = cat;
+      state = list;
+    }
   }
 
   void deleteCategory(String id) {
+    // TODO: implement actual API DELETE
     state = state.where((c) => c.id != id).toList();
   }
 
@@ -326,7 +387,7 @@ class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
     if (newIndex > oldIndex) {
       newIndex -= 1;
     }
-    final list = List<AdminCategoryModel>.from(state);
+    final list = List<CategoryModel>.from(state);
     final item = list.removeAt(oldIndex);
     list.insert(newIndex, item);
     
@@ -338,7 +399,7 @@ class AdminCategoriesNotifier extends StateNotifier<List<AdminCategoryModel>> {
   }
 }
 
-final adminCategoriesProvider = StateNotifierProvider<AdminCategoriesNotifier, List<AdminCategoryModel>>((ref) {
+final adminCategoriesProvider = StateNotifierProvider<AdminCategoriesNotifier, List<CategoryModel>>((ref) {
   final repo = ref.watch(adminApiRepositoryProvider);
   return AdminCategoriesNotifier(repo);
 });
@@ -410,7 +471,7 @@ final adminActivityLogProvider = StateNotifierProvider<AdminActivityLogNotifier,
 // --- Platform Telemetry & Analytics Provider ---
 final adminAnalyticsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final repo = ref.watch(adminApiRepositoryProvider);
-  return await repo.fetchPlatformAnalytics();
+  return await repo.fetchAdminDashboardStats();
 });
 
 // --- Aggregated KPI Stats Provider ---
@@ -439,8 +500,6 @@ class AdminDashboardStats {
 }
 
 final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
-  final customers = ref.watch(adminCustomersProvider);
-  final vendors = ref.watch(adminVendorsProvider);
   final products = ref.watch(adminProductsProvider);
   final gallery = ref.watch(adminGalleryProvider);
   final offers = ref.watch(adminOffersProvider);
@@ -449,22 +508,15 @@ final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
 
   final analytics = ref.watch(adminAnalyticsProvider).valueOrNull;
 
-  double revenue = 0;
-  for (final v in vendors) {
-    if (v.status == AdminStatus.approved) {
-      revenue += v.totalRevenue;
-    }
-  }
-
   return AdminDashboardStats(
-    totalCustomers: analytics?['kpi_metrics']?['total_customers'] ?? customers.length,
-    totalVendors: analytics?['kpi_metrics']?['total_vendors'] ?? vendors.length,
-    pendingVendors: analytics?['kpi_metrics']?['pending_vendors'] ?? vendors.where((v) => v.status == AdminStatus.pending).length,
+    totalCustomers: analytics?['total_customers'] ?? 0,
+    totalVendors: analytics?['verified_vendors'] ?? 0,
+    pendingVendors: analytics?['pending_vendors'] ?? 0,
     pendingProducts: products.where((p) => p.status == AdminStatus.pending).length,
     pendingGallery: gallery.where((g) => g.status == AdminStatus.pending).length,
     pendingOffers: offers.where((o) => o.status == AdminStatus.pending).length,
     pendingProfileUpdates: profileUpdates.where((u) => u.status == AdminStatus.pending).length,
     reportedReviews: reviews.where((r) => r.isReported && r.status == AdminStatus.pending).length,
-    totalEstimatedRevenue: (analytics?['kpi_metrics']?['total_revenue'] ?? revenue).toDouble(),
+    totalEstimatedRevenue: (analytics?['total_gmv'] ?? 0).toDouble(),
   );
 });

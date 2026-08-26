@@ -23,8 +23,10 @@ class RoutePaths {
 
   // Customer Profile & Auxiliary Features
   static const String favorites = '/favorites';
+  static const String myReviews = '/my-reviews';
   static const String notifications = '/notifications';
   static const String editProfile = '/edit-profile';
+  static const String recentlyViewed = '/recently-viewed';
   static const String settings = '/settings';
   static const String helpSupport = '/help-support';
   static const String about = '/about';

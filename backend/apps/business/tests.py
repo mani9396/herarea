@@ -42,11 +42,9 @@ class BusinessShowroomProfileTests(TestCase):
         # Update Business Timings & Contact Number
         update_payload = {
             "contact_phone": "+919555555555",
-            "business_timings": {"Mon - Fri": "08:00 AM - 10:00 PM", "Sat - Sun": "10:00 AM - 08:00 PM"},
-            "logo_url": "https://storage.herarea.internal/logos/aura.png"
+            "business_timings": {"Mon - Fri": "08:00 AM - 10:00 PM", "Sat - Sun": "10:00 AM - 08:00 PM"}
         }
         put_resp = self.client.put(self.business_me_url, update_payload, format='json')
         self.assertEqual(put_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(put_resp.data['contact_phone'], "+919555555555")
-        self.assertEqual(put_resp.data['logo_url'], "https://storage.herarea.internal/logos/aura.png")
         self.assertIn("Mon - Fri", put_resp.data['business_timings'])

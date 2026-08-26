@@ -90,7 +90,8 @@ class AuthApiRepository {
     required String password,
     required String confirmPassword,
     required String fullName,
-    String locality = '',
+    required String dateOfBirth,
+    required String gender,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -100,10 +101,37 @@ class AuthApiRepository {
           'password': password,
           'confirm_password': confirmPassword,
           'full_name': fullName,
-          'locality': locality,
+          'date_of_birth': dateOfBirth,
+          'gender': gender,
         },
       );
       return _processJwtResponse(response, email, 'CUSTOMER');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Self-register a new Vendor account.
+  Future<bool> vendorSelfRegister({
+    required String ownerName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _apiClient.post(
+        ApiEndpoints.vendorAuthRegister,
+        body: {
+          'owner_name': ownerName,
+          'email': email,
+          'phone_number': phoneNumber,
+          'password': password,
+          'confirm_password': confirmPassword,
+        },
+      );
+      // Registration successful, but requires login manually afterwards
+      return true;
     } catch (_) {
       return false;
     }
@@ -173,6 +201,7 @@ class AuthApiRepository {
           fullName: 'HER AREA $resRole',
           role: UserRole.fromCode(resRole),
           studioStatus: resRole.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
+          mustChangePassword: response['must_change_password'] == true,
         );
       }
 

@@ -20,20 +20,33 @@ class _ProductModerationScreenState extends ConsumerState<ProductModerationScree
   String _selectedStatus = 'Pending';
   final List<String> _tabs = ['All', 'Pending', 'Approved', 'Rejected'];
 
-  void _onApprove(AdminProductModel p) {
-    ref.read(adminProductsProvider.notifier).approveProduct(p.id);
-    ref.read(adminActivityLogProvider.notifier).logActivity('Approved catalog product: "${p.title}" (${p.vendorName})');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approved "${p.title}" for catalog display.')));
-  }
+  Future<void> _showModerateDialog(AdminProductModel p, String action) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('${action.toUpperCase()} PRODUCT'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Admin Remarks (Optional)'),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Confirm')),
+        ],
+      ),
+    );
 
-  void _onReject(AdminProductModel p) {
-    ref.read(adminProductsProvider.notifier).rejectProduct(p.id);
-    ref.read(adminActivityLogProvider.notifier).logActivity('Rejected catalog product: "${p.title}" (${p.vendorName})');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rejected "${p.title}" from catalog.')));
+    if (result == true && mounted) {
+      await ref.read(adminProductsProvider.notifier).moderateProduct(p.id, action.toLowerCase(), controller.text.trim());
+      ref.read(adminActivityLogProvider.notifier).logActivity('${action.toUpperCase()} product: "${p.title}" (${p.vendorName})');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Product $action action applied successfully.')));
+    }
   }
 
   void _onRemove(AdminProductModel p) {
-    ref.read(adminProductsProvider.notifier).removeProduct(p.id);
+    ref.read(adminProductsProvider.notifier).deleteProduct(p.id);
     ref.read(adminActivityLogProvider.notifier).logActivity('Permanently deleted product: "${p.title}"');
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Removed "${p.title}" permanently.')));
   }
@@ -168,7 +181,7 @@ class _ProductModerationScreenState extends ConsumerState<ProductModerationScree
                             CustomButton(
                               label: 'Approve ✅',
                               isFullWidth: false,
-                              onPressed: () => _onApprove(product),
+                              onPressed: () => _showModerateDialog(product, 'approve'),
                             ),
                           if (product.status != AdminStatus.approved) const SizedBox(width: 10),
                           if (product.status != AdminStatus.rejected)
@@ -177,7 +190,7 @@ class _ProductModerationScreenState extends ConsumerState<ProductModerationScree
                               variant: ButtonVariant.outline,
                               isOutlined: true,
                               isFullWidth: false,
-                              onPressed: () => _onReject(product),
+                              onPressed: () => _showModerateDialog(product, 'reject'),
                             ),
                           const SizedBox(width: 10),
                           IconButton(

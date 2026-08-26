@@ -15,6 +15,7 @@ class AdminRoutePaths {
   // Detail & Action Routes
   static const String vendorDetails = '/vendor-details/:id';
   static const String profileApprovals = '/profile-approvals';
+  static const String storeApprovals = '/store-approvals';
   
   static const String productModeration = '/moderation/products';
   static const String galleryModeration = '/moderation/gallery';
@@ -23,6 +24,8 @@ class AdminRoutePaths {
   
   static const String customerDetails = '/customer-details/:id';
   static const String categories = '/categories';
+  static const String planManagement = '/plan-management';
+  static const String paymentHistory = '/payment-history';
   
   static const String notifications = '/notifications';
   static const String notificationComposer = '/notifications/compose';

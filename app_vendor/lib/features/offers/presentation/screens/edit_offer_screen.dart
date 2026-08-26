@@ -24,7 +24,7 @@ class _EditOfferScreenState extends ConsumerState<EditOfferScreen> {
     final offers = ref.read(vendorOffersProvider);
     final offer = offers.firstWhere((o) => o.id == widget.offerId, orElse: () => offers.first);
     _titleController = TextEditingController(text: offer.title);
-    _codeController = TextEditingController(text: offer.code);
+    _codeController = TextEditingController(text: offer.promoCode ?? '');
     _descController = TextEditingController(text: offer.description);
   }
 
@@ -44,7 +44,7 @@ class _EditOfferScreenState extends ConsumerState<EditOfferScreen> {
       ref.read(vendorOffersProvider.notifier).updateOffer(
         current.copyWith(
           title: _titleController.text.trim(),
-          code: _codeController.text.trim().toUpperCase(),
+          promoCode: _codeController.text.trim().toUpperCase(),
           description: _descController.text.trim(),
         ),
       );

@@ -222,7 +222,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             ref.read(pendingRegistrationProvider.notifier).state = PendingRegistration(
               fullName: '', 
               email: _inputController.text.trim(), 
-              locality: ''
+              dateOfBirth: '',
+              gender: ''
             ); // Optional: We just need to pass the email somewhere or just rely on lastAttemptedIdentifier in repo.
             context.push(RoutePaths.otpVerification, extra: {'purpose': 'PASSWORD_RESET'});
           },

@@ -4,6 +4,7 @@ import 'package:shared/models/user_model.dart';
 import 'package:shared/services/api_client_interface.dart';
 import 'package:shared/services/auth_token_storage.dart';
 import 'package:shared/services/dio_api_client.dart';
+import 'package:shared/exceptions/api_exception.dart';
 
 /// Riverpod state controller for maintaining the active JWT Token and authenticated
 /// [UserModel] across all HER AREA applications (app_user, app_vendor, app_admin).
@@ -68,6 +69,22 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
         final res = await apiClient.get(ApiEndpoints.userProfile);
         final user = UserModel.fromJson(res);
         state = state.copyWith(currentUser: user, isRestoring: false);
+      } on ApiException catch (e) {
+        if (e.statusCode == 401 || e.statusCode == 403) {
+          // Token is strictly invalid/expired. Do not fallback to offline backup.
+          state = state.copyWith(isRestoring: false);
+        } else if (role != null) {
+          final backupUser = UserModel(
+            id: '',
+            phoneNumber: '',
+            fullName: 'HER AREA User',
+            role: UserRole.fromCode(role),
+            studioStatus: role.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
+          );
+          state = state.copyWith(currentUser: backupUser, isRestoring: false);
+        } else {
+          state = state.copyWith(isRestoring: false);
+        }
       } catch (_) {
         if (role != null) {
           final backupUser = UserModel(

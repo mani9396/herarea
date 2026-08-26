@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
 import 'package:shared/shared.dart';
+import 'package:image_picker/image_picker.dart';
 
 class GalleryScreen extends ConsumerWidget {
   const GalleryScreen({super.key});
@@ -13,9 +14,15 @@ class GalleryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Store Showcase Gallery 📸'), centerTitle: true),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ref.read(vendorGalleryProvider.notifier).addImage('https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=800&auto=format&fit=crop');
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New bridal portfolio photo added to studio showroom!')));
+        onPressed: () async {
+          final picker = ImagePicker();
+          final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+          if (image != null) {
+            await ref.read(vendorGalleryProvider.notifier).addImage(image.path);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New bridal portfolio photo added to studio showroom!')));
+            }
+          }
         },
         backgroundColor: AppColors.primaryRuby,
         foregroundColor: Colors.white,
@@ -32,12 +39,17 @@ class GalleryScreen extends ConsumerWidget {
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: AppSpacing.md, mainAxisSpacing: AppSpacing.md),
                   itemCount: images.length,
                   itemBuilder: (context, index) {
+                    final media = images[index];
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.network(images[index], fit: BoxFit.cover),
+                          Image.network(
+                            media.image.startsWith('http') ? media.image : '${ApiEndpoints.defaultBaseUrl}${media.image}',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[200], child: const Icon(Icons.broken_image, color: Colors.grey)),
+                          ),
                           Positioned(
                             top: 8, right: 8,
                             child: CircleAvatar(

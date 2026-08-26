@@ -31,11 +31,14 @@ class PublicProductListView(APIView):
         responses={200: ProductSerializer(many=True)}
     )
     def get(self, request):
-        # Guarantee exclusion of unapproved or inactive studios
+        # Guarantee exclusion of unapproved or inactive studios, and enforce Phase 11 visibility rules
         products = Product.objects.filter(
-            is_active=True, 
+            is_active=True,
+            status='APPROVED',
+            business_profile__status='PUBLISHED',
+            business_profile__subscriptions__status='ACTIVE',
             business_profile__vendor__status=VendorStatus.APPROVED
-        ).select_related('business_profile', 'category')
+        ).exclude(stock_status='OUT_OF_STOCK').select_related('business_profile', 'category').distinct()
 
         category_id = request.query_params.get('category')
         if category_id:
@@ -65,9 +68,12 @@ class PublicProductDetailView(APIView):
     @extend_schema(summary="Get Approved Product Details", responses={200: ProductSerializer})
     def get(self, request, pk):
         try:
-            product = Product.objects.select_related('business_profile', 'category').get(
+            product = Product.objects.select_related('business_profile', 'category').exclude(stock_status='OUT_OF_STOCK').get(
                 pk=pk,
                 is_active=True,
+                status='APPROVED',
+                business_profile__status='PUBLISHED',
+                business_profile__subscriptions__status='ACTIVE',
                 business_profile__vendor__status=VendorStatus.APPROVED
             )
         except Product.DoesNotExist:
@@ -92,13 +98,33 @@ class PublicStoreCatalogDossierView(APIView):
     )
     def get(self, request, store_id):
         try:
-            store = BusinessProfile.objects.get(pk=store_id, vendor__status=VendorStatus.APPROVED)
+            from apps.business.models import StoreStatus
+            store = BusinessProfile.objects.get(
+                pk=store_id, 
+                vendor__status=VendorStatus.APPROVED,
+                status=StoreStatus.PUBLISHED,
+                subscriptions__status='ACTIVE'
+            )
         except BusinessProfile.DoesNotExist:
             raise exceptions.NotFound("Target studio showroom not found or awaiting Admin clearance.")
 
-        products = Product.objects.filter(business_profile=store, is_active=True).select_related('business_profile', 'category').order_by('-is_featured', '-created_at')
+        products = Product.objects.filter(
+            business_profile=store, 
+            is_active=True,
+            status='APPROVED'
+        ).exclude(stock_status='OUT_OF_STOCK').select_related('business_profile', 'category').order_by('-is_featured', '-created_at')
+        
         gallery = GalleryImage.objects.filter(business_profile=store).order_by('display_order', '-created_at')
-        offers = Offer.objects.filter(business_profile=store, is_active=True).order_by('-created_at')
+        from django.utils import timezone
+        now = timezone.now()
+        offers = Offer.objects.filter(
+            business_profile=store, 
+            status='APPROVED'
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now)
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now)
+        ).order_by('-created_at')
 
         payload = {
             "products": ProductSerializer(products, many=True).data,
@@ -122,8 +148,14 @@ class PublicPromotionListView(APIView):
         responses={200: PublicPromotionSerializer(many=True)}
     )
     def get(self, request):
+        from django.utils import timezone
+        now = timezone.now()
         offers = Offer.objects.filter(
-            is_active=True,
+            status='APPROVED',
             business_profile__vendor__status=VendorStatus.APPROVED
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now)
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now)
         ).select_related('business_profile').order_by('-created_at')
         return Response(PublicPromotionSerializer(offers, many=True).data, status=status.HTTP_200_OK)

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:her_area/core/widgets/store_card.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:her_area/core/state/app_state_provider.dart';
 
 class NearbyStoresScreen extends ConsumerStatefulWidget {
   const NearbyStoresScreen({super.key});
@@ -141,8 +142,9 @@ class _NearbyStoresScreenState extends ConsumerState<NearbyStoresScreen> {
         ...List.generate(stores.length, (index) {
           final s = stores[index];
           // Map live latitude and longitude coordinates to view coordinates
-          final centerLat = 17.4326;
-          final centerLon = 78.4071;
+          final location = ref.read(userLocationProvider);
+          final centerLat = location.latitude;
+          final centerLon = location.longitude;
           final latDiff = s.latitude - centerLat;
           final lonDiff = s.longitude - centerLon;
           final top = (180.0 - (latDiff * 8000.0)).clamp(20.0, 380.0);
@@ -163,7 +165,7 @@ class _NearbyStoresScreenState extends ConsumerState<NearbyStoresScreen> {
                       border: Border.all(color: Colors.white, width: 2.5),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 3))],
                     ),
-                    child: Icon(s.category.iconData, size: 20, color: Colors.white),
+                    child: const Icon(Icons.category_rounded, size: 20, color: Colors.white),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

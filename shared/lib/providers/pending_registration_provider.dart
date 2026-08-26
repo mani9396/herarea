@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class PendingRegistration {
   final String fullName;
   final String email;
-  final String locality;
+  final String dateOfBirth;
+  final String gender;
 
   const PendingRegistration({
     required this.fullName,
     required this.email,
-    required this.locality,
+    required this.dateOfBirth,
+    required this.gender,
   });
 }
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:shared/constants/api_endpoints.dart';
 import 'package:shared/constants/app_constants.dart';
 import 'package:shared/exceptions/api_exception.dart';
@@ -127,7 +128,9 @@ class DioApiClient implements IApiClient {
       }
       if (files != null) {
         for (final entry in files.entries) {
-          mapData[entry.key] = await MultipartFile.fromFile(entry.value);
+          final xFile = XFile(entry.value);
+          final bytes = await xFile.readAsBytes();
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
         }
       }
       final formData = FormData.fromMap(mapData);
@@ -141,6 +144,34 @@ class DioApiClient implements IApiClient {
       throw _handleDioError(e);
     } catch (e) {
       throw ApiException(message: 'Unexpected file upload error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> putMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields}) async {
+    try {
+      final mapData = <String, dynamic>{};
+      if (fields != null) {
+        mapData.addAll(fields);
+      }
+      if (files != null) {
+        for (final entry in files.entries) {
+          final xFile = XFile(entry.value);
+          final bytes = await xFile.readAsBytes();
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
+        }
+      }
+      final formData = FormData.fromMap(mapData);
+      final response = await _dio.put(
+        endpoint,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return _formatResponse(response);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw ApiException(message: 'Unexpected file update error: ${e.toString()}');
     }
   }
 

@@ -22,6 +22,52 @@ class AdminApiRepository {
     }
   }
 
+  /// Fetch list of all studio partner applications (all statuses)
+  Future<List<AdminVendorModel>> fetchAllVendors() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.adminAllVendors);
+      final paginated = PaginatedResponse.fromJson(
+        response,
+        (json) => AdminVendorModel.fromJson(json),
+      );
+      return paginated.results;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Fetch admin dashboard statistics
+  Future<Map<String, dynamic>> fetchAdminDashboardStats() async {
+    try {
+      return await _apiClient.get(ApiEndpoints.adminDashboardStats);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Create a new vendor and return the temporary credentials response
+  Future<Map<String, dynamic>> createVendor({
+    required String ownerName,
+    required String officialEmail,
+    required String phoneNumber,
+    required String businessName,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminVendorCreate,
+        body: {
+          'owner_name': ownerName,
+          'official_email': officialEmail,
+          'phone_number': phoneNumber,
+          'business_name': businessName,
+        },
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Execute executive approval on a pending partner studio
   Future<bool> approveVendor(String vendorId) async {
     try {
@@ -58,13 +104,14 @@ class AdminApiRepository {
     }
   }
 
-  /// Fetch all active and inactive marketplace categories
-  Future<List<AdminCategoryModel>> fetchCategories() async {
+  /// Store Governance: Fetch stores by status
+  Future<List<StoreModel>> fetchStores({String? status}) async {
     try {
-      final response = await _apiClient.get(ApiEndpoints.publicCategories);
+      final url = status != null ? '${ApiEndpoints.adminStores}?status=$status' : ApiEndpoints.adminStores;
+      final response = await _apiClient.get(url);
       final paginated = PaginatedResponse.fromJson(
         response,
-        (json) => AdminCategoryModel.fromJson(json),
+        (json) => StoreModel.fromJson(json),
       );
       return paginated.results;
     } catch (e) {
@@ -72,14 +119,61 @@ class AdminApiRepository {
     }
   }
 
+  /// Store Governance: Approve store
+  Future<bool> approveStore(String storeId) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.adminStoreApprove(storeId));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Store Governance: Reject store
+  Future<bool> rejectStore(String storeId, String reason) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminStoreReject(storeId),
+        body: {'reason': reason},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Store Governance: Suspend store
+  Future<bool> suspendStore(String storeId, String reason) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminStoreSuspend(storeId),
+        body: {'reason': reason},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch all active and inactive marketplace categories
+  Future<List<CategoryModel>> fetchCategories() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.publicCategories);
+      final list = response.containsKey('results') ? response['results'] as List : response as List;
+      return list.map((json) => CategoryModel.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch categories: $e');
+    }
+  }
+
   /// Create a new taxonomy category
-  Future<AdminCategoryModel?> createCategory(AdminCategoryModel category) async {
+  Future<CategoryModel?> createCategory(CategoryModel category) async {
     try {
       final response = await _apiClient.post(
         ApiEndpoints.adminCategories,
         body: category.toJson(),
       );
-      return AdminCategoryModel.fromJson(response);
+      return CategoryModel.fromJson(response);
     } catch (e) {
       return null;
     }
@@ -106,6 +200,19 @@ class AdminApiRepository {
       return (response['status_code'] as int? ?? 200) <= 204;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Moderate a product
+  Future<AdminProductModel> moderateProduct(String id, String action, String remarks) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiEndpoints.adminProducts}$id/$action/',
+        body: {'admin_remarks': remarks},
+      );
+      return AdminProductModel.fromJson(response);
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -202,6 +309,45 @@ class AdminApiRepository {
   Future<bool> deleteReview(String id) async {
     try {
       final response = await _apiClient.delete(ApiEndpoints.adminReviewDetail(id));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Approve a customer review — makes it publicly visible
+  Future<bool> approveReview(String id) async {
+    try {
+      final response = await _apiClient.patch(
+        ApiEndpoints.adminReviewDetail(id),
+        body: {'status': 'APPROVED'},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Reject a customer review — hides it from public
+  Future<bool> rejectReview(String id) async {
+    try {
+      final response = await _apiClient.patch(
+        ApiEndpoints.adminReviewDetail(id),
+        body: {'status': 'REJECTED'},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Hide a previously approved review
+  Future<bool> hideReview(String id) async {
+    try {
+      final response = await _apiClient.patch(
+        ApiEndpoints.adminReviewDetail(id),
+        body: {'status': 'HIDDEN'},
+      );
       return (response['status_code'] as int? ?? 200) <= 204;
     } catch (e) {
       return false;

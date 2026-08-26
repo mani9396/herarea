@@ -1,6 +1,6 @@
 import re
 from rest_framework import serializers
-from apps.accounts.models import User, UserRole
+from apps.accounts.models import User, UserRole, GenderChoices
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -101,8 +101,8 @@ class CustomerRegisterCompleteSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, validators=[_validate_password_strength])
     confirm_password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=200, help_text="Customer's full display name")
-    locality = serializers.CharField(max_length=300, required=False, allow_blank=True,
-                                     help_text="Customer's primary discovery locality")
+    date_of_birth = serializers.DateField(required=True, help_text="Customer's date of birth")
+    gender = serializers.ChoiceField(choices=GenderChoices.choices, required=True, help_text="Customer's gender")
 
     def validate(self, data):
         if data['password'] != data['confirm_password']:
@@ -125,4 +125,15 @@ class PasswordResetCompleteSerializer(serializers.Serializer):
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField(required=False, allow_null=True, help_text="SimpleJWT refresh token to blacklist")
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """Change temporary password to a new one."""
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[_validate_password_strength])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        return data
 

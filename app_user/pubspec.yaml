@@ -42,6 +42,8 @@ dependencies:
   geolocator: ^14.0.3
   geocoding: ^5.0.0
   dio: ^5.11.0
+  share_plus: ^13.3.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -94,4 +96,4 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # see https://flutter.dev/to/font-from-package  

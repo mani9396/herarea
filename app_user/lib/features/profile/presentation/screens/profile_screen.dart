@@ -199,6 +199,14 @@ class ProfileScreen extends ConsumerWidget {
                         const Divider(height: 1),
                         _buildMenuTile(
                           context,
+                          icon: Icons.history_rounded,
+                          title: 'Recently Viewed Stores',
+                          subtitle: 'Your browsing history of boutiques',
+                          onTap: () => context.push(RoutePaths.recentlyViewed),
+                        ),
+                        const Divider(height: 1),
+                        _buildMenuTile(
+                          context,
                           icon: Icons.tune_rounded,
                           title: 'Personalized Style Interests',
                           subtitle: 'Sarees, Maggam, Tailoring & Bridal makeup',

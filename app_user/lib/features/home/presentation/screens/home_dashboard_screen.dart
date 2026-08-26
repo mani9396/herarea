@@ -14,6 +14,7 @@ class HomeDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final storesAsync = ref.watch(nearbyStoresProvider);
     final bannersAsync = ref.watch(promoBannersProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
     final userLocation = ref.watch(userLocationProvider);
 
     return Scaffold(
@@ -41,9 +42,9 @@ class HomeDashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Hi, Priya ✨',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          Text(
+                            'Hi, ${ref.watch(userProfileProvider).name.isNotEmpty ? ref.watch(userProfileProvider).name.split(' ').first : 'Guest'} ✨',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           GestureDetector(
                             onTap: () => _showLocationChangeDialog(context, ref),
@@ -165,38 +166,48 @@ class HomeDashboardScreen extends ConsumerWidget {
               ),
 
               // Horizontal Category Pills / Icons
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 100,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: BusinessCategory.values.length,
-                    separatorBuilder: (context, idx) => const SizedBox(width: 16),
-                    itemBuilder: (context, index) {
-                      final cat = BusinessCategory.values[index];
-                      return GestureDetector(
-                        onTap: () => context.go('/categories'),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.blushPink,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppTheme.primaryRuby.withValues(alpha: 0.15)),
-                              ),
-                              child: Icon(cat.iconData, color: AppTheme.primaryRuby, size: 28),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(cat.displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+              categoriesAsync.when(
+                loading: () => const SliverToBoxAdapter(
+                  child: SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
                 ),
+                error: (err, stack) => const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                data: (categories) {
+                  if (categories.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 100,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        separatorBuilder: (context, idx) => const SizedBox(width: 16),
+                        itemBuilder: (context, index) {
+                          final cat = categories[index];
+                          return GestureDetector(
+                            onTap: () => context.go('/categories'),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.blushPink,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppTheme.primaryRuby.withValues(alpha: 0.15)),
+                                  ),
+                                  child: const Icon(Icons.category_rounded, color: AppTheme.primaryRuby, size: 28),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(cat.name.length > 12 ? '${cat.name.substring(0, 10)}..' : cat.name, 
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
               ),
 
               // Verified Neighborhood Stores Header
@@ -279,8 +290,8 @@ class HomeDashboardScreen extends ConsumerWidget {
                   Slider(
                     value: radius,
                     min: 1.0,
-                    max: 50.0,
-                    divisions: 49,
+                    max: 25.0,
+                    divisions: 24,
                     activeColor: AppTheme.primaryRuby,
                     onChanged: (val) {
                       ref.read(nearbyRadiusProvider.notifier).state = val;

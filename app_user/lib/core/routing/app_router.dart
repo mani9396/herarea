@@ -17,6 +17,7 @@ import 'package:her_area/features/store/presentation/screens/store_details_scree
 import 'package:her_area/features/search/presentation/screens/search_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/profile_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/favorites_screen.dart';
+import 'package:her_area/features/profile/presentation/screens/recently_viewed_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/notifications_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/settings_screen.dart';
@@ -31,6 +32,10 @@ final appRouter = GoRouter(
     GoRoute(path: RoutePaths.login, builder: (context, state) => const LoginScreen()),
     GoRoute(path: RoutePaths.signup, builder: (context, state) => const SignupScreen()),
     GoRoute(path: RoutePaths.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
+    GoRoute(
+      path: RoutePaths.recentlyViewed,
+      builder: (context, state) => const RecentlyViewedScreen(),
+    ),
     GoRoute(
       path: RoutePaths.resetPassword, 
       builder: (context, state) {

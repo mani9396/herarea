@@ -4,21 +4,31 @@ class VendorProductModel {
   final String id;
   final String title;
   final String category;
+  final String? categoryName;
+  final String? subcategory;
   final num price;
-  final bool inStock;
+  final bool isAvailable;
   final String imageUrl;
+  final List<String> additionalImages;
   final int ordersCount;
   final String description;
+  final String status;
+  final String? adminRemarks;
 
   const VendorProductModel({
     required this.id,
     required this.title,
     required this.category,
+    this.categoryName,
+    this.subcategory,
     required this.price,
-    required this.inStock,
+    required this.isAvailable,
     required this.imageUrl,
+    this.additionalImages = const [],
     required this.ordersCount,
     required this.description,
+    this.status = 'DRAFT',
+    this.adminRemarks,
   });
 
   factory VendorProductModel.fromJson(Map<String, dynamic> json) {
@@ -26,11 +36,18 @@ class VendorProductModel {
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? json['name'] ?? 'Couture Item',
       category: json['category'] ?? json['category_name'] ?? 'Boutique Exclusive',
-      price: (json['price'] as num?) ?? 4500,
-      inStock: json['in_stock'] ?? json['is_active'] ?? true,
+      categoryName: json['category_name'],
+      subcategory: json['subcategory'],
+      price: (json['price'] != null) ? (num.tryParse(json['price'].toString()) ?? 4500) : 4500,
+      isAvailable: (json['stock_status'] != 'OUT_OF_STOCK') && (json['is_active'] ?? true),
       imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600',
+      additionalImages: json['additional_images'] != null
+          ? List<String>.from(json['additional_images'] as Iterable)
+          : const [],
       ordersCount: (json['orders_count'] as num?)?.toInt() ?? (json['bookings_count'] as num?)?.toInt() ?? 0,
       description: json['description'] ?? 'Handmade artisan apparel.',
+      status: json['status'] ?? 'DRAFT',
+      adminRemarks: json['admin_remarks'],
     );
   }
 
@@ -38,33 +55,49 @@ class VendorProductModel {
     return {
       'id': id,
       'title': title,
+      'name': title,
       'category': category,
+      'subcategory': subcategory,
       'price': price,
-      'in_stock': inStock,
+      'stock_status': isAvailable ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      'is_active': isAvailable,
       'image_url': imageUrl,
+      'additional_images': additionalImages,
       'orders_count': ordersCount,
       'description': description,
+      'status': status,
+      'admin_remarks': adminRemarks,
     };
   }
 
   VendorProductModel copyWith({
     String? title,
     String? category,
+    String? categoryName,
+    String? subcategory,
     num? price,
-    bool? inStock,
+    bool? isAvailable,
     String? imageUrl,
+    List<String>? additionalImages,
     int? ordersCount,
     String? description,
+    String? status,
+    String? adminRemarks,
   }) {
     return VendorProductModel(
       id: id,
       title: title ?? this.title,
       category: category ?? this.category,
+      categoryName: categoryName ?? this.categoryName,
+      subcategory: subcategory ?? this.subcategory,
       price: price ?? this.price,
-      inStock: inStock ?? this.inStock,
+      isAvailable: isAvailable ?? this.isAvailable,
       imageUrl: imageUrl ?? this.imageUrl,
+      additionalImages: additionalImages ?? this.additionalImages,
       ordersCount: ordersCount ?? this.ordersCount,
       description: description ?? this.description,
+      status: status ?? this.status,
+      adminRemarks: adminRemarks ?? this.adminRemarks,
     );
   }
 }
@@ -238,14 +271,16 @@ class VendorCustomerReviewModel {
   });
 
   factory VendorCustomerReviewModel.fromJson(Map<String, dynamic> json) {
+    final rawDate = json['created_at']?.toString() ?? json['date_text'] ?? json['date'] ?? '';
+    final dateDisplay = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
     return VendorCustomerReviewModel(
       id: json['id']?.toString() ?? '',
-      customerName: json['customer_name'] ?? json['user_name'] ?? json['name'] ?? 'Verified Bride',
-      avatarUrl: json['avatar_url'] ?? json['user_avatar_url'] ?? json['avatar'] ?? 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=200&auto=format&fit=crop',
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
-      dateText: json['date_text'] ?? json['date'] ?? 'Recently',
-      comment: json['comment'] ?? 'Exquisite artisan craftsmanship and prompt service.',
-      verified: json['verified'] ?? true,
+      customerName: json['customer_name'] ?? json['user_name'] ?? json['name'] ?? 'Customer',
+      avatarUrl: json['avatar_url'] ?? json['user_avatar_url'] ?? json['avatar'] ?? '',
+      rating: (json['rating'] != null) ? (num.tryParse(json['rating'].toString())?.toDouble() ?? 5.0) : 5.0,
+      dateText: dateDisplay.isEmpty ? 'Recently' : dateDisplay,
+      comment: json['comment'] ?? '',
+      verified: json['is_verified_visit'] ?? json['verified'] ?? false,
       vendorReply: json['vendor_reply'] ?? json['reply'],
     );
   }

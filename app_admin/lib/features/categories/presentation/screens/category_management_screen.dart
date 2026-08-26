@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_admin/core/state/admin_providers.dart';
-import 'package:app_admin/domain/models/admin_models.dart';
+import 'package:shared/models/category_model.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/widgets/custom_button.dart';
@@ -15,16 +15,15 @@ class CategoryManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScreen> {
-  void _showAddOrEditDialog({AdminCategoryModel? existing}) {
+  void _showAddOrEditDialog({CategoryModel? existing, CategoryModel? parent}) {
     final titleController = TextEditingController(text: existing?.name ?? '');
-    final countController = TextEditingController(text: existing?.vendorCount.toString() ?? '0');
-    final iconController = TextEditingController(text: existing?.iconName ?? 'brush');
+    final iconController = TextEditingController(text: existing?.iconUrl ?? 'brush');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(existing == null ? 'Create New Taxonomy Category ✨' : 'Edit Marketplace Category ✏️', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(existing == null ? (parent == null ? 'Create New Category ✨' : 'Create Subcategory ✨') : 'Edit Category ✏️', style: const TextStyle(fontWeight: FontWeight.bold)),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
           child: SingleChildScrollView(
@@ -36,17 +35,12 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                   controller: titleController,
                   decoration: const InputDecoration(labelText: 'Category Title (e.g. Designer Footwear)', border: OutlineInputBorder()),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: countController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Assigned Partner Studios Count', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: iconController,
-                  decoration: const InputDecoration(labelText: 'Material Icon Name', hintText: 'brush, auto_awesome, design_services', border: OutlineInputBorder()),
-                ),
+                if (parent == null) ...[
+                  TextField(
+                    controller: iconController,
+                    decoration: const InputDecoration(labelText: 'Material Icon Name', hintText: 'brush, face, diamond', border: OutlineInputBorder()),
+                  ),
+                ],
               ],
             ),
           ),
@@ -59,22 +53,23 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
               if (titleController.text.isEmpty) return;
               final notif = ref.read(adminCategoriesProvider.notifier);
               final allCats = ref.read(adminCategoriesProvider);
-              final vendorCnt = int.tryParse(countController.text.trim()) ?? 0;
 
               if (existing == null) {
-                notif.addCategory(AdminCategoryModel(
-                  id: 'CAT-${DateTime.now().millisecondsSinceEpoch}',
+                // TODO: For subcategories, API should accept parent_category
+                // Right now we'll just optimistically update or depend on API
+                notif.addCategory(CategoryModel(
+                  id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
                   name: titleController.text.trim(),
-                  iconName: iconController.text.trim(),
-                  vendorCount: vendorCnt,
+                  slug: titleController.text.trim().toLowerCase().replaceAll(' ', '-'),
+                  iconUrl: parent == null ? iconController.text.trim() : null,
                   displayOrder: allCats.length + 1,
                   isActive: true,
+                  subcategories: const [],
                 ));
               } else {
                 notif.updateCategory(existing.copyWith(
                   name: titleController.text.trim(),
-                  iconName: iconController.text.trim(),
-                  vendorCount: vendorCnt,
+                  iconUrl: parent == null ? iconController.text.trim() : existing.iconUrl,
                 ));
               }
               Navigator.pop(ctx);
@@ -87,12 +82,12 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     );
   }
 
-  void _onToggleActive(AdminCategoryModel cat) {
+  void _onToggleActive(CategoryModel cat) {
     ref.read(adminCategoriesProvider.notifier).updateCategory(cat.copyWith(isActive: !cat.isActive));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${cat.name} visibility toggled to ${!cat.isActive ? "ACTIVE" : "HIDDEN"}.')));
   }
 
-  void _onDelete(AdminCategoryModel cat) {
+  void _onDelete(CategoryModel cat) {
     ref.read(adminCategoriesProvider.notifier).deleteCategory(cat.id);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${cat.name} removed from global marketplace classification.')));
   }
@@ -139,7 +134,7 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, AdminCategoryModel cat, int index, int total) {
+  Widget _buildCategoryCard(BuildContext context, CategoryModel cat, int index, int total) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -170,7 +165,7 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
             CircleAvatar(
               radius: 26,
               backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.12),
-              child: Icon(_mapIcon(cat.iconName), color: AppColors.primaryRuby, size: 28),
+              child: Icon(_mapIcon(cat.iconUrl ?? 'category'), color: AppColors.primaryRuby, size: 28),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -189,9 +184,9 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('Active Partner Studios: ${cat.vendorCount} boutiques', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text('${cat.subcategories.length} Subcategories', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 4),
-                  Text('Icon Reference: ${cat.iconName}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                  Text('Icon Reference: ${cat.iconUrl ?? "none"}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                 ],
               ),
             ),

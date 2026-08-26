@@ -21,18 +21,18 @@ class _OfferModerationScreenState extends ConsumerState<OfferModerationScreen> {
 
   void _onApprove(AdminOfferModel o) {
     ref.read(adminOffersProvider.notifier).approveOffer(o.id);
-    ref.read(adminActivityLogProvider.notifier).logActivity('Approved promotional coupon [${o.code}] for ${o.vendorName}');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Activated promotional coupon [${o.code}].')));
+    ref.read(adminActivityLogProvider.notifier).logActivity('Approved promotional coupon [${o.promoCode}] for ${o.vendorName}');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Activated promotional coupon [${o.promoCode}].')));
   }
 
   void _onReject(AdminOfferModel o) {
     ref.read(adminOffersProvider.notifier).rejectOffer(o.id);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rejected coupon proposal [${o.code}].')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rejected coupon proposal [${o.promoCode}].')));
   }
 
   void _onExpire(AdminOfferModel o) {
     ref.read(adminOffersProvider.notifier).expireOffer(o.id);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Force expired promotion [${o.code}].')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Force expired promotion [${o.promoCode}].')));
   }
 
   @override
@@ -115,21 +115,22 @@ class _OfferModerationScreenState extends ConsumerState<OfferModerationScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: AppColors.primaryRuby, borderRadius: BorderRadius.circular(8)),
-                        child: Text(o.code, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
-                      ),
+                      if (o.promoCode.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: AppColors.primaryRuby, borderRadius: BorderRadius.circular(8)),
+                          child: Text(o.promoCode, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2)),
+                        ),
                       const SizedBox(width: 12),
                       AdminStatusChip(status: o.status),
                       const Spacer(),
-                      Text('${o.discountPercentage}% OFF', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.green)),
+                      Text(o.discountValue, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.green)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(o.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.neutralCharcoal)),
                   const SizedBox(height: 4),
-                  Text('Vendor: ${o.vendorName} • Valid Until: ${o.validUntil}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  Text('Vendor: ${o.vendorName} • Valid Until: ${o.endDate}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                 ],
               ),
             ),

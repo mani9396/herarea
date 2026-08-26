@@ -31,7 +31,7 @@ class StoreCard extends ConsumerWidget {
                   width: double.infinity,
                   color: Colors.grey.shade200,
                   child: Image.network(
-                    store.imageUrls.isNotEmpty ? store.imageUrls.first : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80',
+                    store.gallery.isNotEmpty ? store.gallery.first.image : 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80',
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.storefront, size: 50, color: Colors.grey)),
                   ),
@@ -93,7 +93,7 @@ class StoreCard extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          store.category.displayName,
+                          store.category.name,
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.neutralCharcoal),
                         ),
                       ),
@@ -132,16 +132,22 @@ class StoreCard extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 18, color: AppTheme.accentGold),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${store.rating}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      Text(
-                        ' (${store.reviewCount} reviews)',
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                      ),
+                      if (store.reviewCount > 0) ...[
+                        const Icon(Icons.star_rounded, size: 18, color: AppTheme.accentGold),
+                        const SizedBox(width: 4),
+                        Text(
+                          store.rating.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        Text(
+                          ' (${store.reviewCount} ${store.reviewCount == 1 ? 'review' : 'reviews'})',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                      ] else
+                        Text(
+                          'No reviews yet',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                        ),
                       const Spacer(),
                       Icon(Icons.location_on_rounded, size: 16, color: Colors.grey.shade600),
                       Text(

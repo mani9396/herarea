@@ -53,7 +53,7 @@ class ProductDetailsScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
-                    VendorStatusChip(label: prod.inStock ? 'Active & Listed' : 'Hidden / Out of Stock', backgroundColor: (prod.inStock ? Colors.green : Colors.grey).withValues(alpha: 0.15), textColor: prod.inStock ? Colors.green[800]! : Colors.grey),
+                    VendorStatusChip(label: prod.isAvailable ? 'Available' : 'Out of Stock', backgroundColor: (prod.isAvailable ? Colors.green : Colors.grey).withValues(alpha: 0.15), textColor: prod.isAvailable ? Colors.green[800]! : Colors.grey),
                     const SizedBox(width: AppSpacing.md),
                     Text('Total Inquiries: ${prod.ordersCount}', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.accentGoldDark)),
                   ],

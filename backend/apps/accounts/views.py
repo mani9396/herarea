@@ -14,9 +14,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from apps.accounts.models import User, UserRole
 from apps.accounts.serializers import (
-    UserSerializer, OtpSendSerializer, OtpVerifySerializer, LogoutSerializer,
     CustomerLoginSerializer, CustomerRegisterCompleteSerializer,
-    OtpVerifyForPurposeSerializer, PasswordResetCompleteSerializer
+    OtpVerifyForPurposeSerializer, PasswordResetCompleteSerializer,
+    PasswordChangeSerializer, OtpSendSerializer, OtpVerifySerializer,
+    LogoutSerializer, UserSerializer
 )
 from apps.accounts.permissions import IsCustomerRole, IsVendorRole, IsAdminRole, IsSuperAdminRole
 
@@ -348,6 +349,7 @@ class CustomerLoginView(APIView):
             "user_id": str(user.id),
             "role": user.role,
             "is_new_user": False,
+            "must_change_password": user.must_change_password
         }, status=status.HTTP_200_OK)
 
 
@@ -416,6 +418,8 @@ class CustomerRegisterCompleteView(APIView):
         email = serializer.validated_data['email'].lower().strip()
         password = serializer.validated_data['password']
         full_name = serializer.validated_data['full_name']
+        date_of_birth = serializer.validated_data['date_of_birth']
+        gender = serializer.validated_data['gender']
         
         verified_key = f"verified_reg_{hashlib.md5(email.encode()).hexdigest()}"
         if not cache.get(verified_key):
@@ -430,6 +434,8 @@ class CustomerRegisterCompleteView(APIView):
                 phone_number=dummy_phone,
                 role=UserRole.CUSTOMER,
                 full_name=full_name,
+                date_of_birth=date_of_birth,
+                gender=gender,
                 is_verified=True,
             )
             user.set_password(password)
@@ -440,6 +446,8 @@ class CustomerRegisterCompleteView(APIView):
                 return Response({"error": "Account exists with a different role."}, status=status.HTTP_400_BAD_REQUEST)
             user.set_password(password)
             user.full_name = full_name
+            user.date_of_birth = date_of_birth
+            user.gender = gender
             user.is_verified = True
             user.save()
             
@@ -534,6 +542,34 @@ class PasswordResetCompleteView(APIView):
         cache.delete(token_key)
         
         logger.info(f"Customer {user.id} password reset completed.")
+        return Response({"success": True, "message": "Password updated successfully."}, status=status.HTTP_200_OK)
+
+class VendorForcePasswordChangeView(APIView):
+    """
+    Force password change for Vendor on first login.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsVendorRole]
+
+    @extend_schema(
+        summary="Vendor Force Password Change",
+        request=PasswordChangeSerializer,
+        responses={200: OpenApiResponse(description="Password changed successfully.")}
+    )
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        
+        # Verify old password
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response({"error": "Incorrect temporary password."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        user.set_password(serializer.validated_data['new_password'])
+        user.must_change_password = False
+        user.save()
+        
+        logger.info(f"Vendor {user.id} successfully changed their temporary password.")
         return Response({"success": True, "message": "Password updated successfully."}, status=status.HTTP_200_OK)
 
 

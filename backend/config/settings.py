@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'apps.interactions',
     'apps.notifications',
     'apps.operations',
+    'apps.subscriptions',
 ]
 
 MIDDLEWARE = [
@@ -86,13 +87,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
+# Razorpay Configuration
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
+
 # Database Architecture: PostgreSQL + PostGIS with test / fallback SQLite engine
 # Database Configuration (Local PostgreSQL)
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'herarea',
+        'NAME': 'herarea2',
         'USER': 'postgres',
         'PASSWORD': '9396',
         'HOST': '127.0.0.1',
@@ -169,8 +174,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,

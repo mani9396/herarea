@@ -13,6 +13,7 @@ from apps.accounts.views import (
     VendorRoleVerificationView,
     AdminRoleVerificationView,
     SuperAdminRoleVerificationView,
+    VendorForcePasswordChangeView,
 )
 
 urlpatterns = [
@@ -25,6 +26,8 @@ urlpatterns = [
     path('otp/verify-purpose/', OtpVerifyForPurposeView.as_view(), name='auth-otp-verify-purpose'),
     path('register/', CustomerRegisterCompleteView.as_view(), name='auth-customer-register'),
     path('password-reset/', PasswordResetCompleteView.as_view(), name='auth-password-reset'),
+    
+    path('vendor/force-password-change/', VendorForcePasswordChangeView.as_view(), name='auth-vendor-force-password-change'),
     
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),

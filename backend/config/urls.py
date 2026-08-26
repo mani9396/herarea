@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
@@ -18,6 +20,7 @@ urlpatterns = [
     path('api/v1/vendor/catalog/', include('apps.catalog.vendor_urls')),
     path('api/v1/business/', include('apps.business.urls')),
     path('api/v1/admin/vendors/', include('apps.vendors.admin_urls')),
+    path('api/v1/admin/business/', include('apps.business.admin_urls')),
     path('api/v1/admin/categories/', include('apps.categories.admin_urls')),
     path('api/v1/admin/', include('apps.catalog.admin_urls')),
     path('api/v1/admin/', include('apps.accounts.admin_urls')),
@@ -35,4 +38,9 @@ urlpatterns = [
     path('api/v1/', include('apps.operations.customer_urls')),
     path('api/v1/vendor/', include('apps.operations.vendor_urls')),
     path('api/v1/admin/', include('apps.operations.admin_urls')),
+    path('api/v1/admin/subscriptions/', include('apps.subscriptions.admin_urls')),
+    path('api/v1/subscriptions/', include('apps.subscriptions.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

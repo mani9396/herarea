@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 
 /// State representing user theme preference (True for Midnight Dark Mode, False for Luxury Light Mode)
 final themeModeProvider = StateProvider<bool>((ref) => false);
@@ -16,10 +18,72 @@ final discoveryRadiusProvider = StateProvider<double>((ref) => 5.0);
 final pushNotificationsProvider = StateProvider<bool>((ref) => true);
 final promotionalAlertsProvider = StateProvider<bool>((ref) => true);
 
-/// State representing active location lock coordinates (default Jubilee Hills, Hyderabad)
-final userLocationProvider = StateProvider<UserLocationState>((ref) {
-  return const UserLocationState(latitude: 17.4326, longitude: 78.4071, cityName: 'Jubilee Hills, Hyd');
+final userLocationProvider = StateNotifierProvider<UserLocationNotifier, UserLocationState>((ref) {
+  return UserLocationNotifier();
 });
+
+class UserLocationNotifier extends StateNotifier<UserLocationState> {
+  UserLocationNotifier() : super(const UserLocationState(latitude: 0.0, longitude: 0.0, cityName: 'Locating...')) {
+    fetchLocation();
+  }
+
+  Future<void> fetchLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          state = state.copyWith(cityName: 'Location Required');
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        state = state.copyWith(cityName: 'Location Required');
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      String areaName = 'Unknown Area';
+      try {
+        final dio = Dio();
+        final response = await dio.get(
+          'https://nominatim.openstreetmap.org/reverse',
+          queryParameters: {
+            'lat': position.latitude,
+            'lon': position.longitude,
+            'format': 'json',
+          },
+        );
+        if (response.statusCode == 200) {
+          final address = response.data['address'];
+          if (address != null) {
+            final subLocality = address['suburb'] ?? address['neighbourhood'] ?? address['sublocality'] ?? '';
+            final locality = address['city'] ?? address['town'] ?? address['county'] ?? '';
+            if (subLocality.isNotEmpty && locality.isNotEmpty) {
+              areaName = '$subLocality, $locality';
+            } else if (locality.isNotEmpty) {
+              areaName = locality;
+            } else if (subLocality.isNotEmpty) {
+              areaName = subLocality;
+            }
+          }
+        }
+      } catch (_) {}
+
+      state = UserLocationState(latitude: position.latitude, longitude: position.longitude, cityName: areaName);
+    } catch (_) {}
+  }
+
+  void setLocation(UserLocationState location) {
+    state = location;
+  }
+}
 
 class UserLocationState {
   final double latitude;

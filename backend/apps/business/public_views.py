@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.business.models import BusinessProfile
 from apps.business.serializers import PublicStoreShowroomSerializer
 from apps.vendors.models import VendorStatus
+from apps.business.models import StoreStatus
 
 logger = logging.getLogger('her_area')
 
@@ -30,7 +31,11 @@ class PublicStoreListView(APIView):
         responses={200: PublicStoreShowroomSerializer(many=True)}
     )
     def get(self, request):
-        showrooms = BusinessProfile.objects.filter(vendor__status=VendorStatus.APPROVED).select_related('category', 'vendor')
+        showrooms = BusinessProfile.objects.filter(
+            vendor__status=VendorStatus.APPROVED,
+            status=StoreStatus.PUBLISHED,
+            subscriptions__status='ACTIVE'
+        ).distinct().select_related('category', 'vendor')
 
         category_id = request.query_params.get('category')
         if category_id:
@@ -59,7 +64,9 @@ class PublicStoreDetailView(APIView):
         try:
             showroom = BusinessProfile.objects.select_related('category', 'vendor').get(
                 pk=pk, 
-                vendor__status=VendorStatus.APPROVED
+                vendor__status=VendorStatus.APPROVED,
+                status=StoreStatus.PUBLISHED,
+                subscriptions__status='ACTIVE'
             )
         except BusinessProfile.DoesNotExist:
             raise exceptions.NotFound("Showroom not found, or partner studio has not completed Admin clearance.")
@@ -104,9 +111,11 @@ class PublicStoreNearbyView(APIView):
         # Base filter: Only approved vendors with valid coordinates
         showrooms = BusinessProfile.objects.filter(
             vendor__status=VendorStatus.APPROVED,
+            status=StoreStatus.PUBLISHED,
+            subscriptions__status='ACTIVE',
             latitude__isnull=False,
             longitude__isnull=False
-        ).select_related('category', 'vendor')
+        ).distinct().select_related('category', 'vendor')
 
         category_id = request.query_params.get('category')
         if category_id:

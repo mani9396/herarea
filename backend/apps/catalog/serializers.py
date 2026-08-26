@@ -10,12 +10,12 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'item_type', 'category', 'category_name', 'store_id', 'store_name', 'store_city', 
+            'id', 'item_type', 'category', 'subcategory', 'category_name', 'store_id', 'store_name', 'store_city', 
             'name', 'description', 'price', 'discounted_price', 
-            'stock_status', 'service_duration_minutes', 'image_url', 'is_featured', 'is_active', 
-            'created_at', 'updated_at'
+            'stock_status', 'service_duration_minutes', 'image_url', 'additional_images', 'is_featured', 'is_active', 
+            'status', 'admin_remarks', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'store_id', 'store_name', 'store_city', 'category_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'store_id', 'store_name', 'store_city', 'category_name', 'status', 'admin_remarks', 'created_at', 'updated_at']
 
 
 class GalleryImageSerializer(serializers.ModelSerializer):
@@ -28,8 +28,8 @@ class GalleryImageSerializer(serializers.ModelSerializer):
 class OfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Offer
-        fields = ['id', 'title', 'promo_code', 'description', 'discount_percentage', 'valid_until', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'title', 'promo_code', 'description', 'offer_type', 'discount_value', 'start_date', 'end_date', 'status', 'admin_remarks', 'created_at']
+        read_only_fields = ['id', 'admin_remarks', 'created_at']
 
 
 class PublicPromotionSerializer(serializers.ModelSerializer):
@@ -39,7 +39,7 @@ class PublicPromotionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Offer
-        fields = ['id', 'title', 'promo_code', 'description', 'discount_percentage', 'valid_until', 'is_active', 'image_url', 'store_id', 'store_name', 'created_at']
+        fields = ['id', 'title', 'promo_code', 'description', 'offer_type', 'discount_value', 'start_date', 'end_date', 'status', 'image_url', 'store_id', 'store_name', 'created_at']
         read_only_fields = ['id', 'created_at', 'image_url', 'store_id', 'store_name']
 
     def get_image_url(self, obj) -> str:

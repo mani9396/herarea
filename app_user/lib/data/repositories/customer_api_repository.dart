@@ -34,11 +34,11 @@ class CustomerApiRepository implements IStoreRepository {
   }
 
   @override
-  Future<List<StoreModel>> getStoresByCategory(BusinessCategory category) async {
+  Future<List<StoreModel>> getStoresByCategory(String categorySlug) async {
     try {
       final response = await _apiClient.get(
         ApiEndpoints.publicStores,
-        queryParameters: {'category': category.name},
+        queryParameters: {'category': categorySlug},
       );
       if (response is List) {
         return (response as List).map((json) => StoreModel.fromJson(json as Map<String, dynamic>)).toList();
@@ -89,6 +89,16 @@ class CustomerApiRepository implements IStoreRepository {
     }
   }
 
+  /// Fetch full store dossier including catalog and offers
+  Future<Map<String, dynamic>?> getStoreDossier(String storeId) async {
+    try {
+      final response = await _apiClient.get('/api/v1/products/store/$storeId/dossier/');
+      return response as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Submit bespoke consultation appointment booking request to studio partner
   Future<BookingModel?> bookAppointment(BookingModel booking) async {
     try {
@@ -132,7 +142,14 @@ class CustomerApiRepository implements IStoreRepository {
   Future<List<String>> getPromoBanners() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicPromotions);
-      if (response['results'] is List) {
+      if (response is List) {
+        final list = response as List;
+        final urls = list
+            .map((item) => (item as Map<String, dynamic>)['image_url']?.toString() ?? '')
+            .where((url) => url.isNotEmpty)
+            .toList();
+        if (urls.isNotEmpty) return urls;
+      } else if (response is Map<String, dynamic> && response['results'] is List) {
         final list = response['results'] as List;
         final urls = list
             .map((item) => (item as Map<String, dynamic>)['image_url']?.toString() ?? '')
@@ -143,23 +160,21 @@ class CustomerApiRepository implements IStoreRepository {
     } catch (_) {}
     try {
       final stores = await getNearbyStores(15.0);
-      final urls = stores.map((s) => s.imageUrls.isNotEmpty ? s.imageUrls.first : '').where((url) => url.isNotEmpty).toList();
+      final urls = stores.map((s) => s.gallery.isNotEmpty ? s.gallery.first.image : '').where((url) => url.isNotEmpty).toList();
       if (urls.isNotEmpty) return urls;
     } catch (_) {}
     return [];
   }
 
   /// Retrieve active catalog categories
-  Future<List<String>> getCategories() async {
+  Future<List<CategoryModel>> getCategories() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicCategories);
-      if (response['results'] is List) {
-        final list = response['results'] as List;
-        final cats = list
-            .map((item) => (item as Map<String, dynamic>)['name']?.toString() ?? '')
-            .where((name) => name.isNotEmpty)
-            .toList();
-        if (cats.isNotEmpty) return cats;
+      if (response is List) {
+        final list = response as List;
+        return list.map((item) => CategoryModel.fromJson(item as Map<String, dynamic>)).toList();
+      } else if (response is Map<String, dynamic> && response['results'] is List) {
+        return (response['results'] as List).map((item) => CategoryModel.fromJson(item as Map<String, dynamic>)).toList();
       }
     } catch (_) {}
     return [];
@@ -169,55 +184,127 @@ class CustomerApiRepository implements IStoreRepository {
   Future<List<String>> getFavoriteStoreIds() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.customerFavorites);
-      if (response['results'] is List) {
-        final list = response['results'] as List;
-        return list.map((item) {
-          final map = item as Map<String, dynamic>;
-          if (map['store'] != null) return map['store'].toString();
-          if (map['store_details'] != null) {
-            return (map['store_details'] as Map<String, dynamic>)['id']?.toString() ?? '';
-          }
-          return '';
-        }).where((id) => id.isNotEmpty).toList();
+      List<dynamic> list = [];
+      if (response is List) {
+        list = response as List;
+      } else if (response is Map<String, dynamic> && response['results'] is List) {
+        list = response['results'] as List;
       }
-    } catch (_) {}
-    return [];
-  }
-
-  /// Fetch customer reviews for a specific showroom
-  Future<List<ReviewModel>> getStoreReviews(String storeId) async {
-    try {
-      final response = await _apiClient.get(ApiEndpoints.storeReviews(storeId));
-      if (response['reviews'] is List) {
-        final list = response['reviews'] as List;
-        return list.map((e) => ReviewModel.fromJson(e as Map<String, dynamic>)).toList();
-      } else if (response['results'] is List) {
-        final list = response['results'] as List;
-        return list.map((e) => ReviewModel.fromJson(e as Map<String, dynamic>)).toList();
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  /// Submit a customer review for a showroom
-  Future<ReviewModel?> submitReview(String storeId, {required double rating, required String comment, String title = ''}) async {
-    try {
-      final response = await _apiClient.post(
-        ApiEndpoints.storeReviews(storeId),
-        body: {
-          'rating': rating,
-          'comment': comment,
-          'title': title.isEmpty ? 'Customer Review' : title,
-        },
-      );
-      if ((response['status_code'] as int? ?? 200) <= 201) {
-        if (response['review'] is Map<String, dynamic>) {
-          return ReviewModel.fromJson(response['review'] as Map<String, dynamic>);
+      
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        if (map['store'] != null && map['store'] is String) return map['store'].toString();
+        if (map['store_details'] != null) {
+          return (map['store_details'] as Map<String, dynamic>)['id']?.toString() ?? '';
         }
-        return ReviewModel.fromJson(response);
+        return '';
+      }).where((id) => id.isNotEmpty).toList();
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetch authenticated customer's recently viewed store IDs
+  Future<List<String>> getRecentlyViewedStoreIds() async {
+    try {
+      final response = await _apiClient.get('/api/v1/interactions/recently-viewed/');
+      List<dynamic> list = [];
+      if (response is List) {
+        list = response as List;
+      } else if (response is Map<String, dynamic> && response['results'] is List) {
+        list = response['results'] as List;
+      }
+      
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        if (map['store'] != null && map['store'] is String) return map['store'].toString();
+        if (map['store_details'] != null) {
+          return (map['store_details'] as Map<String, dynamic>)['id']?.toString() ?? '';
+        }
+        return '';
+      }).where((id) => id.isNotEmpty).toList();
+    } catch (_) {}
+    return [];
+  }
+
+  /// Log a store view
+  Future<bool> logStoreView(String storeId) async {
+    try {
+      final response = await _apiClient.post('/api/v1/interactions/recently-viewed/$storeId/');
+      return (response['status_code'] as int? ?? 201) <= 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Verify a physical store visit using the customer's current GPS location.
+  /// Backend is authoritative: returns VERIFIED if within 100m.
+  Future<Map<String, dynamic>> verifyStoreVisit(
+    String storeId, {
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.storeVisit(storeId),
+      body: {'latitude': latitude, 'longitude': longitude},
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// Fetch public approved reviews for a store, plus avg rating/count from meta.
+  Future<Map<String, dynamic>> getStoreReviews(String storeId) async {
+    final response = await _apiClient.get(ApiEndpoints.storeReviews(storeId));
+    return response as Map<String, dynamic>;
+  }
+
+  /// Submit a new customer review after a verified visit.
+  Future<Map<String, dynamic>> submitReview(
+    String storeId, {
+    required int rating,
+    required String comment,
+    String title = '',
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.storeReviews(storeId),
+      body: {
+        'rating': rating,
+        'comment': comment,
+        if (title.isNotEmpty) 'title': title,
+      },
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// Fetch the authenticated customer's own review for a store (GET with filter).
+  Future<ReviewModel?> getMyReview(String storeId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiEndpoints.storeReviews(storeId),
+        queryParameters: {'my_review': 'true'},
+      );
+      final data = response as Map<String, dynamic>;
+      if (data['my_review'] is Map) {
+        return ReviewModel.fromJson(data['my_review'] as Map<String, dynamic>);
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Update the customer's own review.
+  Future<Map<String, dynamic>> updateReview(
+    String reviewId, {
+    required int rating,
+    required String comment,
+  }) async {
+    final response = await _apiClient.patch(
+      ApiEndpoints.customerReview(reviewId),
+      body: {'rating': rating, 'comment': comment},
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  /// Delete the customer's own review.
+  Future<void> deleteReview(String reviewId) async {
+    await _apiClient.delete(ApiEndpoints.customerReview(reviewId));
   }
 
   /// Retrieve authenticated customer notifications
@@ -306,7 +393,7 @@ final promoBannersProvider = FutureProvider<List<String>>((ref) async {
   return repo.getPromoBanners();
 });
 
-final categoriesProvider = FutureProvider<List<String>>((ref) async {
+final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
   final repo = ref.read(customerApiRepositoryProvider);
   return repo.getCategories();
 });
@@ -363,3 +450,129 @@ final favoritesProvider = StateNotifierProvider<FavoritesNotifier, Set<String>>(
   final repo = ref.watch(customerApiRepositoryProvider);
   return FavoritesNotifier(repo);
 });
+
+// Recently Viewed Provider
+class RecentlyViewedNotifier extends StateNotifier<List<String>> {
+  final CustomerApiRepository _repository;
+
+  RecentlyViewedNotifier(this._repository) : super([]) {
+    _loadRecentlyViewed();
+  }
+
+  Future<void> _loadRecentlyViewed() async {
+    try {
+      final rvIds = await _repository.getRecentlyViewedStoreIds();
+      if (rvIds.isNotEmpty) {
+        state = rvIds;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> logView(String storeId) async {
+    // Optimistic UI update: move to top or insert at top
+    final currentList = List<String>.from(state);
+    currentList.remove(storeId);
+    currentList.insert(0, storeId);
+    if (currentList.length > 20) {
+      currentList.removeLast();
+    }
+    state = currentList;
+    
+    // Background sync
+    await _repository.logStoreView(storeId);
+  }
+}
+
+final recentlyViewedProvider = StateNotifierProvider<RecentlyViewedNotifier, List<String>>((ref) {
+  final repo = ref.watch(customerApiRepositoryProvider);
+  return RecentlyViewedNotifier(repo);
+});
+
+// ─── Phase 8: Store Visit & Review Providers ─────────────────────────────────
+
+/// State for the current store-visit verification attempt.
+enum VisitStatus { idle, verifying, verified, failed }
+
+class StoreVisitState {
+  final VisitStatus status;
+  final String? errorMessage;
+  final String? visitId;
+
+  const StoreVisitState({
+    this.status = VisitStatus.idle,
+    this.errorMessage,
+    this.visitId,
+  });
+
+  StoreVisitState copyWith({VisitStatus? status, String? errorMessage, String? visitId}) {
+    return StoreVisitState(
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
+      visitId: visitId ?? this.visitId,
+    );
+  }
+}
+
+class StoreVisitNotifier extends StateNotifier<StoreVisitState> {
+  final CustomerApiRepository _repo;
+
+  StoreVisitNotifier(this._repo) : super(const StoreVisitState());
+
+  void reset() => state = const StoreVisitState();
+
+  Future<void> verifyVisit(
+    String storeId, {
+    required double latitude,
+    required double longitude,
+  }) async {
+    state = state.copyWith(status: VisitStatus.verifying, errorMessage: null);
+    try {
+      final result = await _repo.verifyStoreVisit(
+        storeId,
+        latitude: latitude,
+        longitude: longitude,
+      );
+      final visitStatus = result['status']?.toString() ?? '';
+      if (visitStatus == 'VERIFIED') {
+        state = state.copyWith(
+          status: VisitStatus.verified,
+          visitId: result['id']?.toString(),
+        );
+      } else {
+        state = state.copyWith(
+          status: VisitStatus.failed,
+          errorMessage: result['detail']?.toString() ??
+              'Could not verify your visit. Please try again.',
+        );
+      }
+    } catch (e) {
+      // Parse error message from API (e.g. "must be within 100.0m")
+      final msg = e.toString();
+      String displayMsg = 'Please move closer to the store to verify your visit.';
+      if (msg.contains('within')) displayMsg = 'Please move closer to the store to verify your visit.';
+      state = state.copyWith(status: VisitStatus.failed, errorMessage: displayMsg);
+    }
+  }
+}
+
+/// Per-store visit state — auto-reset when storeId changes.
+final storeVisitProvider = StateNotifierProvider.family<StoreVisitNotifier, StoreVisitState, String>(
+  (ref, storeId) {
+    final repo = ref.watch(customerApiRepositoryProvider);
+    return StoreVisitNotifier(repo);
+  },
+);
+
+/// Fetches the approved public reviews + meta (average_rating, review_count) for a store.
+final storeReviewsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, storeId) async {
+  final repo = ref.read(customerApiRepositoryProvider);
+  return repo.getStoreReviews(storeId);
+});
+
+/// Fetches the authenticated customer's own review for a store (nullable).
+final myReviewProvider = FutureProvider.family<ReviewModel?, String>((ref, storeId) async {
+  final repo = ref.read(customerApiRepositoryProvider);
+  return repo.getMyReview(storeId);
+});
+
+

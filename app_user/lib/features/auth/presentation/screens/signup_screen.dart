@@ -14,25 +14,33 @@ class SignupScreen extends ConsumerStatefulWidget {
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _cityController = TextEditingController();
+  final _dobController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  
   bool _isLoading = false;
-  bool _agreedToTerms = true;
-
-  final List<String> _discoveryHubs = [
-    'Jubilee Hills, Hyderabad',
-    'Banjara Hills, Hyderabad',
-    'Madhapur, Hitec City',
-    'Inorbit Road, Cyberabad',
-    'Begumpet & Somajiguda',
-    'Gachibowli Financial District',
-  ];
+  bool _agreedToTerms = false;
+  bool _agreedToPrivacyPolicy = false;
+  
+  String? _selectedGender;
+  DateTime? _selectedDate;
 
   void _onSignup() async {
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please accept the Terms of Service to create your member account.'),
+          content: const Text('Please accept the Terms & Conditions to create your member account.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    if (!_agreedToPrivacyPolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please accept the Privacy Policy to create your member account.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -46,21 +54,25 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       
       final email = _emailController.text.trim();
       final fullName = _nameController.text.trim();
+      final dobStr = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      final gender = _selectedGender == 'Female' ? 'FEMALE' : _selectedGender == 'Male' ? 'MALE' : 'PREFER_NOT_TO_SAY';
+      
       final success = await ref.read(authApiRepositoryProvider).requestOtp(email, role: 'CUSTOMER', purpose: 'REGISTRATION', fullName: fullName);
       
       if (mounted) {
         setState(() => _isLoading = false);
         if (success) {
           ref.read(pendingRegistrationProvider.notifier).state = PendingRegistration(
-            fullName: _nameController.text.trim(),
+            fullName: fullName,
             email: email,
-            locality: _cityController.text.trim(),
+            dateOfBirth: dobStr,
+            gender: gender,
           );
           context.push(RoutePaths.otpVerification, extra: {'purpose': 'REGISTRATION'});
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Failed to send verification email. Please check the address and try again.'),
+            const SnackBar(
+              content: Text('Failed to send verification email. Please check the address and try again.'),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
@@ -70,79 +82,37 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
-  void _showLocalityPicker() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    showModalBottomSheet(
+  Future<void> _selectDateOfBirth() async {
+    final DateTime? picked = await showDatePicker(
       context: context,
-      backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (bottomContext) {
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Select Discovery Locality',
-                    style: theme.textTheme.headlineSmall?.copyWith(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'We use this as your default center when matching you with nearby boutiques.',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight),
-                  ),
-                  const SizedBox(height: 16),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _discoveryHubs.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final hub = _discoveryHubs[index];
-                        final isSelected = _cityController.text == hub;
-
-                        return ListTile(
-                          leading: Icon(
-                            Icons.location_on_rounded,
-                            color: isSelected ? AppColors.primaryRuby : (isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight),
-                          ),
-                          title: Text(
-                            hub,
-                            style: TextStyle(
-                              fontFamily: AppTypography.bodyFont,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isDark ? AppColors.textHighDark : AppColors.textHighLight,
-                            ),
-                          ),
-                          trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primaryRuby) : null,
-                          onTap: () {
-                            setState(() => _cityController.text = hub);
-                            Navigator.pop(bottomContext);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+      initialDate: DateTime.now().subtract(const Duration(days: 18 * 365)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: AppColors.primaryRuby,
             ),
           ),
+          child: child!,
         );
       },
     );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _cityController.dispose();
+    _dobController.dispose();
     super.dispose();
   }
 
@@ -277,17 +247,88 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             },
           ),
 
-          // City Selection (Interactive picker with discovery centers)
+          // Date of Birth
           CustomTextField(
-            label: 'Primary Discovery Locality',
-            hintText: 'Select neighborhood',
-            helperText: 'You can switch between neighborhoods anytime in Settings.',
-            controller: _cityController,
+            label: 'Date of Birth',
+            hintText: 'Select your date of birth',
+            controller: _dobController,
             readOnly: true,
-            prefixIcon: Icons.my_location_rounded,
-            suffixWidget: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryRuby),
-            onTap: _showLocalityPicker,
+            prefixIcon: Icons.calendar_today_rounded,
+            onTap: _selectDateOfBirth,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty || _selectedDate == null) {
+                return 'Please select your date of birth';
+              }
+              if (_selectedDate!.isAfter(DateTime.now())) {
+                return 'Date of birth cannot be in the future';
+              }
+              return null;
+            },
           ),
+          const SizedBox(height: AppSpacing.lg),
+          
+          // Gender
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'Gender',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                  ),
+                ),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                hint: Text(
+                  'Select gender',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
+                  ),
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryRuby, width: 2),
+                  ),
+                  prefixIcon: const Icon(Icons.people_outline_rounded, color: AppColors.primaryRuby),
+                ),
+                items: ['Female', 'Male', 'Prefer not to say']
+                    .map((label) => DropdownMenuItem(
+                          value: label,
+                          child: Text(label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() => _selectedGender = value);
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select your gender';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // Terms of Service Checkbox
           Row(
@@ -315,10 +356,46 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         height: 1.4,
                       ),
                       children: const [
-                        TextSpan(text: 'I agree to the '),
-                        TextSpan(text: 'Terms of Service', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
-                        TextSpan(text: ' & '),
+                        TextSpan(text: 'I agree to the HER AREA '),
+                        TextSpan(text: 'Terms & Conditions', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(text: '.'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Privacy Policy Checkbox
+          Row(
+            children: [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(
+                  value: _agreedToPrivacyPolicy,
+                  activeColor: AppColors.primaryRuby,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  onChanged: (val) => setState(() => _agreedToPrivacyPolicy = val ?? false),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontFamily: AppTypography.bodyFont,
+                        fontSize: 13,
+                        color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                        height: 1.4,
+                      ),
+                      children: const [
+                        TextSpan(text: 'I agree to the HER AREA '),
                         TextSpan(text: 'Privacy Policy', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(text: '.'),
                       ],
                     ),
                   ),

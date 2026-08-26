@@ -15,6 +15,15 @@ class BusinessProfileScreen extends ConsumerWidget {
     final store = ref.watch(vendorStoreProvider);
     final textTheme = Theme.of(context).textTheme;
 
+    if (store == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Store Profile Preview'), centerTitle: true, elevation: 0),
+        body: const Center(
+          child: Text('Please set up your store first.'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Store Profile Preview'), centerTitle: true, elevation: 0),
       body: ResponsiveLayout(
@@ -67,7 +76,7 @@ class BusinessProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    VendorStatusChip(label: store.category.displayName, backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1), textColor: AppColors.primaryRuby),
+                    VendorStatusChip(label: store.category.name, backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1), textColor: AppColors.primaryRuby),
                     const SizedBox(width: 8),
                     VendorStatusChip(label: store.priceTier, backgroundColor: Colors.grey.withValues(alpha: 0.2), textColor: Colors.black87),
                     const SizedBox(width: 8),
@@ -93,7 +102,7 @@ class BusinessProfileScreen extends ConsumerWidget {
                           final repo = ref.read(vendorApiRepositoryProvider);
                           final success = await repo.saveBusinessProfile({
                             'business_name': store.name,
-                            'category_name': store.category.displayName,
+                            'category_name': store.category.name,
                             'latitude': res['latitude'],
                             'longitude': res['longitude'],
                             'area': res['area'],
@@ -151,7 +160,7 @@ class BusinessProfileScreen extends ConsumerWidget {
               children: [
                 const Icon(Icons.local_offer_rounded, color: AppColors.accentGold),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(o, style: const TextStyle(fontWeight: FontWeight.w600))),
+                Expanded(child: Text(o.title, style: const TextStyle(fontWeight: FontWeight.w600))),
               ],
             ),
           )),

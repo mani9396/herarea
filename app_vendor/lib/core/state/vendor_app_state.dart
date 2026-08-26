@@ -9,33 +9,11 @@ export 'package:app_vendor/data/models/vendor_models.dart';
 // Theme mode provider for Vendor App
 final vendorThemeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
-const _defaultStore = StoreModel(
-  id: 'vendor_store',
-  name: 'My Partner Studio',
-  category: BusinessCategory.maggam,
-  rating: 0.0,
-  reviewCount: 0,
-  distanceKm: 0.0,
-  address: 'Address not configured',
-  city: 'City',
-  phoneNumber: '',
-  whatsappNumber: '',
-  isVerified: false,
-  isOpenNow: true,
-  closingTimeText: 'Closing time not configured',
-  priceTier: '₹₹',
-  description: 'Studio profile under setup.',
-  imageUrls: [],
-  specialOffers: [],
-  serviceTags: [],
-  latitude: 0.0,
-  longitude: 0.0,
-);
 
 // Active store profile provider
-class VendorStoreNotifier extends StateNotifier<StoreModel> {
+class VendorStoreNotifier extends StateNotifier<StoreModel?> {
   final VendorApiRepository? _repository;
-  VendorStoreNotifier([this._repository]) : super(_defaultStore) {
+  VendorStoreNotifier([this._repository]) : super(null) {
     loadLiveStore();
   }
 
@@ -43,10 +21,10 @@ class VendorStoreNotifier extends StateNotifier<StoreModel> {
     if (_repository == null) return;
     try {
       final liveStore = await _repository.fetchMyStore();
-      if (liveStore != null) {
-        state = liveStore;
-      }
-    } catch (_) {}
+      state = liveStore; // will be null if 404
+    } catch (_) {
+      state = null;
+    }
   }
 
   Future<void> updateStore(StoreModel newStore) async {
@@ -57,9 +35,15 @@ class VendorStoreNotifier extends StateNotifier<StoreModel> {
   }
 }
 
-final vendorStoreProvider = StateNotifierProvider<VendorStoreNotifier, StoreModel>((ref) {
+final vendorStoreProvider = StateNotifierProvider<VendorStoreNotifier, StoreModel?>((ref) {
   final repo = ref.watch(vendorApiRepositoryProvider);
   return VendorStoreNotifier(repo);
+});
+
+// Categories Provider for Store Creation/Editing
+final vendorCategoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
+  final repo = ref.watch(vendorApiRepositoryProvider);
+  return repo.fetchCategories();
 });
 
 // Reactive Product Catalog Provider
@@ -81,9 +65,23 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
     }
   }
 
-  void addProduct(VendorProductModel product) {
+  Future<void> addProduct(VendorProductModel product) async {
+    // Add locally for optimistic UI
     state = [product, ...state];
-    _repository?.createProduct(product);
+    if (_repository == null) return;
+    try {
+      final created = await _repository!.createProduct(product);
+      if (created != null) {
+        state = [
+          for (final p in state)
+            if (p.id == product.id) created else p,
+        ];
+      }
+    } catch (e) {
+      // Revert if failed
+      state = state.where((p) => p.id != product.id).toList();
+      rethrow;
+    }
   }
 
   void updateProduct(VendorProductModel updated) {
@@ -94,14 +92,34 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
     _repository?.updateProduct(updated);
   }
 
-  void toggleStock(String id) {
+  void toggleAvailability(String id) {
     state = [
       for (final p in state)
-        if (p.id == id) p.copyWith(inStock: !p.inStock) else p,
+        if (p.id == id) p.copyWith(isAvailable: !p.isAvailable) else p,
     ];
     final target = state.where((p) => p.id == id).firstOrNull;
     if (target != null) {
       _repository?.updateProduct(target);
+    }
+  }
+  
+  Future<void> submitProduct(String id) async {
+    if (_repository == null) return;
+    try {
+      final updated = await _repository!.submitProduct(id);
+      state = [
+        for (final p in state)
+          if (p.id == id) updated else p,
+      ];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> submitAllDrafts() async {
+    final drafts = state.where((p) => p.status == 'DRAFT' || p.status == 'REJECTED').toList();
+    for (final draft in drafts) {
+      await submitProduct(draft.id);
     }
   }
 
@@ -186,11 +204,10 @@ final vendorNotificationsProvider = StateNotifierProvider<VendorNotificationsNot
   return VendorNotificationsNotifier(repo);
 });
 
-// Reactive Gallery Provider
-class VendorGalleryNotifier extends StateNotifier<List<String>> {
+// Reactive Store Showcase Gallery Provider
+class VendorGalleryNotifier extends StateNotifier<List<StoreMediaModel>> {
   final VendorApiRepository? _repository;
-
-  VendorGalleryNotifier([this._repository]) : super([]) {
+  VendorGalleryNotifier(this._repository) : super([]) {
     loadLiveGallery();
   }
 
@@ -200,21 +217,23 @@ class VendorGalleryNotifier extends StateNotifier<List<String>> {
     state = images;
   }
 
-  Future<void> addImage(String urlOrPath) async {
-    state = [urlOrPath, ...state];
-    await _repository?.uploadGalleryImage(urlOrPath);
+  Future<void> addImage(String filePath) async {
+    final newMedia = await _repository?.uploadGalleryImage(filePath);
+    if (newMedia != null) {
+      state = [newMedia, ...state];
+    }
   }
 
   Future<void> removeImageAt(int index) async {
     if (index >= 0 && index < state.length) {
-      final url = state[index];
+      final media = state[index];
       state = [...state]..removeAt(index);
-      await _repository?.deleteGalleryImage(url);
+      await _repository?.deleteGalleryImage(media.id);
     }
   }
 }
 
-final vendorGalleryProvider = StateNotifierProvider<VendorGalleryNotifier, List<String>>((ref) {
+final vendorGalleryProvider = StateNotifierProvider<VendorGalleryNotifier, List<StoreMediaModel>>((ref) {
   final repo = ref.watch(vendorApiRepositoryProvider);
   return VendorGalleryNotifier(repo);
 });
@@ -252,7 +271,7 @@ class VendorReviewsNotifier extends StateNotifier<List<VendorCustomerReviewModel
 final vendorReviewsProvider = StateNotifierProvider<VendorReviewsNotifier, List<VendorCustomerReviewModel>>((ref) {
   final repo = ref.watch(vendorApiRepositoryProvider);
   final store = ref.watch(vendorStoreProvider);
-  return VendorReviewsNotifier(repo, store.id);
+  return VendorReviewsNotifier(repo, store?.id ?? '');
 });
 
 // Business Settings State Provider

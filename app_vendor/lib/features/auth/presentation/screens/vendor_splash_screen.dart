@@ -29,10 +29,25 @@ class _VendorSplashScreenState extends ConsumerState<VendorSplashScreen> with Si
 
     Future.delayed(const Duration(milliseconds: 2200), () {
       if (!mounted) return;
-      if (ref.read(authSessionProvider).isAuthenticated) {
-        context.go(VendorRoutePaths.dashboard);
+      
+      // If still restoring, wait via a listener. Otherwise route immediately.
+      final authState = ref.read(authSessionProvider);
+      if (authState.isRestoring) {
+        ref.listenManual(authSessionProvider, (previous, next) {
+          if (previous?.isRestoring == true && !next.isRestoring) {
+            if (next.isAuthenticated) {
+              context.go(VendorRoutePaths.dashboard);
+            } else {
+              context.go(VendorRoutePaths.welcome);
+            }
+          }
+        });
       } else {
-        context.go(VendorRoutePaths.welcome);
+        if (authState.isAuthenticated) {
+          context.go(VendorRoutePaths.dashboard);
+        } else {
+          context.go(VendorRoutePaths.welcome);
+        }
       }
     });
   }

@@ -3,6 +3,11 @@ from django.db import models
 from apps.common.models import AbstractTimestampUUIDModel
 from apps.accounts.managers import CustomUserManager
 
+class GenderChoices(models.TextChoices):
+    FEMALE = 'FEMALE', 'Female'
+    MALE = 'MALE', 'Male'
+    PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY', 'Prefer not to say'
+
 class UserRole(models.TextChoices):
     CUSTOMER = 'CUSTOMER', 'Customer (app_user)'
     VENDOR = 'VENDOR', 'Partner Studio Owner (app_vendor)'
@@ -17,11 +22,14 @@ class User(AbstractBaseUser, PermissionsMixin, AbstractTimestampUUIDModel):
     phone_number = models.CharField(max_length=20, unique=True, db_index=True, help_text='Primary OTP login number')
     email = models.EmailField(unique=True, null=True, blank=True, help_text='Official account contact email')
     full_name = models.CharField(max_length=200, null=True, blank=True, help_text='Customer display name')
+    date_of_birth = models.DateField(null=True, blank=True, help_text='Customer date of birth')
+    gender = models.CharField(max_length=20, choices=GenderChoices.choices, null=True, blank=True)
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER, db_index=True)
     
     is_active = models.BooleanField(default=True, help_text='Designates whether this account is active')
     is_verified = models.BooleanField(default=False, help_text='Indicates completed KYC or OTP phone verification')
     is_staff = models.BooleanField(default=False, help_text='Designates access to Django management admin site')
+    must_change_password = models.BooleanField(default=False, help_text='Forces vendor to change generated temporary password on first login')
     
     two_factor_secret = models.CharField(max_length=100, null=True, blank=True, help_text='Cryptographic 2FA secret token')
 

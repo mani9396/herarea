@@ -4,22 +4,37 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class StoreDetailsScreen extends ConsumerWidget {
+class StoreDetailsScreen extends ConsumerStatefulWidget {
   final String storeId;
   const StoreDetailsScreen({super.key, required this.storeId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StoreDetailsScreen> createState() => _StoreDetailsScreenState();
+}
+
+class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(recentlyViewedProvider.notifier).logView(widget.storeId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final repo = ref.watch(storeRepositoryProvider);
-    final isFav = ref.watch(favoritesProvider).contains(storeId);
+    final isFav = ref.watch(favoritesProvider).contains(widget.storeId);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
       body: FutureBuilder<StoreModel?>(
-        future: repo.getStoreById(storeId),
+        future: repo.getStoreById(widget.storeId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -89,7 +104,9 @@ class StoreDetailsScreen extends ConsumerWidget {
                     decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.4), shape: BoxShape.circle),
                     child: const Icon(Icons.share_rounded, color: Colors.white, size: 20),
                   ),
-                  onPressed: () => _showSnackbar(context, 'Store showcase link copied to clipboard!'),
+                  onPressed: () {
+                    Share.share('Check out ${store.name} on HER AREA! ${store.city.isNotEmpty ? 'Located in ${store.city}' : ''}');
+                  },
                 ),
                 const SizedBox(width: 8),
               ],
@@ -165,7 +182,7 @@ class StoreDetailsScreen extends ConsumerWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('${store.category.displayName} • ${store.city}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                  Text('${store.category.name} • ${store.city}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                                   Text('Price Tier: ${store.priceTier}', style: const TextStyle(color: AppColors.accentGoldLight, fontWeight: FontWeight.w800, fontSize: 14)),
                                 ],
                               ),
@@ -196,7 +213,7 @@ class StoreDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildGalleryCarousel(StoreModel store) {
-    final images = store.imageUrls.isNotEmpty ? store.imageUrls : ['https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80'];
+    final images = store.gallery.isNotEmpty ? store.gallery.map((m) => m.image).toList() : ['https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80'];
     return PageView.builder(
       itemCount: images.length,
       itemBuilder: (context, idx) {
@@ -229,7 +246,7 @@ class StoreDetailsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(color: isDark ? AppColors.primaryRuby.withValues(alpha: 0.2) : AppColors.blushPink, borderRadius: BorderRadius.circular(12)),
-              child: Text(store.category.displayName, style: const TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w800, fontSize: 12)),
+              child: Text(store.category.name, style: const TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w800, fontSize: 12)),
             ),
             Text(store.priceTier, style: const TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.w900, fontSize: 20)),
           ],
@@ -255,15 +272,8 @@ class StoreDetailsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 22),
-            Text(' ${store.rating} ', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            Text('(${store.reviewCount} verified style reviews)', style: TextStyle(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, fontSize: 13)),
-            const Spacer(),
-            StatusBadge(isOpen: store.isOpenNow, text: store.closingTimeText),
-          ],
-        ),
+        // ── Real Rating Row from backend ──
+        _RealRatingRow(store: store, isDark: isDark),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -276,6 +286,24 @@ class StoreDetailsScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () async {
+              final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${store.latitude},${store.longitude}');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url);
+              }
+            },
+            icon: const Icon(Icons.directions_rounded, size: 18, color: AppColors.primaryRuby),
+            label: const Text('Get Directions', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              alignment: Alignment.centerLeft,
+            ),
+          ),
         ),
         const Divider(height: 36),
 
@@ -298,11 +326,26 @@ class StoreDetailsScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.accentGold, width: 1.2),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.card_giftcard_rounded, color: AppColors.accentGold, size: 28),
-                    const SizedBox(width: 14),
-                    Expanded(child: Text(offer, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : AppColors.primaryRuby))),
+                    Row(
+                      children: [
+                        const Icon(Icons.local_offer_rounded, color: AppColors.accentGold, size: 24),
+                        const SizedBox(width: 14),
+                        Expanded(child: Text(offer.title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : AppColors.primaryRuby))),
+                      ],
+                    ),
+                    if (offer.discountValue != null && offer.discountValue!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('Discount: ${offer.discountValue}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    ],
+                    if (offer.promoCode != null && offer.promoCode!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('Promo Code: ${offer.promoCode}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.accentGold)),
+                    ],
+                    const SizedBox(height: 8),
+                    Text(offer.description, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
                   ],
                 ),
               )),
@@ -324,70 +367,9 @@ class StoreDetailsScreen extends ConsumerWidget {
         ),
         const Divider(height: 44),
 
-        // Customer Reviews Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Verified Artisan Reviews', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800)),
-            TextButton.icon(
-              onPressed: () => _showReviewModal(context, ref, store),
-              icon: const Icon(Icons.rate_review_rounded, size: 18),
-              label: const Text('Write Review', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (store.reviews.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text('Be the first connoisseur to review this boutique after your fitting or trial!', style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
-          )
-        else
-          ...store.reviews.map((rev) => Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceVariantDark : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(radius: 20, backgroundImage: NetworkImage(rev.userAvatarUrl)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(rev.userName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                              Text(rev.date, style: TextStyle(fontSize: 12, color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight)),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: AppColors.accentGold.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.accentGold)),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.star_rounded, size: 16, color: AppColors.accentGold),
-                              const SizedBox(width: 4),
-                              Text('${rev.rating}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(rev.comment, style: TextStyle(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, height: 1.5, fontSize: 14)),
-                  ],
-                ),
-              )),
+        // ── Phase 8: Visit Verification + Reviews Section ──
+        _VisitAndReviewSection(storeId: store.id, store: store, isDark: isDark),
+
         const SizedBox(height: 110),
       ],
     );
@@ -403,12 +385,12 @@ class StoreDetailsScreen extends ConsumerWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(color: AppColors.accentGold.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.accentGold)),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.home_work_rounded, color: AppColors.accentGold, size: 20),
-                const SizedBox(width: 8),
-                const Text('Home Measurement & Sample Fabric Trial Available', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.neutralCharcoal)),
+                Icon(Icons.home_work_rounded, color: AppColors.accentGold, size: 20),
+                SizedBox(width: 8),
+                Text('Home Measurement & Sample Fabric Trial Available', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.neutralCharcoal)),
               ],
             ),
           ),
@@ -438,7 +420,12 @@ class StoreDetailsScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             IconButton(
-              onPressed: () => _showSnackbar(context, 'Opening Turn-by-Turn Navigation to ${store.address}...'),
+              onPressed: () async {
+                final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${store.latitude},${store.longitude}');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+              },
               icon: const Icon(Icons.directions_rounded, size: 24, color: AppColors.primaryRuby),
               style: IconButton.styleFrom(
                 backgroundColor: isDark ? AppColors.surfaceVariantDark : AppColors.blushPink.withValues(alpha: 0.5),
@@ -567,68 +554,646 @@ class StoreDetailsScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  void _showReviewModal(BuildContext context, WidgetRef ref, StoreModel store) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Real Rating Row Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RealRatingRow extends StatelessWidget {
+  final StoreModel store;
+  final bool isDark;
+
+  const _RealRatingRow({required this.store, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReviews = store.reviewCount > 0;
+    return Row(
+      children: [
+        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 22),
+        const SizedBox(width: 4),
+        if (hasReviews) ...[
+          Text(
+            store.rating.toStringAsFixed(1),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '(${store.reviewCount} ${store.reviewCount == 1 ? 'review' : 'reviews'})',
+            style: TextStyle(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, fontSize: 13),
+          ),
+        ] else
+          Text(
+            'No reviews yet',
+            style: TextStyle(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, fontSize: 13),
+          ),
+        const Spacer(),
+        StatusBadge(isOpen: store.isOpenNow, text: store.closingTimeText),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 8 — Visit Verification + Review Section (ConsumerWidget)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VisitAndReviewSection extends ConsumerWidget {
+  final String storeId;
+  final StoreModel store;
+  final bool isDark;
+
+  const _VisitAndReviewSection({
+    required this.storeId,
+    required this.store,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visitState = ref.watch(storeVisitProvider(storeId));
+    final myReviewAsync = ref.watch(myReviewProvider(storeId));
+    final reviewsAsync = ref.watch(storeReviewsProvider(storeId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Header row ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Ratings & Reviews',
+              style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            // Review count badge from backend
+            reviewsAsync.when(
+              data: (data) {
+                final count = (data['review_count'] as num?)?.toInt() ?? 0;
+                final avg = (data['average_rating'] as num?)?.toDouble() ?? 0.0;
+                if (count == 0) return const SizedBox.shrink();
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentGold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.accentGold),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star_rounded, size: 14, color: AppColors.accentGold),
+                      const SizedBox(width: 4),
+                      Text(avg.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, e) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // ── My Review Section ──
+        myReviewAsync.when(
+          data: (myReview) {
+            if (myReview != null) {
+              return _MyReviewCard(review: myReview, isDark: isDark, storeId: storeId);
+            }
+            // No existing review → show visit verification + write review flow
+            return _VisitVerificationFlow(
+              storeId: storeId,
+              visitState: visitState,
+              isDark: isDark,
+              onReviewSubmitted: () {
+                ref.invalidate(storeReviewsProvider(storeId));
+                ref.invalidate(myReviewProvider(storeId));
+              },
+            );
+          },
+          loading: () => const Center(child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )),
+          error: (_, e) => _VisitVerificationFlow(
+            storeId: storeId,
+            visitState: visitState,
+            isDark: isDark,
+            onReviewSubmitted: () {
+              ref.invalidate(storeReviewsProvider(storeId));
+              ref.invalidate(myReviewProvider(storeId));
+            },
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Public Reviews List ──
+        reviewsAsync.when(
+          data: (data) {
+            final reviews = (data['reviews'] as List?)
+                ?.map((e) => ReviewModel.fromJson(e as Map<String, dynamic>))
+                .toList() ?? [];
+
+            if (reviews.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  'No reviews yet. Be the first to visit and review!',
+                  style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: reviews.map((rev) => _ReviewCard(review: rev, isDark: isDark)).toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          error: (err, _) => Text(
+            'Could not load reviews.',
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Visit Verification Flow Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VisitVerificationFlow extends ConsumerWidget {
+  final String storeId;
+  final StoreVisitState visitState;
+  final bool isDark;
+  final VoidCallback onReviewSubmitted;
+
+  const _VisitVerificationFlow({
+    required this.storeId,
+    required this.visitState,
+    required this.isDark,
+    required this.onReviewSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Visit verification card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceVariantDark : AppColors.blushPink.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primaryRuby.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    visitState.status == VisitStatus.verified
+                        ? Icons.check_circle_rounded
+                        : Icons.location_on_rounded,
+                    color: visitState.status == VisitStatus.verified
+                        ? Colors.green
+                        : AppColors.primaryRuby,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    visitState.status == VisitStatus.verified
+                        ? 'Visit Verified!'
+                        : "I'm Visiting This Store",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: visitState.status == VisitStatus.verified
+                          ? Colors.green
+                          : AppColors.primaryRuby,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (visitState.status == VisitStatus.idle || visitState.status == VisitStatus.failed) ...[
+                Text(
+                  'You must be physically at the store (within 100m) to write a review.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                  ),
+                ),
+                if (visitState.errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 16, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            visitState.errorMessage!,
+                            style: const TextStyle(fontSize: 12, color: Colors.orange),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: visitState.status == VisitStatus.verifying
+                      ? const ElevatedButton(
+                          onPressed: null,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                              SizedBox(width: 10),
+                              Text('Verifying your visit...'),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () => _triggerVisitVerification(context, ref),
+                          icon: const Icon(Icons.my_location_rounded, size: 18),
+                          label: Text(
+                            visitState.status == VisitStatus.failed ? 'Try Again' : "I'm Visiting This Store",
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryRuby,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          ),
+                        ),
+                ),
+              ] else if (visitState.status == VisitStatus.verifying) ...[
+                const Row(
+                  children: [
+                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(width: 10),
+                    Text('Verifying your visit...', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ] else if (visitState.status == VisitStatus.verified) ...[
+                const Text(
+                  'You are at this store! You can now write a review.',
+                  style: TextStyle(fontSize: 13, color: Colors.green),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // Write Review button (only shown after verified)
+        if (visitState.status == VisitStatus.verified) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showWriteReviewModal(context, ref),
+              icon: const Icon(Icons.rate_review_rounded, size: 18),
+              label: const Text('Write a Review', style: TextStyle(fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _triggerVisitVerification(BuildContext context, WidgetRef ref) async {
+    // Use the EXISTING location provider — do not create a new GPS flow
+    final locationState = ref.read(userLocationProvider);
+
+    if (locationState.latitude == 0.0 && locationState.longitude == 0.0) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location not available. Please enable GPS and try again.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.orange.shade700,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Backend is authoritative on whether the customer is within 100m
+    await ref.read(storeVisitProvider(storeId).notifier).verifyVisit(
+          storeId,
+          latitude: locationState.latitude,
+          longitude: locationState.longitude,
+        );
+  }
+
+  void _showWriteReviewModal(BuildContext context, WidgetRef ref) {
     final commentCtrl = TextEditingController();
-    double rating = 5.0;
+    int selectedRating = 5;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(10))),
-            ),
-            const SizedBox(height: 16),
-            Text('Review ${store.name}', style: const TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            const Text('Rate your in-store or home measurement experience:', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              children: List.generate(5, (i) => const Icon(Icons.star_rounded, size: 38, color: AppColors.accentGold)),
-            ),
-            const SizedBox(height: 16),
-            CustomTextField(
-              label: 'Your Connoisseur Review',
-              controller: commentCtrl,
-              maxLines: 4,
-              hintText: 'Share details on tailoring accuracy, fabric richness, zari finish, or staff hospitality...',
-            ),
-            const SizedBox(height: 24),
-            CustomButton(
-              label: 'Submit Verified Review',
-              icon: Icons.rate_review_rounded,
-              onPressed: () async {
-                if (commentCtrl.text.trim().isEmpty) {
-                  _showSnackbar(context, 'Please enter review comments before submitting.');
-                  return;
-                }
-                Navigator.pop(ctx);
-                _showSnackbar(context, 'Submitting your verified review...');
-                final repo = ref.read(customerApiRepositoryProvider);
-                final newReview = await repo.submitReview(
-                  store.id,
-                  rating: rating,
-                  comment: commentCtrl.text.trim(),
-                );
-                if (context.mounted) {
-                  if (newReview != null) {
-                    _showSnackbar(context, 'Thank you! Your verified artisan review has been submitted to the platform.');
-                    ref.invalidate(allStoresProvider);
-                  } else {
-                    _showSnackbar(context, 'Review recorded! Thank you for sharing your experience.');
-                  }
-                }
-              },
-            ),
-          ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(10))),
+              ),
+              const SizedBox(height: 16),
+              const Text('Write a Review', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text('Share your genuine experience at this store.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 20),
+              const Text('Rating', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 8),
+              Row(
+                children: List.generate(5, (i) {
+                  final starIndex = i + 1;
+                  return GestureDetector(
+                    onTap: () => setState(() => selectedRating = starIndex),
+                    child: Icon(
+                      starIndex <= selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
+                      size: 40,
+                      color: AppColors.accentGold,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              const Text('Comment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 4,
+                maxLength: 1000,
+                decoration: InputDecoration(
+                  hintText: 'Share your experience...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryRuby, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _submitReview(ctx, context, ref, selectedRating, commentCtrl.text.trim()),
+                  icon: const Icon(Icons.send_rounded),
+                  label: const Text('Submit Review', style: TextStyle(fontWeight: FontWeight.w800)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryRuby,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _submitReview(
+    BuildContext sheetCtx,
+    BuildContext pageCtx,
+    WidgetRef ref,
+    int rating,
+    String comment,
+  ) async {
+    if (comment.isEmpty) {
+      ScaffoldMessenger.of(sheetCtx).showSnackBar(
+        SnackBar(content: const Text('Please add a comment before submitting.'), backgroundColor: Colors.orange.shade700),
+      );
+      return;
+    }
+
+    Navigator.pop(sheetCtx);
+
+    try {
+      final repo = ref.read(customerApiRepositoryProvider);
+      final result = await repo.submitReview(storeId, rating: rating, comment: comment);
+      final status = result['status']?.toString() ?? 'PENDING';
+      if (pageCtx.mounted) {
+        ScaffoldMessenger.of(pageCtx).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'PENDING'
+                  ? 'Your review has been submitted and is awaiting approval.'
+                  : 'Review submitted!',
+            ),
+            backgroundColor: AppColors.primaryRuby,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+      onReviewSubmitted();
+    } catch (e) {
+      final msg = e.toString();
+      String displayMsg = 'Could not submit review. Please try again.';
+      if (msg.contains('already reviewed')) {
+        displayMsg = 'You have already reviewed this store.';
+      } else if (msg.contains('verified physical visit')) {
+        displayMsg = 'You must have a verified visit to review this store.';
+      }
+      if (pageCtx.mounted) {
+        ScaffoldMessenger.of(pageCtx).showSnackBar(
+          SnackBar(
+            content: Text(displayMsg),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// My Review Card Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MyReviewCard extends StatelessWidget {
+  final ReviewModel review;
+  final bool isDark;
+  final String storeId;
+
+  const _MyReviewCard({required this.review, required this.isDark, required this.storeId});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (review.status) {
+      'APPROVED' => Colors.green,
+      'REJECTED' => Colors.red,
+      _ => Colors.orange,
+    };
+    final statusText = switch (review.status) {
+      'APPROVED' => 'Your review is published.',
+      'REJECTED' => 'Your review was not approved.',
+      _ => 'Your review is awaiting approval.',
+    };
+    final statusIcon = switch (review.status) {
+      'APPROVED' => Icons.check_circle_rounded,
+      'REJECTED' => Icons.cancel_rounded,
+      _ => Icons.hourglass_top_rounded,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceVariantDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryRuby.withValues(alpha: 0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.primaryRuby.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Text('Your Review', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryRuby, fontSize: 12)),
+              ),
+              const Spacer(),
+              // Stars
+              Row(
+                children: List.generate(5, (i) => Icon(
+                  i < review.rating.round() ? Icons.star_rounded : Icons.star_border_rounded,
+                  size: 18,
+                  color: AppColors.accentGold,
+                )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(review.comment, style: TextStyle(fontSize: 14, height: 1.5, color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight)),
+          const SizedBox(height: 12),
+          // Status chip
+          Row(
+            children: [
+              Icon(statusIcon, size: 14, color: statusColor),
+              const SizedBox(width: 6),
+              Text(statusText, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public Review Card Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ReviewCard extends StatelessWidget {
+  final ReviewModel review;
+  final bool isDark;
+
+  const _ReviewCard({required this.review, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = review.createdAt.length >= 10 ? review.createdAt.substring(0, 10) : review.createdAt;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceVariantDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.15),
+                child: Text(
+                  review.customerName.isNotEmpty ? review.customerName[0].toUpperCase() : 'C',
+                  style: const TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(review.customerName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    Text(dateStr, style: TextStyle(fontSize: 12, color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: AppColors.accentGold.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.accentGold)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star_rounded, size: 16, color: AppColors.accentGold),
+                    const SizedBox(width: 4),
+                    Text(review.rating.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(review.comment, style: TextStyle(color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, height: 1.5, fontSize: 14)),
+          if (review.isVerifiedVisit)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified_rounded, size: 14, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text('Verified Visit', style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

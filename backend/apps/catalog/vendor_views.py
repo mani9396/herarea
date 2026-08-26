@@ -3,7 +3,7 @@ from rest_framework import status, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
-from apps.vendors.permissions import IsApprovedVendor
+from apps.accounts.permissions import IsVendorRole
 from apps.catalog.models import Product, GalleryImage, Offer
 from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer
 
@@ -11,10 +11,10 @@ logger = logging.getLogger('her_area')
 
 class BaseApprovedVendorCatalogView(APIView):
     """
-    Base view enforcing strict IsApprovedVendor clearance and binding operations 
+    Base view enforcing strict IsVendorRole clearance and binding operations 
     to the authenticated partner studio's Business Showroom Profile.
     """
-    permission_classes = [IsApprovedVendor]
+    permission_classes = [IsVendorRole]
 
     def get_business_profile(self, user):
         if not hasattr(user.vendor_profile, 'business_profile') or not user.vendor_profile.business_profile:
@@ -61,11 +61,53 @@ class VendorProductDetailView(BaseApprovedVendorCatalogView):
     @extend_schema(summary="Update Showroom Product Specification", request=ProductSerializer, responses={200: ProductSerializer})
     def put(self, request, pk):
         product = self._get_product(request.user, pk)
+        
+        # Phase 11: Allow edit only if DRAFT, REJECTED, or APPROVED
+        if product.status in ['PENDING_APPROVAL', 'SUSPENDED', 'HIDDEN']:
+            raise exceptions.PermissionDenied(f"Cannot edit product while it is {product.status}.")
+
         serializer = ProductSerializer(product, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save(updated_by=request.user)
-        logger.info(f"Product '{product.name}' updated by Studio {request.user.phone_number}")
+        
+        # Revert to PENDING_APPROVAL if editing an APPROVED product
+        if product.status == 'APPROVED':
+            serializer.save(status='PENDING_APPROVAL', updated_by=request.user)
+            logger.info(f"Product '{product.name}' updated by Studio {request.user.phone_number} and reverted to PENDING_APPROVAL")
+        else:
+            serializer.save(updated_by=request.user)
+            logger.info(f"Product '{product.name}' updated by Studio {request.user.phone_number}")
+            
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Delete Showroom Product (Soft Delete)", responses={204: None})
+    def delete(self, request, pk):
+        product = self._get_product(request.user, pk)
+        product_name = product.name
+        product.delete()  # Inherits soft delete setting is_deleted=True
+        logger.warning(f"Product '{product_name}' soft-deleted by Studio {request.user.phone_number}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class VendorProductSubmitView(BaseApprovedVendorCatalogView):
+    """Submit a DRAFT or REJECTED product for Admin Approval."""
+    
+    @extend_schema(summary="Submit Product for Admin Approval", responses={200: ProductSerializer})
+    def post(self, request, pk):
+        business = self.get_business_profile(request.user)
+        try:
+            product = Product.objects.get(pk=pk, business_profile=business)
+        except Product.DoesNotExist:
+            raise exceptions.NotFound("Product item not found in your showroom catalog.")
+            
+        if product.status not in ['DRAFT', 'REJECTED']:
+            raise exceptions.PermissionDenied(f"Cannot submit product. Current status is {product.status}.")
+            
+        product.status = 'PENDING_APPROVAL'
+        product.updated_by = request.user
+        product.save()
+        
+        logger.info(f"Product '{product.name}' submitted for approval by Studio {business.business_name}")
+        return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
 
     @extend_schema(summary="Delete Showroom Product (Soft Delete)", responses={204: None})
     def delete(self, request, pk):
@@ -124,7 +166,13 @@ class VendorOfferListView(BaseApprovedVendorCatalogView):
     @extend_schema(summary="Create Promotional Campaign Offer", request=OfferSerializer, responses={201: OfferSerializer})
     def post(self, request):
         business = self.get_business_profile(request.user)
-        serializer = OfferSerializer(data=request.data)
+        data = request.data.copy()
+        
+        if 'status' in data:
+            if data['status'] not in ['DRAFT', 'PENDING_APPROVAL']:
+                raise exceptions.PermissionDenied("Vendors can only set status to DRAFT or PENDING_APPROVAL.")
+                
+        serializer = OfferSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         offer = serializer.save(business_profile=business, created_by=request.user, updated_by=request.user)
         logger.info(f"Offer '{offer.title}' deployed by Studio {business.business_name}")
@@ -145,7 +193,14 @@ class VendorOfferDetailView(BaseApprovedVendorCatalogView):
     @extend_schema(summary="Update Promotional Offer", request=OfferSerializer, responses={200: OfferSerializer})
     def put(self, request, pk):
         offer = self._get_offer(request.user, pk)
-        serializer = OfferSerializer(offer, data=request.data, partial=True)
+        data = request.data.copy()
+        
+        # Prevent vendor from self-approving or bypassing moderation
+        if 'status' in data:
+            if data['status'] not in ['DRAFT', 'PENDING_APPROVAL']:
+                raise exceptions.PermissionDenied("Vendors can only set status to DRAFT or PENDING_APPROVAL.")
+                
+        serializer = OfferSerializer(offer, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(updated_by=request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)

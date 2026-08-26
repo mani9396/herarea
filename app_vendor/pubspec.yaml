@@ -21,6 +21,8 @@ dependencies:
   latlong2: ^0.9.1
   shared:
     path: ../shared
+  image_picker: ^1.2.3
+  razorpay_flutter: ^1.4.5
 
 dev_dependencies:
   flutter_test:

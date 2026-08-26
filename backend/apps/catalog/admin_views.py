@@ -56,6 +56,47 @@ class AdminProductDetailView(APIView):
             raise exceptions.NotFound("Product item not found in repository.")
 
 
+class AdminProductActionView(APIView):
+    """
+    Executive moderation operations for products (approve, reject, hide, suspend).
+    """
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="Moderate Product (Approve, Reject, Hide, Suspend)")
+    def post(self, request, pk, action):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            raise exceptions.NotFound("Product not found.")
+        
+        remarks = request.data.get('admin_remarks', '')
+
+        if action == 'approve':
+            product.status = 'APPROVED'
+            product.admin_remarks = remarks
+        elif action == 'reject':
+            product.status = 'REJECTED'
+            product.admin_remarks = remarks
+        elif action == 'hide':
+            if product.status != 'APPROVED':
+                raise exceptions.ValidationError("Only approved products can be hidden.")
+            product.status = 'HIDDEN'
+            product.admin_remarks = remarks
+        elif action == 'suspend':
+            if product.status != 'APPROVED':
+                raise exceptions.ValidationError("Only approved products can be suspended.")
+            product.status = 'SUSPENDED'
+            product.admin_remarks = remarks
+        else:
+            raise exceptions.ValidationError("Invalid action.")
+            
+        product.updated_by = request.user
+        product.save()
+        logger.info(f"Admin {request.user.phone_number} performed '{action}' on Product {pk}")
+        
+        return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
+
+
 class AdminOfferListView(APIView):
     """
     Executive platform oversight queue allowing Administrators to monitor promotional campaigns and deals.
@@ -84,6 +125,34 @@ class AdminOfferDetailView(APIView):
             return Response({"detail": "Promotional offer removed successfully."}, status=status.HTTP_204_NO_CONTENT)
         except Offer.DoesNotExist:
             raise exceptions.NotFound("Promotional offer not found.")
+
+class AdminOfferActionView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="Moderate Promotional Offer (Approve, Reject, Suspend)")
+    def post(self, request, pk, action):
+        try:
+            offer = Offer.objects.get(pk=pk)
+        except Offer.DoesNotExist:
+            raise exceptions.NotFound("Promotional offer not found.")
+        
+        remarks = request.data.get('admin_remarks', '')
+
+        if action == 'approve':
+            offer.status = 'APPROVED'
+        elif action == 'reject':
+            offer.status = 'REJECTED'
+            offer.admin_remarks = remarks
+        elif action == 'suspend':
+            offer.status = 'SUSPENDED'
+            offer.admin_remarks = remarks
+        else:
+            return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        offer.save()
+        logger.info(f"Admin {request.user.phone_number} {action}d offer {pk}.")
+        from apps.catalog.serializers import OfferSerializer
+        return Response(OfferSerializer(offer).data, status=status.HTTP_200_OK)
 
 
 class AdminGalleryListView(APIView):

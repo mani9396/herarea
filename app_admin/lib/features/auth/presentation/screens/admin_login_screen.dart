@@ -28,10 +28,26 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
   void _onSignIn() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      await ref.read(authApiRepositoryProvider).requestOtp('9999999999', role: 'ADMIN');
-      if (mounted) {
-        setState(() => _isLoading = false);
-        context.push(AdminRoutePaths.otpVerification);
+      try {
+        final success = await ref.read(authApiRepositoryProvider).loginWithPassword(
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (mounted) {
+          if (success) {
+            context.go(AdminRoutePaths.dashboard);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Authentication failed. Check your credentials.')));
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -89,10 +105,10 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                       const SizedBox(height: AppSpacing.xxl),
                       CustomTextField(
                         label: 'Admin ID / Official Email',
-                        hintText: 'admin@herarea.in',
+                        hintText: 'admin@herarea.in or Phone',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        validator: (v) => (v == null || !v.contains('@')) ? 'Valid email required' : null,
+                        validator: (v) => (v == null || v.isEmpty) ? 'Admin ID required' : null,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       const Text('Security Passphrase', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),

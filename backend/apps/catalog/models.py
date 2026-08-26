@@ -13,6 +13,15 @@ class CatalogItemType(models.TextChoices):
     SERVICE = 'SERVICE', 'Bespoke Studio Service & Consultation'
 
 
+class ProductStatus(models.TextChoices):
+    DRAFT = 'DRAFT', 'Draft'
+    PENDING_APPROVAL = 'PENDING_APPROVAL', 'Pending Approval'
+    APPROVED = 'APPROVED', 'Approved'
+    REJECTED = 'REJECTED', 'Rejected'
+    HIDDEN = 'HIDDEN', 'Hidden'
+    SUSPENDED = 'SUSPENDED', 'Suspended'
+
+
 class Product(AbstractBaseModel):
     """
     Catalog inventory offering (e.g. Designer Couture, Jewelry piece, Wellness Consultation) 
@@ -34,6 +43,14 @@ class Product(AbstractBaseModel):
         related_name='products',
         help_text='Taxonomy classification for structured O2O search'
     )
+    subcategory = models.ForeignKey(
+        'categories.Category', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='subcategory_products',
+        help_text='Sub-taxonomy classification'
+    )
     item_type = models.CharField(
         max_length=20, 
         choices=CatalogItemType.choices, 
@@ -52,8 +69,12 @@ class Product(AbstractBaseModel):
         help_text='Duration in minutes for bespoke appointment services or wellness consultations'
     )
     image_url = models.URLField(max_length=500, help_text='Primary high-resolution photography URI')
+    additional_images = models.JSONField(default=list, blank=True, help_text='Array of additional image URLs')
     is_featured = models.BooleanField(default=False, db_index=True, help_text='Highlight on studio showroom banner')
     is_active = models.BooleanField(default=True, db_index=True, help_text='Toggle public catalog availability')
+    
+    status = models.CharField(max_length=30, choices=ProductStatus.choices, default=ProductStatus.DRAFT, db_index=True)
+    admin_remarks = models.TextField(null=True, blank=True, help_text='Feedback from admin moderation')
 
     class Meta:
         verbose_name = 'Catalog Item (Product / Service)'
@@ -88,6 +109,22 @@ class GalleryImage(AbstractBaseModel):
         return f"Gallery Image ({self.id}) — {self.business_profile.business_name}"
 
 
+class OfferStatus(models.TextChoices):
+    DRAFT = 'DRAFT', 'Draft'
+    PENDING_APPROVAL = 'PENDING_APPROVAL', 'Pending Approval'
+    APPROVED = 'APPROVED', 'Approved'
+    REJECTED = 'REJECTED', 'Rejected'
+    SUSPENDED = 'SUSPENDED', 'Suspended'
+    EXPIRED = 'EXPIRED', 'Expired'
+
+
+class OfferType(models.TextChoices):
+    PERCENTAGE = 'PERCENTAGE', 'Percentage Discount'
+    FLAT = 'FLAT', 'Flat Discount'
+    SPECIAL = 'SPECIAL', 'Special Offer'
+    ANNOUNCEMENT = 'ANNOUNCEMENT', 'Store Announcement'
+
+
 class Offer(AbstractBaseModel):
     """
     Time-sensitive promotional promotions and discount campaigns deployed by approved studios 
@@ -102,9 +139,15 @@ class Offer(AbstractBaseModel):
     title = models.CharField(max_length=150, help_text='Campaign headline e.g. Monsoon Wedding Festival Deal')
     promo_code = models.CharField(max_length=50, null=True, blank=True, help_text='Alphanumeric verification voucher code')
     description = models.TextField(help_text='Terms of promotion and redemption inclusions')
-    discount_percentage = models.PositiveIntegerField(null=True, blank=True, help_text='Percentage reduction e.g. 25 for 25% off')
-    valid_until = models.DateTimeField(null=True, blank=True, help_text='Campaign expiration timestamp')
-    is_active = models.BooleanField(default=True, db_index=True, help_text='Toggle promotion active state')
+    
+    offer_type = models.CharField(max_length=20, choices=OfferType.choices, default=OfferType.PERCENTAGE)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Discount amount or percentage')
+    
+    start_date = models.DateTimeField(null=True, blank=True, help_text='Campaign start timestamp')
+    end_date = models.DateTimeField(null=True, blank=True, help_text='Campaign expiration timestamp')
+    
+    status = models.CharField(max_length=30, choices=OfferStatus.choices, default=OfferStatus.DRAFT, db_index=True)
+    admin_remarks = models.TextField(null=True, blank=True, help_text='Feedback from admin moderation')
 
     class Meta:
         verbose_name = 'Promotional Offer'
@@ -112,4 +155,4 @@ class Offer(AbstractBaseModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.title} ({self.promo_code}) — {self.business_profile.business_name}"
+        return f"{self.title} ({self.status}) — {self.business_profile.business_name}"

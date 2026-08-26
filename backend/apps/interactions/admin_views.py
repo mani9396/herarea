@@ -14,25 +14,20 @@ class AdminReviewEnrichedSerializer(ReviewSerializer):
     customer_name = serializers.SerializerMethodField()
     is_reported = serializers.SerializerMethodField()
     report_reason = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()
 
     class Meta(ReviewSerializer.Meta):
-        fields = ReviewSerializer.Meta.fields + ['vendor_name', 'customer_name', 'is_reported', 'report_reason', 'status', 'date']
+        fields = ReviewSerializer.Meta.fields + ['vendor_name', 'customer_name', 'is_reported', 'report_reason', 'date']
 
     def get_customer_name(self, obj) -> str:
         phone = obj.user.phone_number if obj.user else "User"
         return f"Customer ({phone})"
 
     def get_is_reported(self, obj) -> bool:
-        # Flag reviews with <= 2 stars for administrative moderation review
         return obj.rating <= 2.0
 
     def get_report_reason(self, obj) -> str:
         return "Automated quality moderation flag (Low rating score)" if obj.rating <= 2.0 else ""
-
-    def get_status(self, obj) -> str:
-        return "PENDING" if obj.rating <= 2.0 else "APPROVED"
 
     def get_date(self, obj) -> str:
         return obj.created_at.strftime('%Y-%m-%d') if obj.created_at else "2026-08-01"
@@ -57,12 +52,32 @@ class AdminReviewDetailView(APIView):
     """
     permission_classes = [IsAdminRole]
 
-    @extend_schema(summary="Delete or Reject a Customer Review")
+    @extend_schema(summary="Update Customer Review Status")
+    def patch(self, request, pk):
+        try:
+            review = Review.objects.get(pk=pk)
+            status_val = request.data.get('status')
+            admin_remarks = request.data.get('admin_remarks')
+            
+            if status_val:
+                review.status = status_val
+            if admin_remarks is not None:
+                review.admin_remarks = admin_remarks
+                
+            review.updated_by = request.user
+            review.save()
+            
+            logger.info(f"Admin {request.user.email} updated review {pk} status to {review.status}.")
+            return Response(AdminReviewEnrichedSerializer(review).data, status=status.HTTP_200_OK)
+        except Review.DoesNotExist:
+            raise exceptions.NotFound("Review item not found.")
+
+    @extend_schema(summary="Delete a Customer Review")
     def delete(self, request, pk):
         try:
             review = Review.objects.get(pk=pk)
             review.delete()
-            logger.info(f"Admin {request.user.phone_number} removed community review {pk}.")
+            logger.info(f"Admin {request.user.email} removed community review {pk}.")
             return Response({"detail": "Review deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
         except Review.DoesNotExist:
             raise exceptions.NotFound("Review item not found.")
