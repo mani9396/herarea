@@ -1,5 +1,6 @@
 import os
 import sys
+import dj_database_url
 from decouple import config
 from datetime import timedelta
 from pathlib import Path
@@ -7,13 +8,13 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Add apps directory to sys.path for cleaner module discovery
+# Add apps directory to sys.path for cleaner module discoveryF
 sys.path.insert(0, str(BASE_DIR / 'apps'))
  
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'her-area-secure-dev-key-9a8c7b6a-e5f4-3d2c-1b0f')
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',')]
 
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -94,17 +96,27 @@ RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
 # Database Architecture: PostgreSQL + PostGIS with test / fallback SQLite engine
 # Database Configuration (Local PostgreSQL)
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'herarea2',
-        'USER': 'postgres',
-        'PASSWORD': '9396',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-    }
-}
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'herarea2',
+            'USER': 'postgres',
+            'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD', ''),
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
+        }
+    }
 # else:
 #     # Reliable default for automated CI/CD and local unit test verification
 #     DATABASES = {
@@ -196,10 +208,13 @@ SPECTACULAR_SETTINGS = {
     'COMPLEX_DATA_TYPE': True,
 }
 
-# CORS configuration
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = [
+    'https://www.herarea.com',
+    'https://herarea.com',
+    'https://herarea-customer.vercel.app',
+]
 CORS_ALLOW_CREDENTIALS = True
-
 # Logging Configuration
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
