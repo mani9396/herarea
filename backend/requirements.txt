@@ -13,3 +13,5 @@ requests>=2.31.0
 django-storages[azure]>=1.14.2
 azure-storage-blob>=12.19.0
 razorpay>=2.0.1
+dj-database-url>=3.1.2
+whitenoise>=6.12.0
