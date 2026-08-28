@@ -208,12 +208,15 @@ SPECTACULAR_SETTINGS = {
     'COMPLEX_DATA_TYPE': True,
 }
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = [
     'https://www.herarea.com',
     'https://herarea.com',
     'https://herarea-customer.vercel.app',
+    'https://herarea-user.onrender.com',
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 # Logging Configuration
 LOGS_DIR = BASE_DIR / 'logs'
