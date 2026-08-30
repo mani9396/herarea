@@ -2,6 +2,7 @@ import logging
 import random
 import hashlib
 import uuid
+import requests
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.conf import settings
@@ -88,81 +89,146 @@ class OtpSendView(APIView):
 
             # Dispatch email
             try:
-                from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@herarea.com')
-                
                 if purpose == 'PASSWORD_RESET':
-                    subject = 'HER AREA — Password Reset Verification Code'
+                    subject = "HER AREA - Password Reset Verification Code"
                     text_message = (
-                        f"Hello {customer_name},\n\n"
-                        f"We received a request to reset your HER AREA account password.\n\n"
+                        f"Hello {full_name},\n\n"
                         f"Your password reset verification code is: {otp}\n\n"
-                        f"This verification code is valid for 5 minutes.\n\n"
-                        f"If you did not request a password reset, please ignore this email. Your account will remain secure and your password will not be changed unless the verification process is successfully completed.\n\n"
-                        f"For your security, please do not share this verification code with anyone.\n\n"
-                        f"Warm regards,\nHER AREA Team\n{from_email}"
+                        "This code is valid for 5 minutes.\n\n"
+                        "For your security, please do not share this code with anyone.\n\n"
+                        "If you did not request this code, please ignore this email.\n\n"
+                        "Warm regards,\n"
+                        "HER AREA Team"
                     )
-                    html_message = f"""
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-                        <h2 style="color: #90274c; text-align: center;">HER AREA</h2>
-                        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-                        <p style="font-size: 16px; color: #333;">Hello {customer_name},</p>
-                        <p style="font-size: 16px; color: #333;">We received a request to reset your HER AREA account password.</p>
-                        <p style="font-size: 16px; color: #333;">Your password reset verification code is:</p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #90274c; background-color: #f9f9f9; padding: 15px 25px; border-radius: 8px;">{otp}</span>
-                        </div>
-                        <p style="font-size: 14px; color: #666;">This verification code is valid for <strong>5 minutes</strong>.</p>
-                        <p style="font-size: 14px; color: #666;">If you did not request a password reset, please ignore this email. Your account will remain secure and your password will not be changed unless the verification process is successfully completed.</p>
-                        <div style="margin-top: 30px; padding: 15px; background-color: #fff4f4; border-left: 4px solid #d32f2f; border-radius: 4px;">
-                            <p style="font-size: 12px; color: #d32f2f; margin: 0;"><strong>Security Reminder:</strong> For your security, please do not share this verification code with anyone.</p>
-                        </div>
-                        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-                        <p style="font-size: 14px; color: #333;">Warm regards,<br><strong>HER AREA Team</strong><br>{from_email}</p>
-                    </div>
-                    """
                 else:
-                    # Default Registration flow
-                    subject = 'Your HER AREA Verification Code'
+                    subject = "HER AREA - Email Verification Code"
                     text_message = (
-                        f"Hello {customer_name},\n\n"
-                        f"Welcome to HER AREA!\n\n"
-                        f"Your verification code to complete your account registration is: {otp}\n\n"
-                        f"This verification code is valid for 5 minutes.\n\n"
-                        f"For your security, please do not share this code with anyone.\n\n"
-                        f"If you did not request this verification code, please ignore this email.\n\n"
-                        f"Warm regards,\nHER AREA Team\n{from_email}"
+                        f"Hello {full_name},\n\n"
+                        "Your verification code to complete your account registration is: "
+                        f"{otp}\n\n"
+                        "This code is valid for 5 minutes.\n\n"
+                        "For your security, please do not share this code with anyone.\n\n"
+                        "If you did not request this verification code, please ignore this email.\n\n"
+                        "Warm regards,\n"
+                        "HER AREA Team"
                     )
-                    html_message = f"""
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-                        <h2 style="color: #90274c; text-align: center;">HER AREA</h2>
-                        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-                        <p style="font-size: 16px; color: #333;">Hello {customer_name},</p>
-                        <p style="font-size: 16px; color: #333;">Welcome to HER AREA!</p>
-                        <p style="font-size: 16px; color: #333;">Your verification code to complete your account registration is:</p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #90274c; background-color: #f9f9f9; padding: 15px 25px; border-radius: 8px;">{otp}</span>
-                        </div>
-                        <p style="font-size: 14px; color: #666;">This verification code is valid for <strong>5 minutes</strong>.</p>
-                        <div style="margin-top: 30px; padding: 15px; background-color: #fff4f4; border-left: 4px solid #d32f2f; border-radius: 4px;">
-                            <p style="font-size: 12px; color: #d32f2f; margin: 0;"><strong>Security Reminder:</strong> For your security, please do not share this code with anyone.</p>
-                        </div>
-                        <p style="font-size: 14px; color: #666; margin-top: 20px;">If you did not request this verification code, please ignore this email.</p>
-                        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-                        <p style="font-size: 14px; color: #333;">Warm regards,<br><strong>HER AREA Team</strong><br>{from_email}</p>
+
+                from_email = settings.DEFAULT_FROM_EMAIL
+
+                html_message = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                    <h2 style="color: #90274c;">HER AREA</h2>
+
+                    <p style="font-size: 16px; color: #333;">
+                        Hello {full_name},
+                    </p>
+
+                    <p style="font-size: 16px; color: #333;">
+                        Your verification code is:
+                    </p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <span style="
+                            font-size: 32px;
+                            font-weight: bold;
+                            letter-spacing: 5px;
+                            color: #90274c;
+                            background-color: #f9f9f9;
+                            padding: 15px 25px;
+                            border-radius: 8px;
+                        ">{otp}</span>
                     </div>
-                    """
-                
-                send_mail(
-                    subject=subject,
-                    message=text_message,
-                    from_email=from_email,
-                    recipient_list=[identifier],
-                    fail_silently=False,
-                    html_message=html_message
+
+                    <p style="font-size: 14px; color: #666;">
+                        This verification code is valid for
+                        <strong>5 minutes</strong>.
+                    </p>
+
+                    <div style="
+                        margin-top: 30px;
+                        padding: 15px;
+                        background-color: #fff4f4;
+                        border-left: 4px solid #d32f2f;
+                        border-radius: 4px;
+                    ">
+                        <p style="font-size: 12px; color: #d32f2f; margin: 0;">
+                            <strong>Security Reminder:</strong>
+                            For your security, please do not share this code with anyone.
+                        </p>
+                    </div>
+
+                    <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                        If you did not request this verification code,
+                        please ignore this email.
+                    </p>
+
+                    <hr style="
+                        border: none;
+                        border-top: 1px solid #eaeaea;
+                        margin: 20px 0;
+                    ">
+
+                    <p style="font-size: 14px; color: #333;">
+                        Warm regards,<br>
+                        <strong>HER AREA Team</strong><br>
+                        {from_email}
+                    </p>
+                </div>
+                """
+
+                zeptomail_token = settings.ZEPTOMAIL_SEND_MAIL_TOKEN
+
+                if not zeptomail_token:
+                    raise Exception(
+                        "ZEPTOMAIL_SEND_MAIL_TOKEN is not configured"
+                    )
+
+                response = requests.post(
+                    "https://api.zeptomail.com/v1.1/email",
+                    headers={
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "Authorization": f"Zoho-enczapikey {zeptomail_token}",
+                    },
+                    json={
+                        "from": {
+                            "address": "noreply@herarea.com",
+                            "name": "HER AREA",
+                        },
+                        "to": [
+                            {
+                                "email_address": {
+                                    "address": identifier,
+                                }
+                            }
+                        ],
+                        "subject": subject,
+                        "textbody": text_message,
+                        "htmlbody": html_message,
+                    },
+                    timeout=30,
                 )
-                logger.info(f"OTP email dispatched successfully to {identifier}")
+
+                if response.status_code >= 400:
+                    logger.error(
+                        f"ZeptoMail API failed: "
+                        f"{response.status_code} - {response.text}"
+                    )
+                    raise Exception(
+                        f"ZeptoMail API error "
+                        f"{response.status_code}: {response.text}"
+                    )
+
+                logger.info(
+                    f"OTP email dispatched successfully to "
+                    f"{identifier} via ZeptoMail API"
+                )
+
             except Exception as exc:
-                logger.error(f"OTP email dispatch failed for {identifier}: {exc}")
+                logger.error(
+                    f"OTP email dispatch failed for "
+                    f"{identifier}: {exc}"
+                )
                 # Still return success so the OTP can be validated — email may be configured later
                 # In production this should return 503 once email is fully configured
 
@@ -630,3 +696,4 @@ class SuperAdminRoleVerificationView(APIView):
     @extend_schema(summary="Verify SuperAdmin Role Access", responses={200: OpenApiResponse(description="Verified SuperAdmin Tier.")})
     def get(self, request):
         return Response({"message": "Access granted: Verified Founder Superadmin Tier."})
+    
