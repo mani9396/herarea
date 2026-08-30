@@ -1,3 +1,4 @@
+import os
 import hashlib
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -7,22 +8,31 @@ class Command(BaseCommand):
     help = 'Creates or updates the 3 demo users for client demonstrations.'
 
     def handle(self, *args, **options):
+        if os.environ.get('ENABLE_DEMO_USERS', '').lower() != 'true':
+            self.stdout.write(self.style.WARNING("ENABLE_DEMO_USERS is not set to 'true'. Skipping demo user creation."))
+            return
+            
+        demo_password = os.environ.get('DEMO_PASSWORD')
+        if not demo_password:
+            self.stdout.write(self.style.ERROR("DEMO_PASSWORD environment variable is required."))
+            return
+
         demo_accounts = [
             {
                 'email': 'customer.demo@herarea.com',
-                'password': 'Demo@12345',
+                'password': demo_password,
                 'role': UserRole.CUSTOMER,
                 'full_name': 'Customer Demo',
             },
             {
                 'email': 'vendor.demo@herarea.com',
-                'password': 'Demo@12345',
+                'password': demo_password,
                 'role': UserRole.VENDOR,
                 'full_name': 'Vendor Demo',
             },
             {
                 'email': 'admin.demo@herarea.com',
-                'password': 'Demo@12345',
+                'password': demo_password,
                 'role': UserRole.ADMIN,
                 'full_name': 'Admin Demo',
             }
