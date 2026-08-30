@@ -224,6 +224,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             isLoading: _isLoading,
             onPressed: _onLogin,
           ),
+          DemoLoginButtons(
+            onDemoSelected: (email, password) {
+              _emailController.text = email;
+              _passwordController.text = password;
+            },
+          ),
           const SizedBox(height: AppSpacing.xxl),
 
           // Divider Section

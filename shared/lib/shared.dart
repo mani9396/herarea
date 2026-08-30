@@ -13,6 +13,7 @@ export 'widgets/empty_state_widget.dart';
 export 'widgets/error_view.dart';
 export 'widgets/loading_indicator.dart';
 export 'widgets/status_badge.dart';
+export 'widgets/demo_login_buttons.dart';
 
 // Models
 export 'models/store_model.dart';

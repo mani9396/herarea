@@ -150,6 +150,12 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                         isLoading: _isLoading,
                         onPressed: _onSignIn,
                       ),
+                      DemoLoginButtons(
+                        onDemoSelected: (email, password) {
+                          _emailController.text = email;
+                          _passwordController.text = password;
+                        },
+                      ),
                       const SizedBox(height: AppSpacing.lg),
                       Divider(color: Colors.grey.shade300),
                       const SizedBox(height: AppSpacing.sm),
