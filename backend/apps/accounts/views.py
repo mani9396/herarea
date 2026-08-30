@@ -92,7 +92,7 @@ class OtpSendView(APIView):
                 if purpose == 'PASSWORD_RESET':
                     subject = "HER AREA - Password Reset Verification Code"
                     text_message = (
-                        f"Hello {full_name},\n\n"
+                        f"Hello {customer_name},\n\n"
                         f"Your password reset verification code is: {otp}\n\n"
                         "This code is valid for 5 minutes.\n\n"
                         "For your security, please do not share this code with anyone.\n\n"
@@ -103,7 +103,7 @@ class OtpSendView(APIView):
                 else:
                     subject = "HER AREA - Email Verification Code"
                     text_message = (
-                        f"Hello {full_name},\n\n"
+                        f"Hello {customer_name},\n\n"
                         "Your verification code to complete your account registration is: "
                         f"{otp}\n\n"
                         "This code is valid for 5 minutes.\n\n"
@@ -120,7 +120,7 @@ class OtpSendView(APIView):
                     <h2 style="color: #90274c;">HER AREA</h2>
 
                     <p style="font-size: 16px; color: #333;">
-                        Hello {full_name},
+                        Hello {customer_name},
                     </p>
 
                     <p style="font-size: 16px; color: #333;">
