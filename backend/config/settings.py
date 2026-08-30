@@ -215,6 +215,8 @@ CORS_ALLOWED_ORIGINS = [
     'https://herarea.com',
     'https://herarea-customer.vercel.app',
     'https://herarea-user.onrender.com',
+    'https://herarea-vendor.onrender.com',
+    'https://herarea-admin.onrender.com',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
