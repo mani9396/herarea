@@ -101,13 +101,17 @@ class BusinessProfile(AbstractBaseModel):
             super().save(*args, **kwargs)
             return
 
+        # Determine if images are newly uploaded (before super.save() commits them)
+        logo_is_new = bool(self.logo and not getattr(self.logo, '_committed', True))
+        cover_is_new = bool(self.cover_image and not getattr(self.cover_image, '_committed', True))
+
         # We need to save first to ensure we have the file if it's new
         super().save(*args, **kwargs)
 
-        if self.logo:
+        if logo_is_new:
             self._resize_image(self.logo, (500, 500))
         
-        if self.cover_image:
+        if cover_is_new:
             self._resize_image(self.cover_image, (1200, 800))
             
     def _resize_image(self, image_field, max_size):
