@@ -95,6 +95,12 @@ class BusinessProfile(AbstractBaseModel):
         return f"{self.business_name} ({self.city})"
 
     def save(self, *args, **kwargs):
+        # If we are only updating specific fields (like 'status'), skip heavy image processing
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and not any(f in update_fields for f in ['logo', 'cover_image']):
+            super().save(*args, **kwargs)
+            return
+
         # We need to save first to ensure we have the file if it's new
         super().save(*args, **kwargs)
 
