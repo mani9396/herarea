@@ -171,8 +171,9 @@ class VendorStoreSubmitView(APIView):
         if not business.category: missing_fields.append("category")
         
         if missing_fields:
+            missing_str = ", ".join(missing_fields)
             return Response({
-                "detail": "Store profile is incomplete.",
+                "detail": f"Store profile is incomplete. Missing: {missing_str}",
                 "missing": missing_fields
             }, status=status.HTTP_400_BAD_REQUEST)
             
