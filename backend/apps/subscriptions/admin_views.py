@@ -1,17 +1,17 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from apps.accounts.permissions import IsSuperAdminRole
+from apps.accounts.permissions import IsAdminRole
 from .models import ListingPlan, VendorSubscription, PaymentRecord
 from .serializers import ListingPlanSerializer, VendorSubscriptionSerializer, PaymentRecordSerializer
 
 class AdminListingPlanListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsSuperAdminRole]
+    permission_classes = [IsAdminRole]
     queryset = ListingPlan.objects.all().order_by('display_order', 'price')
     serializer_class = ListingPlanSerializer
 
 class AdminListingPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsSuperAdminRole]
+    permission_classes = [IsAdminRole]
     queryset = ListingPlan.objects.all()
     serializer_class = ListingPlanSerializer
     
@@ -21,17 +21,17 @@ class AdminListingPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
 
 class AdminVendorSubscriptionListView(generics.ListAPIView):
-    permission_classes = [IsSuperAdminRole]
+    permission_classes = [IsAdminRole]
     queryset = VendorSubscription.objects.all().order_by('-created_at')
     serializer_class = VendorSubscriptionSerializer
     
 class AdminPaymentRecordListView(generics.ListAPIView):
-    permission_classes = [IsSuperAdminRole]
+    permission_classes = [IsAdminRole]
     queryset = PaymentRecord.objects.all().order_by('-created_at')
     serializer_class = PaymentRecordSerializer
 
 class AdminDashboardRevenueView(APIView):
-    permission_classes = [IsSuperAdminRole]
+    permission_classes = [IsAdminRole]
     
     def get(self, request):
         from django.db.models import Sum
