@@ -95,15 +95,16 @@ class BusinessProfile(AbstractBaseModel):
         return f"{self.business_name} ({self.city})"
 
     def save(self, *args, **kwargs):
-        # If we are only updating specific fields (like 'status'), skip heavy image processing
-        update_fields = kwargs.get('update_fields')
-        if update_fields is not None and not any(f in update_fields for f in ['logo', 'cover_image']):
-            super().save(*args, **kwargs)
-            return
-
-        # Determine if images are newly uploaded (before super.save() commits them)
-        logo_is_new = bool(self.logo and not getattr(self.logo, '_committed', True))
-        cover_is_new = bool(self.cover_image and not getattr(self.cover_image, '_committed', True))
+        # We need to check if the image is newly uploaded before super.save() commits it
+        from django.core.files.uploadedfile import UploadedFile
+        
+        logo_is_new = False
+        if self.logo and hasattr(self.logo, 'file'):
+            logo_is_new = isinstance(self.logo.file, UploadedFile)
+            
+        cover_is_new = False
+        if self.cover_image and hasattr(self.cover_image, 'file'):
+            cover_is_new = isinstance(self.cover_image.file, UploadedFile)
 
         # We need to save first to ensure we have the file if it's new
         super().save(*args, **kwargs)
