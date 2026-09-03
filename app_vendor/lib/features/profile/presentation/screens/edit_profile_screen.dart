@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -70,7 +72,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                       image: _localCoverPath != null 
-                          ? DecorationImage(image: NetworkImage('file://$_localCoverPath'), fit: BoxFit.cover)
+                          ? DecorationImage(
+                              image: kIsWeb 
+                                  ? NetworkImage(_localCoverPath!) as ImageProvider 
+                                  : FileImage(File(_localCoverPath!)), 
+                              fit: BoxFit.cover)
                           : (ref.read(vendorStoreProvider)?.coverImage != null 
                               ? DecorationImage(image: NetworkImage(ref.read(vendorStoreProvider)!.coverImage!), fit: BoxFit.cover)
                               : null),
@@ -105,7 +111,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       CircleAvatar(
                         radius: 44,
                         backgroundImage: _localLogoPath != null
-                            ? NetworkImage('file://$_localLogoPath')
+                            ? (kIsWeb ? NetworkImage(_localLogoPath!) : FileImage(File(_localLogoPath!))) as ImageProvider
                             : NetworkImage(ref.read(vendorStoreProvider)?.logo ?? 'https://i.pravatar.cc/150'),
                       ),
                       Positioned(
