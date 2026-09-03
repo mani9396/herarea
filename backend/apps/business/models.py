@@ -97,45 +97,45 @@ class BusinessProfile(AbstractBaseModel):
     def save(self, *args, **kwargs):
         # We need to check if the image is newly uploaded before super.save() commits it
         from django.core.files.uploadedfile import UploadedFile
+        from PIL import Image
+        from io import BytesIO
+        from django.core.files.base import ContentFile
+        import os
         
-        logo_is_new = False
-        if self.logo and hasattr(self.logo, 'file'):
-            logo_is_new = isinstance(self.logo.file, UploadedFile)
-            
-        cover_is_new = False
-        if self.cover_image and hasattr(self.cover_image, 'file'):
-            cover_is_new = isinstance(self.cover_image.file, UploadedFile)
+        def process_image(field, max_size):
+            if field and hasattr(field, 'file') and isinstance(field.file, UploadedFile):
+                try:
+                    img = Image.open(field.file)
+                    # Use a generous max size to only resize if significantly large
+                    if img.width > max_size[0] or img.height > max_size[1]:
+                        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                        
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                            
+                        buffer = BytesIO()
+                        img.save(buffer, format='JPEG', quality=85)
+                        buffer.seek(0)
+                        
+                        # Replace the UploadedFile with the resized ContentFile
+                        new_name = os.path.splitext(field.name)[0] + '.jpg'
+                        field.file = ContentFile(buffer.read())
+                        field.file.name = new_name
+                        field.name = new_name
+                        field.file.seek(0)
+                    else:
+                        field.file.seek(0) # Reset pointer
+                except Exception:
+                    try:
+                        field.file.seek(0)
+                    except Exception:
+                        pass
+                        
+        process_image(self.logo, (800, 800))
+        process_image(self.cover_image, (1600, 1000))
 
-        # We need to save first to ensure we have the file if it's new
+        # We now save normally, and it uploads the (possibly resized) file efficiently
         super().save(*args, **kwargs)
-
-        if logo_is_new:
-            self._resize_image(self.logo, (500, 500))
-        
-        if cover_is_new:
-            self._resize_image(self.cover_image, (1200, 800))
-            
-    def _resize_image(self, image_field, max_size):
-        try:
-            # We don't want to re-save indefinitely, check if resizing is needed or just rely on simple PIL save
-            # Only do this if it's a local file for now to avoid Azure loop issues, or just open using storage
-            # Since we just want simple compression, we can open from the field's file
-            image_field.open()
-            img = Image.open(image_field)
-            if img.format != 'JPEG' or img.width > max_size[0] or img.height > max_size[1]:
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
-                # Convert to RGB if necessary
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                buffer = BytesIO()
-                img.save(buffer, format='JPEG', quality=85)
-                image_field.save(image_field.name, ContentFile(buffer.getvalue()), save=False)
-                # Avoid infinite recursion by updating using queryset
-                BusinessProfile.objects.filter(pk=self.pk).update(**{image_field.field.name: image_field.name})
-        except Exception:
-            pass # Ignore optimization errors (e.g. read-only storage, etc.)
 
     @property
     def is_listing_eligible(self):
