@@ -183,8 +183,9 @@ class OtpSendView(APIView):
                         "ZEPTOMAIL_SEND_MAIL_TOKEN is not configured"
                     )
 
+                zeptomail_api_url = getattr(settings, 'ZEPTOMAIL_API_URL', 'https://api.zeptomail.in/v1.1/email')
                 response = requests.post(
-                    "https://api.zeptomail.com/v1.1/email",
+                    zeptomail_api_url,
                     headers={
                         "Accept": "application/json",
                         "Content-Type": "application/json",
@@ -229,8 +230,10 @@ class OtpSendView(APIView):
                     f"OTP email dispatch failed for "
                     f"{identifier}: {exc}"
                 )
-                # Still return success so the OTP can be validated — email may be configured later
-                # In production this should return 503 once email is fully configured
+                return Response(
+                    {"error": "Failed to send verification code. Please check your email address or try again later."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
 
             return Response({
                 "message": "Verification code sent to your email address.",

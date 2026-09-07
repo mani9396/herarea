@@ -278,3 +278,7 @@ ZEPTOMAIL_SEND_MAIL_TOKEN = config(
     'ZEPTOMAIL_SEND_MAIL_TOKEN',
     default=''
 )
+ZEPTOMAIL_API_URL = config(
+    'ZEPTOMAIL_API_URL',
+    default='https://api.zeptomail.in/v1.1/email'
+)
