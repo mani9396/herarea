@@ -249,7 +249,10 @@ class OtpSendView(APIView):
             cache_key = _make_otp_cache_key(identifier)
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
-            logger.info(f"Dev/Vendor OTP for {phone}: {otp}")
+            if settings.DEBUG:
+                logger.info(f"Dev/Vendor OTP for {phone}: {otp}")
+            else:
+                logger.info(f"Vendor OTP generated for {phone} (not logged in production)")
             return Response({
                 "message": "OTP challenge dispatched successfully.",
                 "expires_in_seconds": OTP_TTL_SECONDS,

@@ -107,24 +107,36 @@ if DATABASE_URL:
         )
     }
 else:
+    # Reliable default for automated CI/CD and local unit test verification
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'herarea2',
-            'USER': 'postgres',
-            'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD', ''),
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'her_area_dev.sqlite3',
         }
     }
-# else:
-#     # Reliable default for automated CI/CD and local unit test verification
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'her_area_dev.sqlite3',
-#         }
-#     }
+
+# Cache Configuration
+REDIS_URL = os.environ.get('REDIS_URL')
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {'ssl_cert_reqs': None} if REDIS_URL.startswith('rediss://') else {}
+            }
+        }
+    }
+elif not DEBUG:
+    raise Exception("REDIS_URL environment variable is required in production (DEBUG=False) for shared cache. LocMemCache is unsafe for multi-worker OTP verification.")
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 # Custom User Model definition per Phase 4 Design
 AUTH_USER_MODEL = 'accounts.User'
@@ -218,6 +230,10 @@ CORS_ALLOWED_ORIGINS = [
     'https://herarea-vendor.onrender.com',
     'https://herarea-admin.onrender.com',
 ]
+
+if DEBUG:
+    CORS_ALLOWED_ORIGINS.append('http://localhost:52442')
+    CSRF_TRUSTED_ORIGINS = ['http://localhost:52442']
 
 CORS_ALLOW_CREDENTIALS = True
 # Logging Configuration
