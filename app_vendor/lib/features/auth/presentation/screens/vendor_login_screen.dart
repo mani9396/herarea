@@ -164,12 +164,6 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
             isLoading: _isLoading,
             onPressed: _onLogin,
           ),
-          DemoLoginButtons(
-            onDemoSelected: (email, password) {
-              _identifierController.text = email;
-              _passwordController.text = password;
-            },
-          ),
           const SizedBox(height: AppSpacing.lg),
           Wrap(
             alignment: WrapAlignment.center,
