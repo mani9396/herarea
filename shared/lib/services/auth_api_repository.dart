@@ -85,7 +85,7 @@ class AuthApiRepository {
   }
 
   /// Complete registration with password after email verification.
-  Future<bool> completeRegistration({
+  Future<void> completeRegistration({
     required String email,
     required String password,
     required String confirmPassword,
@@ -93,21 +93,20 @@ class AuthApiRepository {
     required String dateOfBirth,
     required String gender,
   }) async {
-    try {
-      final response = await _apiClient.post(
-        ApiEndpoints.customerRegister,
-        body: {
-          'email': email,
-          'password': password,
-          'confirm_password': confirmPassword,
-          'full_name': fullName,
-          'date_of_birth': dateOfBirth,
-          'gender': gender,
-        },
-      );
-      return _processJwtResponse(response, email, 'CUSTOMER');
-    } catch (_) {
-      return false;
+    final response = await _apiClient.post(
+      ApiEndpoints.customerRegister,
+      body: {
+        'email': email,
+        'password': password,
+        'confirm_password': confirmPassword,
+        'full_name': fullName,
+        'date_of_birth': dateOfBirth,
+        'gender': gender,
+      },
+    );
+    final success = await _processJwtResponse(response, email, 'CUSTOMER');
+    if (!success) {
+      throw const ApiException('Invalid response from server.');
     }
   }
 

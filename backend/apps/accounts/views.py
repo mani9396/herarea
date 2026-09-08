@@ -558,15 +558,43 @@ class CustomerRegisterCompleteView(APIView):
             </div>
             """
             
-            send_mail(
-                subject=subject,
-                message=text_message,
-                from_email=from_email,
-                recipient_list=[email],
-                fail_silently=False,
-                html_message=html_message
+            zeptomail_token = settings.ZEPTOMAIL_SEND_MAIL_TOKEN
+
+            if not zeptomail_token:
+                raise Exception("ZEPTOMAIL_SEND_MAIL_TOKEN is not configured")
+
+            zeptomail_api_url = getattr(settings, 'ZEPTOMAIL_API_URL', 'https://api.zeptomail.in/v1.1/email')
+            response = requests.post(
+                zeptomail_api_url,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "Authorization": f"Zoho-enczapikey {zeptomail_token}",
+                },
+                json={
+                    "from": {
+                        "address": from_email,
+                        "name": "HER AREA",
+                    },
+                    "to": [
+                        {
+                            "email_address": {
+                                "address": email,
+                            }
+                        }
+                    ],
+                    "subject": subject,
+                    "textbody": text_message,
+                    "htmlbody": html_message,
+                },
+                timeout=10,
             )
-            logger.info(f"Account Created successfully email dispatched to {email}")
+
+            if response.status_code >= 400:
+                logger.error(f"ZeptoMail API failed: {response.status_code} - {response.text}")
+                raise Exception(f"ZeptoMail API error {response.status_code}: {response.text}")
+
+            logger.info(f"Account Created successfully email dispatched to {email} via ZeptoMail")
         except Exception as exc:
             logger.error(f"Account Created email dispatch failed for {email}: {exc}")
         

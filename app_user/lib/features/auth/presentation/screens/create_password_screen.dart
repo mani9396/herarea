@@ -68,25 +68,28 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
 
       setState(() => _isLoading = true);
 
-      final success = await ref.read(authApiRepositoryProvider).completeRegistration(
-        email: pendingReg.email,
-        password: _passwordController.text,
-        confirmPassword: _confirmPasswordController.text,
-        fullName: pendingReg.fullName,
-        dateOfBirth: pendingReg.dateOfBirth,
-        gender: pendingReg.gender,
-      );
+      try {
+        await ref.read(authApiRepositoryProvider).completeRegistration(
+          email: pendingReg.email,
+          password: _passwordController.text,
+          confirmPassword: _confirmPasswordController.text,
+          fullName: pendingReg.fullName,
+          dateOfBirth: pendingReg.dateOfBirth,
+          gender: pendingReg.gender,
+        );
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
+        if (mounted) {
+          setState(() => _isLoading = false);
           // Clear pending registration
           ref.read(pendingRegistrationProvider.notifier).state = null;
           context.go(RoutePaths.locationPermission);
-        } else {
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to complete registration. Please try again.'),
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
               backgroundColor: AppColors.error,
             ),
           );
