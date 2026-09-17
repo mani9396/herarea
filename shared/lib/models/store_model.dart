@@ -231,7 +231,7 @@ class StoreModel {
       latitude: double.tryParse(json['latitude']?.toString() ?? '') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '') ?? 0.0,
       description: json['description'] ?? '',
-      hasHomeMeasurement: json['has_home_measurement'] ?? false,
+      hasHomeMeasurement: json['offers_home_service'] ?? json['has_home_measurement'] ?? false,
       isListingEligible: json['is_listing_eligible'] ?? false,
       status: json['status'] ?? 'DRAFT',
       adminRemarks: json['admin_remarks'],

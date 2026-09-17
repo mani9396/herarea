@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
+
 /// Central REST API endpoint routes matching our Django backend configuration.
 class ApiEndpoints {
   ApiEndpoints._();
 
   // Base API configuration
-  static const String defaultBaseUrl = 'https://herarea.onrender.com';
+  static const String defaultBaseUrl = kDebugMode ? 'http://127.0.0.1:8000' : 'https://herarea.onrender.com';
   static const String apiVersionPrefix = '/api/v1';
   static String get baseApiUrl => '$defaultBaseUrl$apiVersionPrefix';
 

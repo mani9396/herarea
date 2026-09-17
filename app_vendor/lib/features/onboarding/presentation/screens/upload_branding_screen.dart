@@ -1,36 +1,96 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_vendor/core/routing/vendor_route_paths.dart';
 import 'package:shared/shared.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:app_vendor/core/state/vendor_app_state.dart';
+import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
 
-class UploadBrandingScreen extends StatefulWidget {
+class UploadBrandingScreen extends ConsumerStatefulWidget {
   const UploadBrandingScreen({super.key});
 
   @override
-  State<UploadBrandingScreen> createState() => _UploadBrandingScreenState();
+  ConsumerState<UploadBrandingScreen> createState() => _UploadBrandingScreenState();
 }
 
-class _UploadBrandingScreenState extends State<UploadBrandingScreen> {
-  String _logoUrl = 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=300&auto=format&fit=crop';
-  String _coverUrl = 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop';
-  final bool _isLoading = false;
+class _UploadBrandingScreenState extends ConsumerState<UploadBrandingScreen> {
+  String? _logoUrl;
+  String? _coverUrl;
+  XFile? _logoFile;
+  XFile? _coverFile;
+  
+  bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
 
-  void _onUploadLogo() {
-    setState(() {
-      _logoUrl = 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=300&auto=format&fit=crop';
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final store = ref.read(vendorStoreProvider);
+      if (store != null) {
+        setState(() {
+          _logoUrl = store.logo;
+          _coverUrl = store.coverImage;
+        });
+      }
     });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Studio logo updated cleanly!')));
   }
 
-  void _onUploadCover() {
-    setState(() {
-      _coverUrl = 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1200&auto=format&fit=crop';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Widescreen cover banner updated!')));
+  Future<void> _onUploadLogo() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 60,
+      maxWidth: 500,
+      maxHeight: 500,
+    );
+    if (image != null) {
+      setState(() => _logoFile = image);
+    }
   }
 
-  void _onContinue() {
-    context.push(VendorRoutePaths.storeTiming);
+  Future<void> _onUploadCover() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 60,
+      maxWidth: 1920,
+      maxHeight: 1080,
+    );
+    if (image != null) {
+      setState(() => _coverFile = image);
+    }
+  }
+
+  Future<void> _onContinue() async {
+    final currentStore = ref.read(vendorStoreProvider);
+    if (currentStore == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Store profile not found. Please complete step 1 first.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final repo = ref.read(vendorApiRepositoryProvider);
+      await repo.updateStore(
+        currentStore,
+        logoFile: _logoFile,
+        coverImageFile: _coverFile,
+      );
+      
+      ref.read(vendorStoreProvider.notifier).loadLiveStore();
+      if (mounted) context.push(VendorRoutePaths.storeTiming);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -60,7 +120,12 @@ class _UploadBrandingScreenState extends State<UploadBrandingScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.primaryRuby.withValues(alpha: 0.4), width: 2),
-                      image: DecorationImage(image: NetworkImage(_coverUrl), fit: BoxFit.cover),
+                      color: Colors.grey[200],
+                      image: _coverFile != null 
+                        ? DecorationImage(image: NetworkImage(_coverFile!.path), fit: BoxFit.cover)
+                        : (_coverUrl != null && _coverUrl!.isNotEmpty)
+                          ? DecorationImage(image: NetworkImage(_coverUrl!), fit: BoxFit.cover)
+                          : null,
                     ),
                     child: Container(
                       decoration: BoxDecoration(
@@ -91,7 +156,12 @@ class _UploadBrandingScreenState extends State<UploadBrandingScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.accentGold, width: 3),
-                        image: DecorationImage(image: NetworkImage(_logoUrl), fit: BoxFit.cover),
+                        color: Colors.grey[200],
+                        image: _logoFile != null
+                          ? DecorationImage(image: NetworkImage(_logoFile!.path), fit: BoxFit.cover)
+                          : (_logoUrl != null && _logoUrl!.isNotEmpty)
+                            ? DecorationImage(image: NetworkImage(_logoUrl!), fit: BoxFit.cover)
+                            : null,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.lg),

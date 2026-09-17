@@ -22,8 +22,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   CategoryModel? _selectedCategory;
   CategoryModel? _selectedSubcategory;
   bool _isLoading = false;
-  String? _localLogoPath;
-  String? _localCoverPath;
+  XFile? _localLogoFile;
+  XFile? _localCoverFile;
 
   @override
   void initState() {
@@ -60,9 +60,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 GestureDetector(
                   onTap: () async {
                     final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.gallery);
+                    final image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 60,
+                      maxWidth: 1920,
+                      maxHeight: 1080,
+                    );
                     if (image != null) {
-                      setState(() => _localCoverPath = image.path);
+                      setState(() => _localCoverFile = image);
                     }
                   },
                   child: Container(
@@ -71,17 +76,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
-                      image: _localCoverPath != null 
+                      image: _localCoverFile != null 
                           ? DecorationImage(
                               image: kIsWeb 
-                                  ? NetworkImage(_localCoverPath!) as ImageProvider 
-                                  : FileImage(File(_localCoverPath!)), 
+                                  ? NetworkImage(_localCoverFile!.path) as ImageProvider 
+                                  : FileImage(File(_localCoverFile!.path)), 
                               fit: BoxFit.cover)
                           : (ref.read(vendorStoreProvider)?.coverImage != null 
                               ? DecorationImage(image: NetworkImage(ref.read(vendorStoreProvider)!.coverImage!), fit: BoxFit.cover)
                               : null),
                     ),
-                    child: _localCoverPath == null && ref.read(vendorStoreProvider)?.coverImage == null
+                    child: _localCoverFile == null && ref.read(vendorStoreProvider)?.coverImage == null
                         ? const Center(child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -110,8 +115,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 44,
-                        backgroundImage: _localLogoPath != null
-                            ? (kIsWeb ? NetworkImage(_localLogoPath!) : FileImage(File(_localLogoPath!))) as ImageProvider
+                        backgroundImage: _localLogoFile != null
+                            ? (kIsWeb ? NetworkImage(_localLogoFile!.path) : FileImage(File(_localLogoFile!.path))) as ImageProvider
                             : NetworkImage(ref.read(vendorStoreProvider)?.logo ?? 'https://i.pravatar.cc/150'),
                       ),
                       Positioned(
@@ -120,9 +125,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         child: GestureDetector(
                           onTap: () async {
                             final picker = ImagePicker();
-                            final image = await picker.pickImage(source: ImageSource.gallery);
+                            final image = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 60,
+                              maxWidth: 500,
+                              maxHeight: 500,
+                            );
                             if (image != null) {
-                              setState(() => _localLogoPath = image.path);
+                              setState(() => _localLogoFile = image);
                             }
                           },
                           child: const CircleAvatar(
@@ -183,12 +193,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       whatsappNumber: _whatsappController.text.trim(),
                       category: _selectedCategory,
                       subcategory: _selectedSubcategory,
-                      logo: _localLogoPath ?? currentStore.logo,
-                      coverImage: _localCoverPath ?? currentStore.coverImage,
+                      logo: _localLogoFile?.path ?? currentStore.logo,
+                      coverImage: _localCoverFile?.path ?? currentStore.coverImage,
                     );
 
                     try {
-                      await ref.read(vendorStoreProvider.notifier).updateStore(updatedStore);
+                      await ref.read(vendorStoreProvider.notifier).updateStore(
+                        updatedStore,
+                        logoFile: _localLogoFile,
+                        coverImageFile: _localCoverFile,
+                      );
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved successfully!'), backgroundColor: Colors.green));
                         router.pop();

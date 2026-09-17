@@ -120,7 +120,7 @@ class DioApiClient implements IApiClient {
   }
 
   @override
-  Future<Map<String, dynamic>> postMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields}) async {
+  Future<Map<String, dynamic>> postMultipart(String endpoint, {Map<String, dynamic>? files, Map<String, dynamic>? fields}) async {
     try {
       final mapData = <String, dynamic>{};
       if (fields != null) {
@@ -128,9 +128,22 @@ class DioApiClient implements IApiClient {
       }
       if (files != null) {
         for (final entry in files.entries) {
-          final xFile = XFile(entry.value);
-          final bytes = await xFile.readAsBytes();
-          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
+          final value = entry.value;
+          List<int> bytes;
+          String filename;
+          
+          if (value is XFile) {
+            bytes = await value.readAsBytes();
+            filename = value.name;
+          } else if (value is String) {
+            final xFile = XFile(value);
+            bytes = await xFile.readAsBytes();
+            filename = xFile.name;
+          } else {
+            throw ApiException(message: 'Unsupported file type provided to postMultipart.');
+          }
+          
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: filename);
         }
       }
       final formData = FormData.fromMap(mapData);
@@ -148,7 +161,7 @@ class DioApiClient implements IApiClient {
   }
 
   @override
-  Future<Map<String, dynamic>> putMultipart(String endpoint, {Map<String, String>? files, Map<String, dynamic>? fields}) async {
+  Future<Map<String, dynamic>> putMultipart(String endpoint, {Map<String, dynamic>? files, Map<String, dynamic>? fields}) async {
     try {
       final mapData = <String, dynamic>{};
       if (fields != null) {
@@ -156,9 +169,22 @@ class DioApiClient implements IApiClient {
       }
       if (files != null) {
         for (final entry in files.entries) {
-          final xFile = XFile(entry.value);
-          final bytes = await xFile.readAsBytes();
-          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: xFile.name);
+          final value = entry.value;
+          List<int> bytes;
+          String filename;
+          
+          if (value is XFile) {
+            bytes = await value.readAsBytes();
+            filename = value.name;
+          } else if (value is String) {
+            final xFile = XFile(value);
+            bytes = await xFile.readAsBytes();
+            filename = xFile.name;
+          } else {
+            throw ApiException(message: 'Unsupported file type provided to putMultipart.');
+          }
+          
+          mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: filename);
         }
       }
       final formData = FormData.fromMap(mapData);

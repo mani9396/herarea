@@ -5,6 +5,7 @@ import 'package:shared/shared.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_vendor/data/repositories/vendor_api_repository.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
+import 'package:image_picker/image_picker.dart';
 
 class BusinessRegistrationScreen extends ConsumerStatefulWidget {
   const BusinessRegistrationScreen({super.key});
@@ -18,10 +19,8 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
   final _descController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   CategoryModel? _selectedCategory;
   CategoryModel? _selectedSubcategory;
-  String _priceTier = '₹₹₹';
   bool _hasHomeMeasurement = true;
   bool _isLoading = false;
   double? _lat;
@@ -32,6 +31,36 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
   String? _country;
   String? _postalCode;
 
+  final ImagePicker _picker = ImagePicker();
+  List<XFile> _selectedImages = [];
+  List<StoreMediaModel> _existingImages = [];
+  bool _isEditMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final store = ref.read(vendorStoreProvider);
+      if (store != null) {
+        setState(() {
+          _isEditMode = true;
+          _nameController.text = store.name;
+          _descController.text = store.description;
+          _emailController.text = store.whatsappNumber; // Using as contact phone/email placeholder
+          _phoneController.text = store.phoneNumber;
+          _selectedCategory = store.category;
+          _selectedSubcategory = store.subcategory;
+          _hasHomeMeasurement = store.hasHomeMeasurement;
+          _lat = store.latitude;
+          _lon = store.longitude;
+          _area = store.address;
+          _city = store.city;
+          _existingImages = store.gallery;
+        });
+      }
+    });
+  }
+
   Future<void> _onCompleteSetup() async {
     if (_lat == null || _lon == null || _area == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,9 +69,9 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
       return;
     }
 
-    if (_addressController.text.trim().isEmpty || _emailController.text.trim().isEmpty || _phoneController.text.trim().isEmpty) {
+    if (_emailController.text.trim().isEmpty || _phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter store address, email, and phone number.')),
+        const SnackBar(content: Text('Please enter store email and phone number.')),
       );
       return;
     }
@@ -50,25 +79,51 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(vendorApiRepositoryProvider);
-      final errorMessage = await repo.createBusinessProfile({
-        'business_name': _nameController.text,
-        'description': _descController.text,
-        if (_selectedCategory != null) 'category': _selectedCategory!.id,
-        if (_selectedSubcategory != null) 'subcategory': _selectedSubcategory!.id,
-        'latitude': _lat,
-        'longitude': _lon,
-        'area': (_area?.isNotEmpty == true) ? _area : 'Unknown Area',
-        'city': (_city?.isNotEmpty == true) ? _city : 'Unknown City',
-        'state': (_state?.isNotEmpty == true) ? _state : 'Unknown State',
-        'country': (_country?.isNotEmpty == true) ? _country : 'India',
-        'postal_code': (_postalCode?.isNotEmpty == true) ? _postalCode : '000000',
-        'address_line_1': _addressController.text.isNotEmpty ? _addressController.text : ((_area?.isNotEmpty == true) ? _area : 'Store Address'),
-        'contact_email': _emailController.text.isNotEmpty ? _emailController.text : 'contact@example.com',
-        'contact_phone': _phoneController.text.isNotEmpty ? _phoneController.text : '0000000000',
-      });
+      String? errorMessage;
+      
+      if (_isEditMode) {
+        final currentStore = ref.read(vendorStoreProvider)!;
+        final updated = currentStore.copyWith(
+          name: _nameController.text,
+          description: _descController.text,
+          category: _selectedCategory,
+          subcategory: _selectedSubcategory,
+          latitude: _lat,
+          longitude: _lon,
+          address: _area,
+          city: _city,
+          whatsappNumber: _phoneController.text,
+          hasHomeMeasurement: _hasHomeMeasurement,
+        );
+        final res = await repo.updateStore(updated);
+        if (res == null) errorMessage = 'Failed to update store';
+      } else {
+        errorMessage = await repo.createBusinessProfile({
+          'business_name': _nameController.text,
+          'description': _descController.text,
+          if (_selectedCategory != null) 'category': _selectedCategory!.id,
+          if (_selectedSubcategory != null) 'subcategory': _selectedSubcategory!.id,
+          'latitude': _lat,
+          'longitude': _lon,
+          'area': (_area?.isNotEmpty == true) ? _area : 'Unknown Area',
+          'city': (_city?.isNotEmpty == true) ? _city : 'Unknown City',
+          'state': (_state?.isNotEmpty == true) ? _state : 'Unknown State',
+          'country': (_country?.isNotEmpty == true) ? _country : 'India',
+          'postal_code': (_postalCode?.isNotEmpty == true) ? _postalCode : '000000',
+          'address_line_1': (_area?.isNotEmpty == true) ? _area : 'Store Address',
+          'contact_email': _emailController.text.isNotEmpty ? _emailController.text : 'contact@example.com',
+          'contact_phone': _phoneController.text.isNotEmpty ? _phoneController.text : '0000000000',
+          'offers_home_service': _hasHomeMeasurement,
+        });
+      }
 
       if (errorMessage == null) {
-        // Refresh the store provider so the dashboard knows the store is created
+        // Upload images if any
+        for (var file in _selectedImages) {
+          await repo.uploadGalleryImage(file);
+        }
+        
+        // Refresh the store provider
         ref.read(vendorStoreProvider.notifier).loadLiveStore();
         if (mounted) context.push(VendorRoutePaths.uploadBranding);
       } else {
@@ -89,7 +144,6 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
     _descController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
@@ -117,49 +171,24 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                   controller: _nameController,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.categorySelection);
-                          if (res != null) {
-                            setState(() {
-                              _selectedCategory = res['category'];
-                              _selectedSubcategory = res['subcategory'];
-                            });
-                          }
-                        },
-                        child: AbsorbPointer(
-                          child: CustomTextField(
-                            label: 'Category',
-                            hintText: 'Select Specialty',
-                            controller: TextEditingController(
-                              text: _selectedCategory != null 
-                                ? '${_selectedCategory!.name}${_selectedSubcategory != null ? " - ${_selectedSubcategory!.name}" : ""}' 
-                                : ''
-                            ),
-                            suffixWidget: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _priceTier,
-                        decoration: InputDecoration(
-                          labelText: 'Price Tier',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        items: ['₹ (Budget)', '₹₹ (Moderate)', '₹₹₹ (Premium)', '₹₹₹₹ (Luxury)']
-                            .map((t) => DropdownMenuItem(value: t.split(' ')[0], child: Text(t))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _priceTier = val);
-                        },
-                      ),
-                    ),
-                  ],
+                CustomTextField(
+                  label: 'Category',
+                  hintText: 'Select Specialty',
+                  controller: TextEditingController(
+                    text: _selectedCategory != null 
+                      ? '${_selectedCategory!.name}${_selectedSubcategory != null ? " - ${_selectedSubcategory!.name}" : ""}' 
+                      : ''
+                  ),
+                  suffixWidget: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                  onTap: () async {
+                    final res = await context.push<Map<String, dynamic>>(VendorRoutePaths.categorySelection);
+                    if (res != null) {
+                      setState(() {
+                        _selectedCategory = res['category'];
+                        _selectedSubcategory = res['subcategory'];
+                      });
+                    }
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -178,12 +207,6 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                   label: 'Store Phone',
                   hintText: 'e.g. +91 9876543210',
                   controller: _phoneController,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  label: 'Store Address (Line 1)',
-                  hintText: 'e.g. 123 Main Street, Suite 4',
-                  controller: _addressController,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
@@ -241,6 +264,26 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                     scrollDirection: Axis.horizontal,
                     children: [
                       _buildAddImageTile(),
+                      ..._selectedImages.map((file) => Padding(
+                            padding: const EdgeInsets.only(left: AppSpacing.sm),
+                            child: _buildPreviewThumb(file.path, isLocal: true, onRemove: () {
+                              setState(() => _selectedImages.remove(file));
+                            }),
+                          )),
+                      ..._existingImages.map((media) => Padding(
+                            padding: const EdgeInsets.only(left: AppSpacing.sm),
+                            child: _buildPreviewThumb(media.image, isLocal: false, onRemove: () async {
+                              final repo = ref.read(vendorApiRepositoryProvider);
+                              final success = await repo.deleteGalleryImage(media.id);
+                              if (success) {
+                                setState(() => _existingImages.remove(media));
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete image')));
+                                }
+                              }
+                            }),
+                          )),
                     ],
                   ),
                 ),
@@ -260,7 +303,21 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
 
   Widget _buildAddImageTile() {
     return InkWell(
-      onTap: () {},
+      onTap: () async {
+        final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+        if (image != null) {
+          if (_isEditMode) {
+             final repo = ref.read(vendorApiRepositoryProvider);
+             final res = await repo.uploadGalleryImage(image);
+             if (res != null) {
+                ref.read(vendorStoreProvider.notifier).loadLiveStore();
+                setState(() => _existingImages = [res]);
+             }
+          } else {
+             setState(() => _selectedImages = [image]);
+          }
+        }
+      },
       child: Container(
         width: 120,
         decoration: BoxDecoration(
@@ -280,18 +337,23 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
     );
   }
 
-  Widget _buildPreviewThumb(String url) {
+  Widget _buildPreviewThumb(String path, {required bool isLocal, required VoidCallback onRemove}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Stack(
         children: [
-          Image.network(url, width: 120, height: 120, fit: BoxFit.cover),
+          isLocal 
+              ? Image.network(path, width: 120, height: 120, fit: BoxFit.cover) // In web, XFile.path is a blob URL
+              : Image.network(path, width: 120, height: 120, fit: BoxFit.cover),
           Positioned(
             top: 4, right: 4,
-            child: CircleAvatar(
-              radius: 12,
-              backgroundColor: Colors.black54,
-              child: Icon(Icons.close_rounded, size: 14, color: Colors.white),
+            child: GestureDetector(
+              onTap: onRemove,
+              child: const CircleAvatar(
+                radius: 12,
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.close_rounded, size: 14, color: Colors.white),
+              ),
             ),
           ),
         ],

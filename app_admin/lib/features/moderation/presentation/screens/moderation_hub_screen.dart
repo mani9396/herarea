@@ -78,7 +78,7 @@ class ModerationHubScreen extends ConsumerWidget {
                       'Investigate 1-star reviews flagged by partner boutiques for abusive wording or fitting schedule mismatches.',
                       Icons.gavel_rounded,
                       Colors.red.shade700,
-                      '${stats.reportedReviews} active reports',
+                      '${stats.pendingReviews} active reports',
                       () => context.push(AdminRoutePaths.reviewModeration),
                     ),
                   ],

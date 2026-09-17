@@ -479,44 +479,41 @@ class AdminDashboardStats {
   final int totalCustomers;
   final int totalVendors;
   final int pendingVendors;
+  final int pendingStores;
   final int pendingProducts;
   final int pendingGallery;
   final int pendingOffers;
   final int pendingProfileUpdates;
-  final int reportedReviews;
+  final int pendingReviews;
   final double totalEstimatedRevenue;
 
   const AdminDashboardStats({
     required this.totalCustomers,
     required this.totalVendors,
     required this.pendingVendors,
+    required this.pendingStores,
     required this.pendingProducts,
     required this.pendingGallery,
     required this.pendingOffers,
     required this.pendingProfileUpdates,
-    required this.reportedReviews,
+    required this.pendingReviews,
     required this.totalEstimatedRevenue,
   });
 }
 
 final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
-  final products = ref.watch(adminProductsProvider);
-  final gallery = ref.watch(adminGalleryProvider);
-  final offers = ref.watch(adminOffersProvider);
-  final profileUpdates = ref.watch(adminProfileUpdatesProvider);
-  final reviews = ref.watch(adminReviewsProvider);
-
   final analytics = ref.watch(adminAnalyticsProvider).valueOrNull;
 
   return AdminDashboardStats(
     totalCustomers: analytics?['total_customers'] ?? 0,
     totalVendors: analytics?['verified_vendors'] ?? 0,
     pendingVendors: analytics?['pending_vendors'] ?? 0,
-    pendingProducts: products.where((p) => p.status == AdminStatus.pending).length,
-    pendingGallery: gallery.where((g) => g.status == AdminStatus.pending).length,
-    pendingOffers: offers.where((o) => o.status == AdminStatus.pending).length,
-    pendingProfileUpdates: profileUpdates.where((u) => u.status == AdminStatus.pending).length,
-    reportedReviews: reviews.where((r) => r.isReported && r.status == AdminStatus.pending).length,
+    pendingStores: analytics?['pending_stores'] ?? 0,
+    pendingProducts: analytics?['pending_products'] ?? 0,
+    pendingGallery: analytics?['pending_gallery'] ?? 0,
+    pendingOffers: analytics?['pending_offers'] ?? 0,
+    pendingProfileUpdates: analytics?['pending_profile_updates'] ?? 0,
+    pendingReviews: analytics?['pending_reviews'] ?? 0,
     totalEstimatedRevenue: (analytics?['total_gmv'] ?? 0).toDouble(),
   );
 });

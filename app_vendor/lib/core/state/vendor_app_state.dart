@@ -27,10 +27,10 @@ class VendorStoreNotifier extends StateNotifier<StoreModel?> {
     }
   }
 
-  Future<void> updateStore(StoreModel newStore) async {
+  Future<void> updateStore(StoreModel newStore, {dynamic logoFile, dynamic coverImageFile}) async {
     state = newStore;
     if (_repository != null) {
-      await _repository.updateStore(newStore);
+      await _repository.updateStore(newStore, logoFile: logoFile, coverImageFile: coverImageFile);
     }
   }
 }
