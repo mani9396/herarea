@@ -232,8 +232,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 if DEBUG:
-    CORS_ALLOWED_ORIGINS.append('http://localhost:52442')
-    CSRF_TRUSTED_ORIGINS = ['http://localhost:52442']
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^http://localhost:\d+$",
+        r"^http://127\.0\.0\.1:\d+$",
+    ]
+    CSRF_TRUSTED_ORIGINS = ['http://localhost:52442', 'http://127.0.0.1:8000']
 
 CORS_ALLOW_CREDENTIALS = True
 # Logging Configuration

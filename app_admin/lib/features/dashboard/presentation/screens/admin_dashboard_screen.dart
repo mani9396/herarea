@@ -13,6 +13,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final analyticsAsync = ref.watch(adminAnalyticsProvider);
     final stats = ref.watch(adminDashboardStatsProvider);
     final recentActivities = ref.watch(adminActivityLogProvider);
     final adminRevenueAsync = ref.watch(adminRevenueProvider);
@@ -23,61 +24,84 @@ class AdminDashboardScreen extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 1300),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeaderBanner(context, stats),
-                const SizedBox(height: AppSpacing.xl),
-                const Text(
-                  'Pending Moderation Queues',
-                  style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
+            child: analyticsAsync.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: CircularProgressIndicator(color: AppColors.primaryRuby),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                _buildPendingApprovalsGrid(context, stats),
-                const SizedBox(height: AppSpacing.xxl),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              error: (err, stack) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Marketplace Revenue Overview (Verified Subscriptions)',
-                            style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _buildRevenueOverviewCard(adminRevenueAsync),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xl),
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Recent Platform Activities',
-                            style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _buildActivityLogCard(recentActivities),
-                        ],
-                      ),
+                    const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    const SizedBox(height: 16),
+                    Text('Failed to load dashboard: $err'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.refresh(adminAnalyticsProvider),
+                      child: const Text('Retry'),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.xxl),
-                const Text(
-                  'Administrative Quick Actions',
-                  style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _buildQuickActionsGrid(context),
-                const SizedBox(height: AppSpacing.xxl),
-              ],
+              ),
+              data: (_) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeaderBanner(context, stats),
+                  const SizedBox(height: AppSpacing.xl),
+                  const Text(
+                    'Pending Moderation Queues',
+                    style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildPendingApprovalsGrid(context, stats),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Marketplace Revenue Overview (Verified Subscriptions)',
+                              style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildRevenueOverviewCard(adminRevenueAsync),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xl),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Recent Platform Activities',
+                              style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildActivityLogCard(recentActivities),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  const Text(
+                    'Administrative Quick Actions',
+                    style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildQuickActionsGrid(context),
+                  const SizedBox(height: AppSpacing.xxl),
+                ],
+              ),
             ),
           ),
         ),
@@ -204,7 +228,7 @@ class AdminDashboardScreen extends ConsumerWidget {
         _buildPendingCard(
           context,
           'Store Approvals',
-          '${stats.pendingVendors}', // Reusing pendingVendors for now or could be a new stat
+          '${stats.pendingStores}',
           Icons.store_rounded,
           Colors.green.shade700,
           () => context.push(AdminRoutePaths.storeApprovals),
@@ -236,7 +260,7 @@ class AdminDashboardScreen extends ConsumerWidget {
         _buildPendingCard(
           context,
           'Reported Reviews',
-          '${stats.reportedReviews}',
+          '${stats.pendingReviews}',
           Icons.flag_rounded,
           Colors.red.shade700,
           () => context.push(AdminRoutePaths.reviewModeration),

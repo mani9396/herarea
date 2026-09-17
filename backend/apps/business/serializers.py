@@ -31,6 +31,7 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
             'contact_email', 'contact_phone', 
             'latitude', 'longitude', 'business_timings', 
             'logo', 'cover_image', 'gallery', 'is_listing_eligible',
+            'offers_home_service',
             'status', 'admin_remarks',
             'created_at', 'updated_at', 'rating', 'review_count'
         ]
@@ -90,7 +91,7 @@ class PublicStoreShowroomSerializer(serializers.ModelSerializer):
             'address_line_1', 'address_line_2', 'area', 'city', 'state', 'country', 'postal_code', 
             'contact_email', 'contact_phone', 
             'latitude', 'longitude', 'business_timings', 
-            'logo', 'cover_image', 'gallery', 'created_at',
+            'logo', 'cover_image', 'gallery', 'offers_home_service', 'created_at',
             'rating', 'review_count'
         ]
         read_only_fields = ['id', 'category_name', 'category_slug', 'subcategory_name', 'subcategory_slug', 'vendor_status', 'created_at']

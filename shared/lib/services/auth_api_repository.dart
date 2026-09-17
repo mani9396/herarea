@@ -3,6 +3,7 @@ import 'package:shared/constants/api_endpoints.dart';
 import 'package:shared/models/user_model.dart';
 import 'package:shared/services/api_client_interface.dart';
 import 'package:shared/services/api_providers.dart';
+import 'package:shared/exceptions/api_exception.dart';
 
 class AuthApiRepository {
   final IApiClient _apiClient;
@@ -106,12 +107,12 @@ class AuthApiRepository {
     );
     final success = await _processJwtResponse(response, email, 'CUSTOMER');
     if (!success) {
-      throw const ApiException('Invalid response from server.');
+      throw const ApiException(message: 'Invalid response from server.');
     }
   }
 
   /// Self-register a new Vendor account.
-  Future<bool> vendorSelfRegister({
+  Future<String?> vendorSelfRegister({
     required String ownerName,
     required String email,
     required String phoneNumber,
@@ -130,9 +131,11 @@ class AuthApiRepository {
         },
       );
       // Registration successful, but requires login manually afterwards
-      return true;
-    } catch (_) {
-      return false;
+      return null; // Return null on success
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'An unexpected error occurred: $e';
     }
   }
 

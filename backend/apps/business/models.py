@@ -72,6 +72,9 @@ class BusinessProfile(AbstractBaseModel):
     logo = models.ImageField(upload_to='stores/logos/', null=True, blank=True, help_text='Studio brand emblem logo image')
     cover_image = models.ImageField(upload_to='stores/covers/', null=True, blank=True, help_text='Showroom header banner image')
 
+    # Service Preferences
+    offers_home_service = models.BooleanField(default=False, help_text='Whether the studio offers home visits or services')
+
     # Governance
     status = models.CharField(
         max_length=20,

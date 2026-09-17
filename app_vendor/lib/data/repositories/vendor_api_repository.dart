@@ -31,20 +31,27 @@ class VendorApiRepository {
   }
 
   /// Update studio profile information (mapped to BusinessProfile in backend)
-  Future<StoreModel?> updateStore(StoreModel store) async {
+  Future<StoreModel?> updateStore(StoreModel store, {dynamic logoFile, dynamic coverImageFile}) async {
     try {
       final payload = <String, dynamic>{
         'business_name': store.name,
         'contact_phone': store.whatsappNumber,
         'category': store.category.id,
         if (store.subcategory != null) 'subcategory': store.subcategory!.id,
+        'offers_home_service': store.hasHomeMeasurement,
       };
 
-      final files = <String, String>{};
-      if (store.logo != null && !store.logo!.startsWith('http')) {
+      final files = <String, dynamic>{};
+      
+      if (logoFile != null) {
+        files['logo'] = logoFile;
+      } else if (store.logo != null && !store.logo!.startsWith('http') && !store.logo!.startsWith('blob:')) {
         files['logo'] = store.logo!;
       }
-      if (store.coverImage != null && !store.coverImage!.startsWith('http')) {
+      
+      if (coverImageFile != null) {
+        files['cover_image'] = coverImageFile;
+      } else if (store.coverImage != null && !store.coverImage!.startsWith('http') && !store.coverImage!.startsWith('blob:')) {
         files['cover_image'] = store.coverImage!;
       }
 
@@ -74,11 +81,11 @@ class VendorApiRepository {
   }
 
   /// Upload a gallery image for the store
-  Future<StoreMediaModel?> uploadGalleryImage(String filePath) async {
+  Future<StoreMediaModel?> uploadGalleryImage(dynamic file) async {
     try {
       final res = await _apiClient.postMultipart(
         '${ApiEndpoints.vendorBusinessProfile}media/',
-        files: {'image': filePath},
+        files: {'image': file},
       );
       return StoreMediaModel.fromJson(res);
     } catch (e) {
@@ -110,11 +117,11 @@ class VendorApiRepository {
   }
 
   /// Upload verification KYC documents (PAN, GSTIN, Boutique Business License)
-  Future<bool> uploadKycDocument(String filePath, {required String documentType}) async {
+  Future<bool> uploadKycDocument(dynamic file, {required String documentType}) async {
     try {
       final response = await _apiClient.postMultipart(
         ApiEndpoints.vendorKycUpload,
-        files: {'kyc_document': filePath},
+        files: {'kyc_document': file},
         fields: {'document_type': documentType},
       );
       return (response['status_code'] as int? ?? 200) <= 204;

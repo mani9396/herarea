@@ -48,7 +48,7 @@ class _VendorSignupScreenState extends ConsumerState<VendorSignupScreen> {
       _errorMessage = null;
     });
 
-    final success = await ref.read(authApiRepositoryProvider).vendorSelfRegister(
+    final errorMessage = await ref.read(authApiRepositoryProvider).vendorSelfRegister(
       ownerName: _nameController.text.trim(),
       email: _emailController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
@@ -59,13 +59,13 @@ class _VendorSignupScreenState extends ConsumerState<VendorSignupScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     
-    if (success) {
+    if (errorMessage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration successful! Please login.')),
       );
       context.go(VendorRoutePaths.login);
     } else {
-      setState(() => _errorMessage = 'Registration failed. Email or Phone number might already be in use.');
+      setState(() => _errorMessage = 'Registration failed: $errorMessage');
     }
   }
 
