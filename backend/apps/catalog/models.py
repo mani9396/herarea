@@ -156,3 +156,91 @@ class Offer(AbstractBaseModel):
 
     def __str__(self):
         return f"{self.title} ({self.status}) — {self.business_profile.business_name}"
+
+
+class PromotionType(models.TextChoices):
+    APP = 'APP', 'Internal App Destination'
+    EXTERNAL = 'EXTERNAL', 'External URL'
+
+
+class InternalDestinationType(models.TextChoices):
+    STORE = 'STORE', 'Store / Showroom'
+    CATEGORY = 'CATEGORY', 'Category'
+    OFFER = 'OFFER', 'Offer'
+
+
+class PromotionStatus(models.TextChoices):
+    SCHEDULED = 'SCHEDULED', 'Scheduled'
+    ACTIVE = 'ACTIVE', 'Active'
+    SUSPENDED = 'SUSPENDED', 'Suspended'
+    EXPIRED = 'EXPIRED', 'Expired'
+
+
+class Promotion(AbstractBaseModel):
+    """
+    Admin-controlled promotional banners displayed in the Customer App.
+    """
+    title = models.CharField(max_length=150, help_text='Campaign headline')
+    subtitle = models.CharField(max_length=200, null=True, blank=True, help_text='Secondary text')
+    image_url = models.ImageField(upload_to='promotions/banners/', max_length=500, help_text='Cloud Storage URI for 16:9 banner')
+    
+    promotion_type = models.CharField(max_length=20, choices=PromotionType.choices, default=PromotionType.APP)
+    
+    internal_destination_type = models.CharField(
+        max_length=20, 
+        choices=InternalDestinationType.choices, 
+        null=True, 
+        blank=True,
+        help_text='Required if promotion_type is APP'
+    )
+    internal_destination_id = models.UUIDField(
+        null=True, 
+        blank=True,
+        help_text='UUID of the Store, Category, or Offer'
+    )
+    
+    external_url = models.URLField(
+        max_length=500, 
+        null=True, 
+        blank=True,
+        help_text='Required if promotion_type is EXTERNAL'
+    )
+    
+    start_at = models.DateTimeField(help_text='When the promotion becomes eligible for display')
+    end_at = models.DateTimeField(help_text='When the promotion expires')
+    
+    status = models.CharField(
+        max_length=30, 
+        choices=PromotionStatus.choices, 
+        default=PromotionStatus.SCHEDULED,
+        help_text='Administrative status. Affects display availability.'
+    )
+    priority = models.IntegerField(default=0, help_text='Lower number means higher display priority')
+    
+    created_by = models.ForeignKey(
+        'accounts.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name='created_promotions',
+        help_text='Admin who created this promotion'
+    )
+
+    class Meta:
+        verbose_name = 'Promotion Banner'
+        verbose_name_plural = 'Promotion Banners'
+        ordering = ['priority', '-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.get_promotion_type_display()})"
+
+    @property
+    def effective_status(self):
+        from django.utils import timezone
+        now = timezone.now()
+        if self.status == PromotionStatus.SUSPENDED:
+            return PromotionStatus.SUSPENDED
+        if now > self.end_at:
+            return PromotionStatus.EXPIRED
+        if now < self.start_at:
+            return PromotionStatus.SCHEDULED
+        return PromotionStatus.ACTIVE

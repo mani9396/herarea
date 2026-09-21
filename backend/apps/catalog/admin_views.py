@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from apps.accounts.permissions import IsAdminRole
-from apps.catalog.models import Product, Offer, GalleryImage
-from apps.catalog.serializers import ProductSerializer, PublicPromotionSerializer, GalleryImageSerializer
+from apps.catalog.models import Product, Offer, GalleryImage, Promotion, PromotionStatus
+from apps.catalog.serializers import ProductSerializer, PublicPromotionSerializer, GalleryImageSerializer, PromotionAdminSerializer
 
 logger = logging.getLogger('her_area')
 
@@ -183,3 +183,93 @@ class AdminGalleryDetailView(APIView):
             return Response({"detail": "Gallery image deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
         except GalleryImage.DoesNotExist:
             raise exceptions.NotFound("Gallery image not found.")
+
+
+class AdminPromotionListView(APIView):
+    """
+    Executive platform overview of all marketing banners and promotions.
+    """
+    permission_classes = [IsAdminRole]
+    serializer_class = PromotionAdminSerializer
+
+    @extend_schema(summary="List all Promotions / Banners")
+    def get(self, request):
+        promotions = Promotion.objects.all().order_by('priority', '-created_at')
+        return Response(PromotionAdminSerializer(promotions, many=True, context={'request': request}).data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Create a new Promotion / Banner")
+    def post(self, request):
+        serializer = PromotionAdminSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(created_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminPromotionDetailView(APIView):
+    """
+    Executive operations for a single marketing promotion.
+    """
+    permission_classes = [IsAdminRole]
+    serializer_class = PromotionAdminSerializer
+
+    @extend_schema(summary="Retrieve Promotion details")
+    def get(self, request, pk):
+        try:
+            promotion = Promotion.objects.get(pk=pk)
+            return Response(PromotionAdminSerializer(promotion, context={'request': request}).data, status=status.HTTP_200_OK)
+        except Promotion.DoesNotExist:
+            raise exceptions.NotFound("Promotion not found.")
+
+    @extend_schema(summary="Update a Promotion")
+    def put(self, request, pk):
+        try:
+            promotion = Promotion.objects.get(pk=pk)
+        except Promotion.DoesNotExist:
+            raise exceptions.NotFound("Promotion not found.")
+            
+        serializer = PromotionAdminSerializer(promotion, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    @extend_schema(summary="Partially Update a Promotion")
+    def patch(self, request, pk):
+        return self.put(request, pk)
+
+    @extend_schema(summary="Delete a Promotion")
+    def delete(self, request, pk):
+        try:
+            promotion = Promotion.objects.get(pk=pk)
+            promotion.delete()
+            logger.info(f"Admin {request.user.phone_number} deleted promotion {pk}.")
+            return Response({"detail": "Promotion deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        except Promotion.DoesNotExist:
+            raise exceptions.NotFound("Promotion not found.")
+
+
+class AdminPromotionActionView(APIView):
+    """
+    Suspend or Resume a promotion.
+    """
+    permission_classes = [IsAdminRole]
+    serializer_class = PromotionAdminSerializer
+
+    @extend_schema(summary="Suspend or Resume a Promotion")
+    def post(self, request, pk, action):
+        try:
+            promotion = Promotion.objects.get(pk=pk)
+        except Promotion.DoesNotExist:
+            raise exceptions.NotFound("Promotion not found.")
+
+        if action == 'suspend':
+            promotion.status = PromotionStatus.SUSPENDED
+        elif action == 'resume':
+            promotion.status = PromotionStatus.ACTIVE
+        else:
+            return Response({"error": "Invalid action. Use 'suspend' or 'resume'."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        promotion.save()
+        logger.info(f"Admin {request.user.phone_number} {action}d promotion {pk}.")
+        return Response(PromotionAdminSerializer(promotion, context={'request': request}).data, status=status.HTTP_200_OK)

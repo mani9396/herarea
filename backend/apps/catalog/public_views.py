@@ -4,8 +4,8 @@ from rest_framework import status, permissions, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from apps.catalog.models import Product, GalleryImage, Offer
-from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer, PublicPromotionSerializer
+from apps.catalog.models import Product, GalleryImage, Offer, Promotion, PromotionStatus
+from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer, PublicPromotionSerializer, PromotionPublicSerializer
 from apps.vendors.models import VendorStatus
 from apps.business.models import BusinessProfile
 
@@ -159,3 +159,32 @@ class PublicPromotionListView(APIView):
             Q(end_date__isnull=True) | Q(end_date__gte=now)
         ).select_related('business_profile').order_by('-created_at')
         return Response(PublicPromotionSerializer(offers, many=True).data, status=status.HTTP_200_OK)
+
+
+class PublicBannerListView(APIView):
+    """
+    Customer App API for Admin-controlled promotional banners.
+    Banners are displayed in the app UI (e.g., below Stories).
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = PromotionPublicSerializer
+
+    @extend_schema(
+        summary="List Active Promotional Banners",
+        description="Returns currently active and eligible admin-controlled promotion banners.",
+        responses={200: PromotionPublicSerializer(many=True)}
+    )
+    def get(self, request):
+        from django.utils import timezone
+        now = timezone.now()
+        
+        promotions = Promotion.objects.filter(
+            status__in=[PromotionStatus.ACTIVE, PromotionStatus.SCHEDULED]
+        ).filter(
+            start_at__lte=now,
+            end_at__gte=now
+        ).exclude(
+            status=PromotionStatus.SUSPENDED
+        ).order_by('priority', '-created_at')
+        
+        return Response(PromotionPublicSerializer(promotions, many=True, context={'request': request}).data, status=status.HTTP_200_OK)
