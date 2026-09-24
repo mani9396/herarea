@@ -68,5 +68,11 @@ class ApiException implements Exception {
   }
 
   @override
-  String toString() => 'ApiException(code: $errorCode, status: $statusCode, message: $message)';
+  String toString() {
+    if (isValidationError && details is Map) {
+      final fieldErrors = (details as Map).entries.map((e) => '${e.key}: ${e.value}').join(', ');
+      return 'Validation Error: $fieldErrors';
+    }
+    return 'ApiException(code: $errorCode, status: $statusCode, message: $message)';
+  }
 }

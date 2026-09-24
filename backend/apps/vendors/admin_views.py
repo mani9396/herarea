@@ -11,7 +11,7 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from apps.accounts.models import User, UserRole
 from apps.business.models import BusinessProfile
-from apps.vendors.serializers import VendorProfileSerializer, AdminVendorActionSerializer, AdminVendorCreateSerializer
+from apps.vendors.serializers import VendorProfileSerializer, AdminVendorActionSerializer, AdminVendorCreateSerializer, AdminVendorChatStatusSerializer
 from apps.notifications.services import NotificationEngine
 from apps.notifications.models import NotificationType
 
@@ -191,6 +191,37 @@ class AdminVendorSuspendView(APIView):
         )
         response_serializer = VendorProfileSerializer(vendor)
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+class AdminVendorChatStatusView(APIView):
+    """Update vendor's chat status (ACTIVE, PAUSED, SUSPENDED, DISABLED)."""
+    permission_classes = [IsAdminRole]
+    serializer_class = AdminVendorChatStatusSerializer
+
+    @extend_schema(
+        summary="Update Vendor Chat Status",
+        description="Override the chat availability status for a specific vendor studio.",
+        request=AdminVendorChatStatusSerializer,
+        responses={200: VendorProfileSerializer}
+    )
+    def post(self, request, pk):
+        try:
+            vendor = VendorProfile.objects.get(pk=pk)
+        except VendorProfile.DoesNotExist:
+            raise exceptions.NotFound("Target vendor profile does not exist.")
+
+        serializer = AdminVendorChatStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        chat_status = serializer.validated_data['chat_status']
+
+        vendor.chat_status = chat_status
+        vendor.updated_by = request.user
+        vendor.save(update_fields=['chat_status', 'updated_by'])
+
+        logger.info(f"Vendor {vendor.owner_name} chat status updated to {chat_status} by Admin {request.user.phone_number}.")
+        
+        response_serializer = VendorProfileSerializer(vendor)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
 
 class AdminVendorCreateView(APIView):
     """

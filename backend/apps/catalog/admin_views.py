@@ -203,6 +203,8 @@ class AdminPromotionListView(APIView):
         if serializer.is_valid():
             serializer.save(created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        logger.error(f"Promotion validation failed: {serializer.errors}")
+        print(f"Promotion validation failed: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

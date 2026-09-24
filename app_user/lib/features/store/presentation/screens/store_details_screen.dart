@@ -16,12 +16,30 @@ class StoreDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
+  late Future<Map<String, dynamic>?> _storeDataFuture;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(recentlyViewedProvider.notifier).logView(widget.storeId);
     });
+    _storeDataFuture = _fetchStoreData();
+  }
+
+  Future<Map<String, dynamic>?> _fetchStoreData() async {
+    final repo = ref.read(storeRepositoryProvider);
+    final results = await Future.wait([
+      repo.getStoreById(widget.storeId),
+      repo.getStoreDossier(widget.storeId),
+    ]);
+    final store = results[0] as StoreModel?;
+    final dossier = results[1] as Map<String, dynamic>?;
+    if (store == null) return null;
+    return {
+      'store': store,
+      'dossier': dossier,
+    };
   }
 
   @override
@@ -33,13 +51,16 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
-      body: FutureBuilder<StoreModel?>(
-        future: repo.getStoreById(widget.storeId),
+      body: FutureBuilder<Map<String, dynamic>?>(
+        future: _storeDataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final store = snapshot.data;
+          final data = snapshot.data;
+          final store = data?['store'] as StoreModel?;
+          final dossier = data?['dossier'] as Map<String, dynamic>?;
+
           if (store == null) {
             return Center(
               child: Column(
@@ -55,17 +76,20 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             );
           }
 
+          final productsData = dossier?['products'] as List? ?? [];
+          final products = productsData.map((p) => CatalogItemModel.fromJson(p as Map<String, dynamic>)).toList();
+
           if (isWide) {
-            return _buildWideDesktopLayout(context, ref, store, isFav, isDark);
+            return _buildWideDesktopLayout(context, ref, store, products, isFav, isDark);
           }
 
-          return _buildMobileSliverLayout(context, ref, store, isFav, isDark);
+          return _buildMobileSliverLayout(context, ref, store, products, isFav, isDark);
         },
       ),
     );
   }
 
-  Widget _buildMobileSliverLayout(BuildContext context, WidgetRef ref, StoreModel store, bool isFav, bool isDark) {
+  Widget _buildMobileSliverLayout(BuildContext context, WidgetRef ref, StoreModel store, List<CatalogItemModel> products, bool isFav, bool isDark) {
     return Stack(
       children: [
         CustomScrollView(
@@ -115,7 +139,7 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.xl),
-                child: _buildStoreBodyContent(context, ref, store, isDark),
+                child: _buildStoreBodyContent(context, ref, store, products, isDark),
               ),
             ),
           ],
@@ -132,7 +156,7 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
     );
   }
 
-  Widget _buildWideDesktopLayout(BuildContext context, WidgetRef ref, StoreModel store, bool isFav, bool isDark) {
+  Widget _buildWideDesktopLayout(BuildContext context, WidgetRef ref, StoreModel store, List<CatalogItemModel> products, bool isFav, bool isDark) {
     return Scaffold(
       appBar: AppBar(
         title: Text(store.name, style: const TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w800)),
@@ -204,7 +228,7 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             flex: 6,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(40),
-              child: _buildStoreBodyContent(context, ref, store, isDark),
+              child: _buildStoreBodyContent(context, ref, store, products, isDark),
             ),
           ),
         ],
@@ -236,7 +260,7 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
     );
   }
 
-  Widget _buildStoreBodyContent(BuildContext context, WidgetRef ref, StoreModel store, bool isDark) {
+  Widget _buildStoreBodyContent(BuildContext context, WidgetRef ref, StoreModel store, List<CatalogItemModel> products, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -337,20 +361,42 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
                       ],
                     ),
                     if (offer.discountValue != null && offer.discountValue!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(offer.discountValue!, style: const TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold)),
+                    ],
+                    if (offer.description != null && offer.description!.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Text('Discount: ${offer.discountValue}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      Text(offer.description!, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
                     ],
-                    if (offer.promoCode != null && offer.promoCode!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text('Promo Code: ${offer.promoCode}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.accentGold)),
-                    ],
-                    const SizedBox(height: 8),
-                    Text(offer.description, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
                   ],
                 ),
               )),
           const SizedBox(height: 16),
         ],
+
+          if (products.isNotEmpty) ...[
+            const Divider(height: 36),
+            const Text('Catalog & Offerings', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.sizeOf(context).width > 600 ? 3 : 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.7,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, idx) {
+                final product = products[idx];
+                return _buildProductCard(context, product, isDark);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          const Divider(height: 36),
 
         // Service Tags & Amenities
         const Text('Craftsmanship Highlights & Amenities', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800)),
@@ -551,6 +597,135 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProductCard(BuildContext context, CatalogItemModel product, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Product Image
+          Expanded(
+            flex: 6,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    product.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300, child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                  ),
+                  if (product.discountedPrice != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryRuby,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('SALE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  if (product.itemType == CatalogItemType.service)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentGold,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('SERVICE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Product Details
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTypography.displayFont,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (product.categoryName != null)
+                    Text(
+                      product.categoryName!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primaryRuby.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (product.discountedPrice != null) ...[
+                        Text(
+                          '\$${product.discountedPrice!.toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.accentGold),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

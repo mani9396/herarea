@@ -23,6 +23,7 @@ dependencies:
     path: ../shared
   image_picker: ^1.2.3
   razorpay_flutter: ^1.4.5
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

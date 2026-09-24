@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:her_area/core/widgets/store_card.dart';
 import 'package:shared/models/store_model.dart';
@@ -87,57 +88,81 @@ class HomeDashboardScreen extends ConsumerWidget {
               // Promotional Carousel Banner
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.only(top: 8, bottom: 16),
                   child: SizedBox(
-                    height: 160,
+                    height: 170,
                     child: bannersAsync.when(
                       loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryRuby)),
                       error: (err, stack) => const SizedBox.shrink(),
                       data: (banners) {
                         if (banners.isEmpty) return const SizedBox.shrink();
                         return PageView.builder(
+                          controller: PageController(viewportFraction: 0.92),
                           itemCount: banners.length,
                           itemBuilder: (context, index) {
-                            return Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                image: DecorationImage(
-                                  image: NetworkImage(banners[index]),
-                                  fit: BoxFit.cover,
+                            final banner = banners[index];
+                            return GestureDetector(
+                              onTap: () async {
+                                if (banner.promotionType == 'APP' && banner.destination != null) {
+                                  final type = banner.destination!['type'];
+                                  final id = banner.destination!['id'];
+                                  if (type == 'STORE') {
+                                    context.push('/store-details/$id');
+                                  } else if (type == 'CATEGORY') {
+                                    context.push('/categories');
+                                  }
+                                } else if (banner.promotionType == 'EXTERNAL' && banner.destination != null) {
+                                  final url = banner.destination!['url'];
+                                  if (url != null) {
+                                    final uri = Uri.parse(url);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri);
+                                    }
+                                  }
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 6),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  image: DecorationImage(
+                                    image: NetworkImage(banner.imageUrl),
+                                    fit: BoxFit.cover,
+                                  ),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 4))],
                                 ),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
-                              ),
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      gradient: LinearGradient(
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                        colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent, Colors.transparent],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Positioned(
-                                    bottom: 16,
-                                    left: 16,
-                                    right: 16,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(color: AppTheme.primaryRuby, borderRadius: BorderRadius.circular(6)),
-                                          child: const Text('FESTIVE SPECIAL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text('Top Handloom Silks & Zardosi Masters Near You', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                                      ],
+                                    Positioned(
+                                      bottom: 16,
+                                      left: 16,
+                                      right: 16,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (banner.subtitle != null && banner.subtitle!.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(color: AppTheme.primaryRuby, borderRadius: BorderRadius.circular(6)),
+                                              child: Text(banner.subtitle!.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ),
+                                          const SizedBox(height: 6),
+                                          Text(banner.title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             );
                           },

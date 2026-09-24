@@ -47,6 +47,7 @@ class ApiEndpoints {
   static const String publicProducts = '/api/v1/products/';
   static const String publicCategories = '/api/v1/categories/';
   static const String publicPromotions = '/api/v1/promotions/';
+  static const String publicBanners = '/api/v1/banners/';
   static const String unifiedSearch = '/api/v1/search/';
   static String storeReviews(String storeId) => '/api/v1/stores/$storeId/reviews/';
   static String storeVisit(String storeId) => '/api/v1/stores/$storeId/visit/';
@@ -77,6 +78,7 @@ class ApiEndpoints {
   static String adminVendorApprove(String vendorId) => '/api/v1/admin/vendors/$vendorId/approve/';
   static String adminVendorReject(String vendorId) => '/api/v1/admin/vendors/$vendorId/reject/';
   static String adminVendorSuspend(String vendorId) => '/api/v1/admin/vendors/$vendorId/suspend/';
+  static String adminVendorChatStatus(String vendorId) => '/api/v1/admin/vendors/$vendorId/chat-status/';
 
   // 8b. Store Governance
   static const String adminStores = '/api/v1/admin/business/stores/';
@@ -103,5 +105,16 @@ class ApiEndpoints {
   static const String adminNotifications = '/api/v1/admin/notifications/';
   static const String adminBroadcastNotification = '/api/v1/admin/notifications/broadcast/';
   static const String adminAnalytics = '/api/v1/admin/analytics/';
-}
+  // 8c. Promotion & Banners
+  static const String adminBanners = '/api/v1/admin/banners/';
+  static String adminBannerDetail(String id) => '/api/v1/admin/banners/$id/';
+  static String adminBannerSuspend(String id) => '/api/v1/admin/banners/$id/suspend/';
+  static String adminBannerResume(String id) => '/api/v1/admin/banners/$id/resume/';
 
+  // 9. Chat Endpoints
+  static const String chatWsToken = '/api/v1/chat/ws-token/';
+  static const String chatConversations = '/api/v1/chat/conversations/';
+  static const String chatConversationsStart = '/api/v1/chat/conversations/start/';
+  static String chatMessages(String conversationId) => '/api/v1/chat/conversations/$conversationId/messages/';
+  static String chatMarkRead(String conversationId) => '/api/v1/chat/conversations/$conversationId/read/';
+}

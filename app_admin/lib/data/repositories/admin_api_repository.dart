@@ -291,6 +291,19 @@ class AdminApiRepository {
     }
   }
 
+  /// Update vendor chat status
+  Future<bool> updateVendorChatStatus(String vendorId, AdminChatStatus chatStatus) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminVendorChatStatus(vendorId),
+        body: {'chat_status': chatStatus.apiCode},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204 || response['id'] != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Fetch all customer reviews across showrooms
   Future<List<AdminReviewModel>> fetchReviews() async {
     try {
@@ -406,6 +419,92 @@ class AdminApiRepository {
       return response;
     } catch (e) {
       return {};
+    }
+  }
+
+  // ===========================================================================
+  // Promotion Management (Banners)
+  // ===========================================================================
+
+  /// Fetch all promotional banners
+  Future<List<AdminPromotionModel>> fetchPromotions() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.adminBanners);
+      final paginated = PaginatedResponse.fromJson(
+        response,
+        (json) => AdminPromotionModel.fromJson(json),
+      );
+      return paginated.results;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Create a new promotional banner
+  Future<AdminPromotionModel> createPromotion(Map<String, dynamic> data, {dynamic imageFile}) async {
+    final files = <String, dynamic>{};
+    if (imageFile != null) {
+      files['image_url'] = imageFile;
+    }
+
+    final response = await _apiClient.postMultipart(
+      ApiEndpoints.adminBanners,
+      fields: data,
+      files: files.isNotEmpty ? files : null,
+    );
+    return AdminPromotionModel.fromJson(response);
+  }
+
+  /// Update an existing promotional banner
+  Future<AdminPromotionModel> updatePromotion(String id, Map<String, dynamic> data, {dynamic imageFile}) async {
+    final files = <String, dynamic>{};
+    if (imageFile != null) {
+      files['image_url'] = imageFile;
+    }
+
+    Map<String, dynamic> response;
+    if (files.isNotEmpty) {
+      response = await _apiClient.putMultipart(
+        ApiEndpoints.adminBannerDetail(id),
+        fields: data,
+        files: files,
+      );
+    } else {
+      response = await _apiClient.patch(
+        ApiEndpoints.adminBannerDetail(id),
+        body: data,
+      );
+    }
+    return AdminPromotionModel.fromJson(response);
+  }
+
+  /// Delete a promotional banner
+  Future<bool> deletePromotion(String id) async {
+    try {
+      final response = await _apiClient.delete(ApiEndpoints.adminBannerDetail(id));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Suspend an active banner
+  Future<bool> suspendPromotion(String id) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.adminBannerSuspend(id));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Resume a suspended banner
+  Future<bool> resumePromotion(String id) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.adminBannerResume(id));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
     }
   }
 }

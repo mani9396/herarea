@@ -172,6 +172,25 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 14,
+                          color: vendor.chatStatus == AdminChatStatus.active ? Colors.green : Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Chat: ${vendor.chatStatus.displayName}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: vendor.chatStatus == AdminChatStatus.active ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -182,7 +201,19 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
                 children: [
                   Text('₹${(vendor.totalRevenue / 1000).toStringAsFixed(1)}k GMV', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.primaryRuby)),
                   const SizedBox(height: 4),
-                  Text('★ ${vendor.rating} (${vendor.totalProducts} items)', style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                  Text('⭐ ${vendor.rating} (${vendor.totalProducts} items)', style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _showChatControlsDialog(context, ref, vendor),
+                    icon: const Icon(Icons.admin_panel_settings_rounded, size: 16),
+                    label: const Text('Chat Controls'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryRuby,
+                      side: const BorderSide(color: AppColors.primaryRuby),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      minimumSize: const Size(0, 32),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(width: 8),
@@ -192,6 +223,115 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showChatControlsDialog(BuildContext context, WidgetRef ref, AdminVendorModel vendor) async {
+    AdminChatStatus selectedStatus = vendor.chatStatus;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Vendor Chat Controls'),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Vendor: ${vendor.storeName}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Owner: ${vendor.ownerName}'),
+                    Text('Email: ${vendor.email}'),
+                    const SizedBox(height: 24),
+                    const Text('Select Chat Status:', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    ...AdminChatStatus.values.map((status) {
+                      String description = '';
+                      switch (status) {
+                        case AdminChatStatus.active:
+                          description = 'Chat is available when the vendor\'s subscription/plan allows Chat.';
+                          break;
+                        case AdminChatStatus.paused:
+                          description = 'Temporarily stop Chat for this vendor.';
+                          break;
+                        case AdminChatStatus.suspended:
+                          description = 'Admin has suspended Chat for this vendor.';
+                          break;
+                        case AdminChatStatus.disabled:
+                          description = 'Chat is disabled for this vendor.';
+                          break;
+                      }
+                      return RadioListTile<AdminChatStatus>(
+                        title: Text(status.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(description, style: const TextStyle(fontSize: 12)),
+                        value: status,
+                        groupValue: selectedStatus,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => selectedStatus = val);
+                          }
+                        },
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: AppColors.primaryRuby,
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryRuby),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Apply Changes'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == true && selectedStatus != vendor.chatStatus) {
+      if (!context.mounted) return;
+      
+      try {
+        // Show loading dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator(color: AppColors.primaryRuby)),
+        );
+        
+        final success = await ref.read(adminApiRepositoryProvider).updateVendorChatStatus(vendor.id, selectedStatus);
+        
+        if (!context.mounted) return;
+        Navigator.pop(context); // close loading
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Chat status updated to ${selectedStatus.displayName}')),
+          );
+          // Refresh list
+          ref.invalidate(adminVendorsProvider);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update chat status. Please try again.'), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        if (!context.mounted) return;
+        Navigator.pop(context); // close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating chat status: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _showCreateVendorDialog(BuildContext context, WidgetRef ref) async {

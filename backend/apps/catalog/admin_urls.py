@@ -8,15 +8,24 @@ from apps.catalog.admin_views import (
     AdminOfferActionView,
     AdminGalleryListView,
     AdminGalleryDetailView,
+    AdminPromotionListView,
+    AdminPromotionDetailView,
+    AdminPromotionActionView,
 )
 
 urlpatterns = [
     path('products/', AdminProductListView.as_view(), name='admin-product-list'),
     path('products/<uuid:pk>/', AdminProductDetailView.as_view(), name='admin-product-detail'),
     path('products/<uuid:pk>/<str:action>/', AdminProductActionView.as_view(), name='admin-product-action'),
+    
     path('offers/', AdminOfferListView.as_view(), name='admin-offer-list'),
     path('offers/<uuid:pk>/', AdminOfferDetailView.as_view(), name='admin-offer-detail'),
     path('offers/<uuid:pk>/<str:action>/', AdminOfferActionView.as_view(), name='admin-offer-action'),
+    
     path('gallery/', AdminGalleryListView.as_view(), name='admin-gallery-list'),
     path('gallery/<uuid:pk>/', AdminGalleryDetailView.as_view(), name='admin-gallery-detail'),
+
+    path('banners/', AdminPromotionListView.as_view(), name='admin-banner-list'),
+    path('banners/<uuid:pk>/', AdminPromotionDetailView.as_view(), name='admin-banner-detail'),
+    path('banners/<uuid:pk>/<str:action>/', AdminPromotionActionView.as_view(), name='admin-banner-action'),
 ]

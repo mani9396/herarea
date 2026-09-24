@@ -8,6 +8,12 @@ class VendorStatus(models.TextChoices):
     REJECTED = 'REJECTED', 'Application Rejected'
     SUSPENDED = 'SUSPENDED', 'Temporarily Suspended'
 
+class ChatStatus(models.TextChoices):
+    ACTIVE = 'ACTIVE', 'Active'
+    PAUSED = 'PAUSED', 'Paused'
+    SUSPENDED = 'SUSPENDED', 'Suspended'
+    DISABLED = 'DISABLED', 'Disabled'
+
 class VendorProfile(AbstractBaseModel):
     """
     Partner Studio legal account and onboarding state machine. 
@@ -29,6 +35,12 @@ class VendorProfile(AbstractBaseModel):
         default=VendorStatus.PENDING, 
         db_index=True
     )
+    chat_status = models.CharField(
+        max_length=20,
+        choices=ChatStatus.choices,
+        default=ChatStatus.ACTIVE,
+        help_text="Administrative override for chat functionality."
+    )
     rejection_reason = models.TextField(
         null=True, 
         blank=True, 
@@ -48,6 +60,21 @@ class VendorProfile(AbstractBaseModel):
         verbose_name = 'Vendor Profile'
         verbose_name_plural = 'Vendor Profiles'
         ordering = ['-created_at']
+
+    @property
+    def has_active_subscription_with_chat(self):
+        active_sub = self.user.subscriptions.filter(status='ACTIVE').first()
+        if active_sub and active_sub.plan and active_sub.plan.customer_chat:
+            return True
+        return False
+
+    @property
+    def effective_chat_access(self):
+        if self.status != VendorStatus.APPROVED:
+            return False
+        if self.chat_status != ChatStatus.ACTIVE:
+            return False
+        return self.has_active_subscription_with_chat
 
     def __str__(self):
         return f"{self.owner_name} ({self.get_status_display()})"

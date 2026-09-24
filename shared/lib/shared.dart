@@ -48,3 +48,5 @@ export 'common/common_typedefs.dart';
 // Responsive
 export 'responsive/responsive_layout.dart';
 export 'models/category_model.dart';
+export 'models/promotion_public_model.dart';
+export 'models/chat_models.dart';

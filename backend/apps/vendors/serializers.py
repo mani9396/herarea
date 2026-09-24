@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.vendors.models import VendorProfile, KycDocument, KycDocType
+from apps.vendors.models import VendorProfile, KycDocument, KycDocType, ChatStatus
 from apps.business.serializers import BusinessProfileSerializer
 
 class KycDocumentSerializer(serializers.ModelSerializer):
@@ -17,11 +17,14 @@ class VendorProfileSerializer(serializers.ModelSerializer):
         model = VendorProfile
         fields = [
             'id', 'owner_name', 'official_email', 'phone_number', 
-            'status', 'rejection_reason', 'approved_at', 
+            'status', 'chat_status', 'rejection_reason', 'approved_at', 
             'business_profile', 'kyc_documents', 'created_at'
         ]
-        read_only_fields = ['id', 'status', 'rejection_reason', 'approved_at', 'created_at']
+        read_only_fields = ['id', 'status', 'chat_status', 'rejection_reason', 'approved_at', 'created_at']
 
+
+class AdminVendorChatStatusSerializer(serializers.Serializer):
+    chat_status = serializers.ChoiceField(choices=ChatStatus.choices, help_text="Set chat availability for the vendor")
 
 class VendorOnboardingRegistrationSerializer(serializers.Serializer):
     """

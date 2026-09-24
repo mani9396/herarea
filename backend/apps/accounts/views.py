@@ -72,6 +72,18 @@ class OtpSendView(APIView):
                     status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
 
+            # Prevent cross-app login
+            if purpose == 'LOGIN':
+                existing_user = User.objects.filter(email=identifier).first()
+                if existing_user:
+                    if role in [UserRole.ADMIN, UserRole.SUPERADMIN] and existing_user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                        pass
+                    elif existing_user.role != role:
+                        return Response(
+                            {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
             cache.set(cache_key + '_ts', '1', timeout=60)  # 60-second resend cooldown
@@ -243,9 +255,20 @@ class OtpSendView(APIView):
         else:
             # --- Vendor / Admin phone OTP flow (existing behaviour preserved) ---
             logger.info(f"Dispatching OTP challenge to phone: {phone} (role={role})")
-            # Phone OTP is currently a pass-through for Vendor/Admin
-            # Real SMS gateway can be integrated here (Twilio, etc.)
             identifier = phone
+
+            # Prevent cross-app login
+            if purpose == 'LOGIN':
+                existing_user = User.objects.filter(phone_number=identifier).first()
+                if existing_user:
+                    if role in [UserRole.ADMIN, UserRole.SUPERADMIN] and existing_user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                        pass
+                    elif existing_user.role != role:
+                        return Response(
+                            {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+
             cache_key = _make_otp_cache_key(identifier)
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
@@ -321,9 +344,19 @@ class OtpVerifyView(APIView):
                 )
                 created = True
                 logger.info(f"New Customer account created for email: {identifier} (id={user.id})")
-            elif not user.is_verified:
-                user.is_verified = True
-                user.save(update_fields=['is_verified'])
+            else:
+                # Prevent cross-app login
+                if requested_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                    pass
+                elif user.role != requested_role:
+                    return Response(
+                        {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                if not user.is_verified:
+                    user.is_verified = True
+                    user.save(update_fields=['is_verified'])
 
             refresh = RefreshToken.for_user(user)
             refresh['role'] = user.role
@@ -362,9 +395,19 @@ class OtpVerifyView(APIView):
                 phone_number=phone,
                 defaults={"role": requested_role, "is_verified": True}
             )
-            if not created and not user.is_verified:
-                user.is_verified = True
-                user.save(update_fields=['is_verified'])
+            if not created:
+                # Prevent cross-app login
+                if requested_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                    pass
+                elif user.role != requested_role:
+                    return Response(
+                        {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                if not user.is_verified:
+                    user.is_verified = True
+                    user.save(update_fields=['is_verified'])
 
             refresh = RefreshToken.for_user(user)
             refresh['role'] = user.role
@@ -402,6 +445,9 @@ class CustomerLoginView(APIView):
         user = User.objects.filter(email=email).first()
         if not user:
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        if user.role != UserRole.CUSTOMER:
+            return Response({"error": "Account exists with a different role. Please use the appropriate app for your account."}, status=status.HTTP_403_FORBIDDEN)
             
         if not user.check_password(password):
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)

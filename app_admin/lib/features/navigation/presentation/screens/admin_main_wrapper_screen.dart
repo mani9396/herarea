@@ -112,6 +112,11 @@ class AdminMainWrapperScreen extends StatelessWidget {
                       selectedIcon: Icon(Icons.insights_rounded),
                       label: Text('Analytics'),
                     ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.campaign_outlined),
+                      selectedIcon: Icon(Icons.campaign_rounded),
+                      label: Text('Promotions'),
+                    ),
                   ],
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
@@ -149,6 +154,11 @@ class AdminMainWrapperScreen extends StatelessWidget {
                   icon: Icon(Icons.insights_rounded),
                   selectedIcon: Icon(Icons.insights_rounded, color: AppColors.primaryRuby),
                   label: 'Stats',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.campaign_outlined),
+                  selectedIcon: Icon(Icons.campaign_rounded, color: AppColors.primaryRuby),
+                  label: 'Promos',
                 ),
               ],
             ),

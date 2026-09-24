@@ -46,6 +46,10 @@ import 'package:app_admin/features/settings/presentation/screens/admin_legal_scr
 import 'package:app_admin/features/settings/presentation/screens/admin_settings_screen.dart';
 import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
 
+// Promotions
+import 'package:app_admin/features/promotions/presentation/screens/promotion_management_screen.dart';
+import 'package:app_admin/features/promotions/presentation/screens/promotion_form_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'rootNav');
 
 final GoRouter adminAppRouter = GoRouter(
@@ -118,10 +122,32 @@ final GoRouter adminAppRouter = GoRouter(
             ),
           ],
         ),
+        // Branch 5: Promotions
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AdminRoutePaths.promotions,
+              builder: (context, state) => const PromotionManagementScreen(),
+            ),
+          ],
+        ),
       ],
     ),
 
     // Detail & Sub-routes (rendered over root navigator)
+    GoRoute(
+      path: AdminRoutePaths.promotionsCreate,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PromotionFormScreen(),
+    ),
+    GoRoute(
+      path: AdminRoutePaths.promotionEdit,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return PromotionFormScreen(promotionId: id);
+      },
+    ),
     GoRoute(
       path: AdminRoutePaths.vendorDetails,
       parentNavigatorKey: _rootNavigatorKey,

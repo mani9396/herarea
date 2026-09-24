@@ -137,3 +137,165 @@ class CatalogAndShowroomDiscoveryTests(TestCase):
         self.assertEqual(len(dossier_resp.data['gallery']), 1)
         self.assertEqual(len(dossier_resp.data['offers']), 1)
         self.assertEqual(dossier_resp.data['offers'][0]['promo_code'], "HERAREA15")
+
+
+from django.utils import timezone
+import datetime
+from apps.catalog.models import Promotion, PromotionType, PromotionStatus, InternalDestinationType
+
+class PromotionBannersTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_superuser(phone_number="+919444444499", role=UserRole.ADMIN)
+        self.customer_user = User.objects.create_user(phone_number="+919555555599", role=UserRole.CUSTOMER)
+        self.vendor_user = User.objects.create_user(phone_number="+919333333399", role=UserRole.VENDOR)
+        
+        self.category = Category.objects.create(name="Promo Category", slug="promo-cat", is_active=True)
+        
+        self.admin_list_url = reverse('admin-banner-list')
+        self.public_list_url = reverse('public-banner-list')
+        
+        self.now = timezone.now()
+        self.tomorrow = self.now + datetime.timedelta(days=1)
+        self.yesterday = self.now - datetime.timedelta(days=1)
+        self.next_week = self.now + datetime.timedelta(days=7)
+
+    def test_admin_can_create_app_promotion(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "App Promo",
+            "image_url": "https://img.com/a.jpg",
+            "promotion_type": PromotionType.APP,
+            "internal_destination_type": InternalDestinationType.CATEGORY,
+            "internal_destination_id": str(self.category.id),
+            "start_at": self.yesterday,
+            "end_at": self.tomorrow,
+            "priority": 1
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.data['title'], "App Promo")
+        
+    def test_admin_can_create_external_promotion(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "Ext Promo",
+            "image_url": "https://img.com/b.jpg",
+            "promotion_type": PromotionType.EXTERNAL,
+            "external_url": "https://external.com",
+            "start_at": self.yesterday,
+            "end_at": self.tomorrow,
+            "priority": 2
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+
+    def test_non_admin_cannot_create_promotion(self):
+        self.client.force_authenticate(user=self.customer_user)
+        resp = self.client.post(self.admin_list_url, {"title": "X"}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        
+        self.client.force_authenticate(user=self.vendor_user)
+        resp2 = self.client.post(self.admin_list_url, {"title": "X"}, format='json')
+        self.assertEqual(resp2.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_invalid_external_url_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "Ext Promo",
+            "image_url": "https://img.com/b.jpg",
+            "promotion_type": PromotionType.EXTERNAL,
+            "external_url": "not-a-url",
+            "start_at": self.yesterday,
+            "end_at": self.tomorrow
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("external_url", resp.data)
+
+    def test_missing_external_url_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "Ext Promo",
+            "image_url": "https://img.com/b.jpg",
+            "promotion_type": PromotionType.EXTERNAL,
+            "start_at": self.yesterday,
+            "end_at": self.tomorrow
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_internal_destination_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        import uuid
+        payload = {
+            "title": "App Promo",
+            "image_url": "https://img.com/a.jpg",
+            "promotion_type": PromotionType.APP,
+            "internal_destination_type": InternalDestinationType.CATEGORY,
+            "internal_destination_id": str(uuid.uuid4()), # non-existent
+            "start_at": self.yesterday,
+            "end_at": self.tomorrow
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_end_at_before_start_at_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "title": "Ext Promo",
+            "image_url": "https://img.com/b.jpg",
+            "promotion_type": PromotionType.EXTERNAL,
+            "external_url": "https://google.com",
+            "start_at": self.tomorrow,
+            "end_at": self.yesterday
+        }
+        resp = self.client.post(self.admin_list_url, payload, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_public_api_displays_only_active_promotions(self):
+        # Create active
+        Promotion.objects.create(title="Active", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.ACTIVE)
+        # Create scheduled
+        Promotion.objects.create(title="Scheduled", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.tomorrow, end_at=self.next_week, status=PromotionStatus.SCHEDULED)
+        # Create expired
+        Promotion.objects.create(title="Expired", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday - datetime.timedelta(days=5), end_at=self.yesterday, status=PromotionStatus.ACTIVE)
+        # Create suspended
+        Promotion.objects.create(title="Suspended", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.SUSPENDED)
+        
+        resp = self.client.get(self.public_list_url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]['title'], "Active")
+        self.assertNotIn('created_at', resp.data[0]) # test public api doesn't expose admin fields
+
+    def test_suspend_and_resume_promotion(self):
+        self.client.force_authenticate(user=self.admin_user)
+        p = Promotion.objects.create(title="Active", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.ACTIVE)
+        
+        suspend_url = reverse('admin-banner-action', kwargs={'pk': p.id, 'action': 'suspend'})
+        resp = self.client.post(suspend_url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        p.refresh_from_db()
+        self.assertEqual(p.status, PromotionStatus.SUSPENDED)
+        
+        # Verify it disappeared from public API
+        resp_pub = self.client.get(self.public_list_url)
+        self.assertEqual(len(resp_pub.data), 0)
+        
+        resume_url = reverse('admin-banner-action', kwargs={'pk': p.id, 'action': 'resume'})
+        resp2 = self.client.post(resume_url)
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        p.refresh_from_db()
+        self.assertEqual(p.status, PromotionStatus.ACTIVE)
+
+    def test_priority_ordering(self):
+        Promotion.objects.create(title="P3", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.ACTIVE, priority=3)
+        Promotion.objects.create(title="P1", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.ACTIVE, priority=1)
+        Promotion.objects.create(title="P2", image_url="https://a", promotion_type="EXTERNAL", external_url="https://a", start_at=self.yesterday, end_at=self.tomorrow, status=PromotionStatus.ACTIVE, priority=2)
+        
+        resp = self.client.get(self.public_list_url)
+        self.assertEqual(len(resp.data), 3)
+        self.assertEqual(resp.data[0]['title'], "P1")
+        self.assertEqual(resp.data[1]['title'], "P2")
+        self.assertEqual(resp.data[2]['title'], "P3")

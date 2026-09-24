@@ -474,6 +474,58 @@ final adminAnalyticsProvider = FutureProvider<Map<String, dynamic>>((ref) async 
   return await repo.fetchAdminDashboardStats();
 });
 
+// --- Promotions & Banners State Notifier ---
+class AdminPromotionsNotifier extends StateNotifier<AsyncValue<List<AdminPromotionModel>>> {
+  final AdminApiRepository? _repository;
+
+  AdminPromotionsNotifier([this._repository]) : super(const AsyncValue.loading()) {
+    loadLivePromotions();
+  }
+
+  Future<void> loadLivePromotions() async {
+    if (_repository == null) return;
+    try {
+      state = const AsyncValue.loading();
+      final livePromotions = await _repository.fetchPromotions();
+      state = AsyncValue.data(livePromotions);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<bool> suspendPromotion(String id) async {
+    if (_repository == null) return false;
+    final success = await _repository.suspendPromotion(id);
+    if (success) {
+      await loadLivePromotions();
+    }
+    return success;
+  }
+
+  Future<bool> resumePromotion(String id) async {
+    if (_repository == null) return false;
+    final success = await _repository.resumePromotion(id);
+    if (success) {
+      await loadLivePromotions();
+    }
+    return success;
+  }
+
+  Future<bool> deletePromotion(String id) async {
+    if (_repository == null) return false;
+    final success = await _repository.deletePromotion(id);
+    if (success) {
+      state = state.whenData((promotions) => promotions.where((p) => p.id != id).toList());
+    }
+    return success;
+  }
+}
+
+final adminPromotionsProvider = StateNotifierProvider<AdminPromotionsNotifier, AsyncValue<List<AdminPromotionModel>>>((ref) {
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminPromotionsNotifier(repo);
+});
+
 // --- Aggregated KPI Stats Provider ---
 class AdminDashboardStats {
   final int totalCustomers;
@@ -517,3 +569,4 @@ final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
     totalEstimatedRevenue: (analytics?['total_gmv'] ?? 0).toDouble(),
   );
 });
+

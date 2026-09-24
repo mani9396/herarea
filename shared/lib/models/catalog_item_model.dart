@@ -64,6 +64,13 @@ class CatalogItemModel {
 
   bool get isService => itemType == CatalogItemType.service;
 
+  static double? _parseDouble(dynamic val) {
+    if (val == null) return null;
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val);
+    return null;
+  }
+
   factory CatalogItemModel.fromJson(Map<String, dynamic> json) {
     return CatalogItemModel(
       id: json['id']?.toString() ?? '',
@@ -72,8 +79,8 @@ class CatalogItemModel {
       title: json['title'] ?? json['name'] ?? 'Bespoke Item',
       description: json['description'] ?? 'Handcrafted women’s luxury apparel or styling service.',
       itemType: CatalogItemType.fromString(json['item_type']),
-      price: (json['price'] as num?)?.toDouble() ?? 2500.0,
-      discountedPrice: (json['discounted_price'] as num?)?.toDouble(),
+      price: _parseDouble(json['price']) ?? 2500.0,
+      discountedPrice: _parseDouble(json['discounted_price']),
       imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600',
       additionalImages: json['additional_images'] != null
           ? List<String>.from(json['additional_images'] as Iterable)
