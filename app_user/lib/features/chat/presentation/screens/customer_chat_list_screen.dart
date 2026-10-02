@@ -4,9 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:shared/shared.dart';
 
-
-class VendorChatListScreen extends ConsumerWidget {
-  const VendorChatListScreen({super.key});
+class CustomerChatListScreen extends ConsumerWidget {
+  const CustomerChatListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,10 +19,17 @@ class VendorChatListScreen extends ConsumerWidget {
       body: conversationsAsync.when(
         data: (conversations) {
           if (conversations.isEmpty) {
-            return const EmptyStateWidget(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: 'No Messages Yet',
-              description: 'When customers initiate a chat with you, they will appear here.',
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.chat_bubble_outline_rounded, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text('No Messages Yet', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  const Text('When you contact a store, your conversations will appear here.', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
             );
           }
 
@@ -46,89 +52,76 @@ class VendorChatListScreen extends ConsumerWidget {
               separatorBuilder: (context, index) => const Divider(height: 1, indent: 72),
               itemBuilder: (context, index) {
                 final conversation = sortedConversations[index];
-                final customerName = conversation.customer.fullName;
+                final vendorName = conversation.vendor.fullName;
                 
-                String timeString = '';
+                String timeAgo = '';
                 if (conversation.lastMessageAt != null) {
                   final now = DateTime.now();
                   final diff = now.difference(conversation.lastMessageAt!);
-                  if (diff.inDays == 0 && now.day == conversation.lastMessageAt!.day) {
-                    timeString = DateFormat('h:mm a').format(conversation.lastMessageAt!);
-                  } else if (diff.inDays < 7) {
-                    timeString = DateFormat('EEEE').format(conversation.lastMessageAt!);
+                  if (diff.inDays > 0) {
+                    timeAgo = DateFormat.MMMd().format(conversation.lastMessageAt!);
                   } else {
-                    timeString = DateFormat('MMM d, yyyy').format(conversation.lastMessageAt!);
+                    timeAgo = DateFormat.jm().format(conversation.lastMessageAt!);
                   }
                 }
 
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1),
-                    child: Text(
-                      customerName.isNotEmpty ? customerName[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        color: AppColors.primaryRuby,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
+                    radius: 24,
+                    backgroundColor: AppColors.blushPink.withValues(alpha: 0.5),
+                    child: Text(vendorName.substring(0, 1).toUpperCase(), style: const TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
                   ),
                   title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Text(
-                          customerName,
+                          vendorName,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (timeString.isNotEmpty)
+                      if (timeAgo.isNotEmpty)
                         Text(
-                          timeString,
-                          style: TextStyle(
-                            color: conversation.unreadCount > 0 ? AppColors.primaryRuby : Colors.grey,
-                            fontSize: 12,
-                            fontWeight: conversation.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-                          ),
+                          timeAgo,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                     ],
                   ),
                   subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
-                            conversation.lastMessageAt != null ? 'Open to view messages' : 'New conversation',
-                            style: TextStyle(
-                              color: conversation.unreadCount > 0 ? AppColors.neutralCharcoal : Colors.grey.shade600,
-                              fontWeight: conversation.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
-                            ),
+                            'Message history',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: conversation.unreadCount > 0 ? Colors.black87 : Colors.grey,
+                              fontWeight: conversation.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                            ),
                           ),
                         ),
                         if (conversation.unreadCount > 0)
                           Container(
                             margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
                               color: AppColors.primaryRuby,
-                              borderRadius: BorderRadius.circular(10),
+                              shape: BoxShape.circle,
                             ),
                             child: Text(
                               '${conversation.unreadCount}',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
                           ),
                       ],
                     ),
                   ),
                   onTap: () {
-                    // Navigate to chat detail screen
                     context.push('/chat/${conversation.id}');
                   },
                 );
@@ -137,11 +130,7 @@ class VendorChatListScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryRuby)),
-        error: (e, st) => EmptyStateWidget(
-          icon: Icons.error_outline_rounded,
-          title: 'Error Loading Messages',
-          description: 'Failed to load conversations: $e',
-        ),
+        error: (e, st) => Center(child: Text('Failed to load conversations: $e')),
       ),
     );
   }

@@ -23,6 +23,17 @@ class ChatApiRepository {
     }
   }
 
+  Future<ChatConversationModel> startConversation(String vendorId) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.chatConversationsStart, body: {
+        'vendor_id': vendorId,
+      });
+      return ChatConversationModel.fromJson(response);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<List<ChatConversationModel>> getConversations() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.chatConversations);
@@ -63,6 +74,17 @@ class ChatApiRepository {
       return (response['success'] == true) || (response['status_code'] == 200);
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<ChatConversationModel> blockConversation(String conversationId, String action) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.chatBlock(conversationId), body: {
+        'action': action,
+      });
+      return ChatConversationModel.fromJson(response);
+    } catch (e) {
+      rethrow;
     }
   }
 }

@@ -8,6 +8,8 @@ class Conversation(AbstractBaseModel):
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='customer_conversations')
     vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vendor_conversations')
     last_message_at = models.DateTimeField(null=True, blank=True)
+    blocked_by_customer = models.BooleanField(default=False)
+    blocked_by_vendor = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('customer', 'vendor')

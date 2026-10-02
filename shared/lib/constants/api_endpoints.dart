@@ -117,4 +117,5 @@ class ApiEndpoints {
   static const String chatConversationsStart = '/api/v1/chat/conversations/start/';
   static String chatMessages(String conversationId) => '/api/v1/chat/conversations/$conversationId/messages/';
   static String chatMarkRead(String conversationId) => '/api/v1/chat/conversations/$conversationId/read/';
+  static String chatBlock(String conversationId) => '/api/v1/chat/conversations/$conversationId/block/';
 }

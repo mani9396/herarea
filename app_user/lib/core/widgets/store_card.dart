@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/models/store_model.dart';
 import 'package:shared/theme/app_theme.dart';
 import 'package:shared/widgets/status_badge.dart';
+import 'package:shared/utils/distance_formatter.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
 
 class StoreCard extends ConsumerWidget {
@@ -151,7 +152,7 @@ class StoreCard extends ConsumerWidget {
                       const Spacer(),
                       Icon(Icons.location_on_rounded, size: 16, color: Colors.grey.shade600),
                       Text(
-                        '${store.distanceKm} km',
+                        DistanceFormatter.format(store.distanceKm),
                         style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey.shade800),
                       ),
                     ],

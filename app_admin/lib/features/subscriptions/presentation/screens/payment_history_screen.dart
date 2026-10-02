@@ -31,8 +31,8 @@ class PaymentHistoryScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final payment = payments[index];
               return ListTile(
-                title: Text('${payment.currency} ${payment.amount} - ${payment.planName}'),
-                subtitle: Text('ID: ${payment.razorpayPaymentId ?? 'N/A'}\nDate: ${payment.createdAt.substring(0, 10)}'),
+                title: Text('${payment.storeName ?? 'Unknown Vendor'} - ${payment.planName}'),
+                subtitle: Text('${payment.currency} ${payment.amount}\nID: ${payment.razorpayPaymentId ?? 'N/A'}\nDate: ${payment.createdAt.substring(0, 10)}'),
                 isThreeLine: true,
                 trailing: Text(
                   payment.status,

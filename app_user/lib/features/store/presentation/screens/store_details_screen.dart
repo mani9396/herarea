@@ -29,8 +29,9 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
 
   Future<Map<String, dynamic>?> _fetchStoreData() async {
     final repo = ref.read(storeRepositoryProvider);
+    final locState = ref.read(userLocationProvider);
     final results = await Future.wait([
-      repo.getStoreById(widget.storeId),
+      repo.getStoreById(widget.storeId, lat: locState.latitude, lon: locState.longitude),
       repo.getStoreDossier(widget.storeId),
     ]);
     final store = results[0] as StoreModel?;
@@ -305,7 +306,7 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '${store.address}, ${store.city} (${store.distanceKm} km away)',
+                '${store.address}, ${store.city} (${DistanceFormatter.format(store.distanceKm)})',
                 style: TextStyle(fontSize: 14, color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight),
               ),
             ),
@@ -459,10 +460,22 @@ class _StoreDetailsScreenState extends ConsumerState<StoreDetailsScreen> {
             ),
             const SizedBox(width: 12),
             IconButton(
-              onPressed: () => _showSnackbar(context, 'Launching WhatsApp Concierge for ${store.name}...'),
+              onPressed: () async {
+                _showSnackbar(context, 'Starting conversation...');
+                try {
+                  final conversation = await ref.read(chatApiRepositoryProvider).startConversation(store.vendorId);
+                  if (context.mounted) {
+                    context.push('/chat/${conversation.id}');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    _showSnackbar(context, 'Chat is currently unavailable for this store.');
+                  }
+                }
+              },
               icon: const Icon(Icons.chat_bubble_rounded, size: 22, color: Colors.white),
-              style: IconButton.styleFrom(backgroundColor: const Color(0xFF25D366), padding: const EdgeInsets.all(14), shape: const CircleBorder()),
-              tooltip: 'WhatsApp Store',
+              style: IconButton.styleFrom(backgroundColor: AppColors.primaryRuby, padding: const EdgeInsets.all(14), shape: const CircleBorder()),
+              tooltip: 'Message Store',
             ),
             const SizedBox(width: 8),
             IconButton(

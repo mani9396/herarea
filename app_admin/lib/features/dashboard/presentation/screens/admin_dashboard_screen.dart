@@ -8,6 +8,8 @@ import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 
+import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -58,40 +60,12 @@ class AdminDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   _buildPendingApprovalsGrid(context, stats),
                   const SizedBox(height: AppSpacing.xxl),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Marketplace Revenue Overview (Verified Subscriptions)',
-                              style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            _buildRevenueOverviewCard(adminRevenueAsync),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xl),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Recent Platform Activities',
-                              style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            _buildActivityLogCard(recentActivities),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Marketplace Revenue Overview (Verified Subscriptions)',
+                    style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildRevenueOverviewCard(context, adminRevenueAsync),
                   const SizedBox(height: AppSpacing.xxl),
                   const Text(
                     'Administrative Quick Actions',
@@ -129,17 +103,20 @@ class AdminDashboardScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Platform Executive Command Center', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Hyderabad Regional Operations 📌',
-                    style: TextStyle(fontFamily: AppTypography.displayFont, color: Colors.white, fontSize: MediaQuery.of(context).size.width < 600 ? 22 : 30, fontWeight: FontWeight.w900),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Platform Executive Command Center', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Hyderabad Regional Operations 📌',
+                      style: TextStyle(fontFamily: AppTypography.displayFont, color: Colors.white, fontSize: MediaQuery.of(context).size.width < 600 ? 22 : 30, fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
@@ -164,8 +141,6 @@ class AdminDashboardScreen extends ConsumerWidget {
               Expanded(child: _buildBannerStatItem('Total Customers', '${stats.totalCustomers}', Icons.groups_rounded, Colors.cyanAccent)),
               const SizedBox(width: 16),
               Expanded(child: _buildBannerStatItem('Verified Vendors', '${stats.totalVendors}', Icons.storefront_rounded, Colors.orangeAccent)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildBannerStatItem('Est. Platform GMV', '₹${(stats.totalEstimatedRevenue / 1000).toStringAsFixed(1)}k', Icons.account_balance_wallet_rounded, Colors.greenAccent)),
             ],
           ),
         ],
@@ -201,13 +176,17 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildPendingApprovalsGrid(BuildContext context, AdminDashboardStats stats) {
+    final width = MediaQuery.of(context).size.width;
+    final int crossAxisCount = width < 500 ? 1 : (width < 700 ? 2 : 3);
+    final double aspectRatio = width < 500 ? 3.5 : 2.3;
+
     return GridView.count(
-      crossAxisCount: MediaQuery.of(context).size.width < 700 ? 2 : 3,
+      crossAxisCount: crossAxisCount,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.md,
       crossAxisSpacing: AppSpacing.md,
-      childAspectRatio: 2.3,
+      childAspectRatio: aspectRatio,
       children: [
         _buildPendingCard(
           context,
@@ -330,7 +309,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRevenueOverviewCard(AsyncValue<double> adminRevenueAsync) {
+  Widget _buildRevenueOverviewCard(BuildContext context, AsyncValue<double> adminRevenueAsync) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -342,18 +321,21 @@ class AdminDashboardScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Total Revenue (Verified Subscriptions)', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    adminRevenueAsync.when(
-                      loading: () => const CircularProgressIndicator(),
-                      error: (e, st) => const Text('Error', style: TextStyle(color: Colors.red)),
-                      data: (rev) => Text('₹${rev.toStringAsFixed(0)}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primaryRuby)),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Total Revenue (Verified Subscriptions)', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      adminRevenueAsync.when(
+                        loading: () => const CircularProgressIndicator(),
+                        error: (e, st) => const Text('Error', style: TextStyle(color: Colors.red)),
+                        data: (rev) => Text('₹${rev.toStringAsFixed(0)}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primaryRuby)),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -361,6 +343,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.trending_up_rounded, color: Colors.green, size: 18),
                       SizedBox(width: 4),
@@ -373,11 +356,14 @@ class AdminDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Platform Take Rate: 8.5% avg', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
-                Text('Real-time ledger projection', style: TextStyle(fontSize: 12, color: AppColors.primaryRuby, fontWeight: FontWeight.w600)),
+                TextButton.icon(
+                  onPressed: () => context.push(AdminRoutePaths.paymentHistory),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 16, color: AppColors.primaryRuby),
+                  label: const Text('View All Paid Subscriptions', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryRuby, fontSize: 12)),
+                ),
               ],
             ),
           ],
@@ -388,52 +374,20 @@ class AdminDashboardScreen extends ConsumerWidget {
 
 
 
-  Widget _buildActivityLogCard(List<String> activities) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        itemCount: activities.length > 6 ? 6 : activities.length,
-        separatorBuilder: (context, index) => const Divider(height: 24),
-        itemBuilder: (context, index) {
-          final text = activities[index];
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(top: 6),
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryRuby,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  text,
-                  style: const TextStyle(fontSize: 13, color: AppColors.neutralCharcoal, height: 1.4),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+
 
   Widget _buildQuickActionsGrid(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final int crossAxisCount = width < 500 ? 1 : (width < 700 ? 2 : 4);
+    final double aspectRatio = width < 500 ? 3.5 : 2.6;
+
     return GridView.count(
-      crossAxisCount: MediaQuery.of(context).size.width < 700 ? 2 : 4,
+      crossAxisCount: crossAxisCount,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.md,
       crossAxisSpacing: AppSpacing.md,
-      childAspectRatio: 2.6,
+      childAspectRatio: aspectRatio,
       children: [
         _buildActionShortcut(
           context,
@@ -458,14 +412,6 @@ class AdminDashboardScreen extends ConsumerWidget {
           Icons.file_download_rounded,
           Colors.teal.shade700,
           () => context.push(AdminRoutePaths.reports),
-        ),
-        _buildActionShortcut(
-          context,
-          'System UI States',
-          'Verify error & retry views',
-          Icons.devices_rounded,
-          Colors.amber.shade800,
-          () => context.push(AdminRoutePaths.systemStatesShowcase),
         ),
       ],
     );

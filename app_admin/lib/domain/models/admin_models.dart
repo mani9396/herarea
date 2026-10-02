@@ -77,6 +77,8 @@ class AdminVendorModel {
   final String ownerName;
   final String email;
   final String phoneNumber;
+  final String? storeEmail;
+  final String? storePhone;
   final String category;
   final String address;
   final String gstNumber;
@@ -96,6 +98,8 @@ class AdminVendorModel {
     required this.ownerName,
     required this.email,
     required this.phoneNumber,
+    this.storeEmail,
+    this.storePhone,
     required this.category,
     required this.address,
     required this.gstNumber,
@@ -117,8 +121,10 @@ class AdminVendorModel {
       ownerName: json['owner_name'] ?? json['user']?['full_name'] ?? 'Studio Founder',
       email: json['email'] ?? json['user']?['email'] ?? 'studio@herarea.in',
       phoneNumber: json['phone_number'] ?? json['user']?['phone_number'] ?? '+91 90000 00000',
+      storeEmail: json['business_profile']?['contact_email'] ?? json['contact_email'],
+      storePhone: json['business_profile']?['contact_phone'] ?? json['contact_phone'],
       category: json['category'] ?? json['category_name'] ?? 'Boutiques',
-      address: json['address'] ?? json['business_address'] ?? 'Hyderabad, Telangana',
+      address: json['address'] ?? json['business_address'] ?? 'Not Provided',
       gstNumber: json['gst_number'] ?? json['gstin'] ?? 'Unspecified',
       panNumber: json['pan_number'] ?? json['pan'] ?? 'Unspecified',
       documentUrl: json['document_url'] ?? json['kyc_doc'] ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
@@ -691,6 +697,21 @@ class AdminPromotionModel {
     // handle it defensively in case Admin API does or doesn't.
     final dest = json['destination'] as Map<String, dynamic>?;
     
+    final backendStatus = PromotionStatus.fromString(json['status']?.toString() ?? json['effective_status']?.toString());
+    PromotionStatus effectiveStatus = backendStatus;
+    if (backendStatus != PromotionStatus.suspended) {
+      final start = DateTime.tryParse(json['start_at']?.toString() ?? '') ?? DateTime.now();
+      final end = DateTime.tryParse(json['end_at']?.toString() ?? '') ?? DateTime.now().add(const Duration(days: 7));
+      final now = DateTime.now();
+      if (now.isAfter(end)) {
+        effectiveStatus = PromotionStatus.expired;
+      } else if (now.isBefore(start)) {
+        effectiveStatus = PromotionStatus.scheduled;
+      } else {
+        effectiveStatus = PromotionStatus.active;
+      }
+    }
+
     return AdminPromotionModel(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? 'Promotion',
@@ -702,7 +723,7 @@ class AdminPromotionModel {
       externalUrl: json['external_url'] ?? dest?['url'],
       startAt: json['start_at']?.toString() ?? DateTime.now().toIso8601String(),
       endAt: json['end_at']?.toString() ?? DateTime.now().add(const Duration(days: 7)).toIso8601String(),
-      status: PromotionStatus.fromString(json['status']?.toString() ?? json['effective_status']?.toString()),
+      status: effectiveStatus,
       priority: num.tryParse(json['priority']?.toString() ?? '')?.toInt() ?? 0,
     );
   }

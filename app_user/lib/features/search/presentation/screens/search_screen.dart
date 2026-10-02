@@ -28,23 +28,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   double _minRating = 0.0;
   bool _onlyOpenNow = false;
 
-  final List<String> _categories = [
-    'All',
-    'Sarees & Handlooms',
-    'Maggam Work',
-    'Bridal Makeup',
-    'Bespoke Tailoring',
-    'Antique Jewellery',
-    'Organic Spas',
-  ];
-
-  final List<String> _recentSearches = [
-    'Kanjivaram Silk',
-    'Maggam Work near me',
-    'Bridal Makeup Studio',
-    'Bespoke Blouse Tailoring'
-  ];
-
+  // Removed mock categories and recent searches
   @override
   void dispose() {
     _searchController.dispose();
@@ -98,8 +82,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
       return true;
     }).toList();
-
-    final isSearchOrFilterActive = _query.isNotEmpty || _activeFilterCount > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -158,39 +140,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
 
-            // Horizontal Category Filter Bar
-            SizedBox(
-              height: 54,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 6),
-                scrollDirection: Axis.horizontal,
-                itemCount: _categories.length,
-                separatorBuilder: (context, idx) => const SizedBox(width: 8),
-                itemBuilder: (context, idx) {
-                  final cat = _categories[idx];
-                  final isSelected = _selectedCategory == cat;
-                  return FilterChip(
-                    label: Text(cat, style: TextStyle(fontSize: 13, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, color: isSelected ? Colors.white : (isDark ? AppColors.textHighDark : AppColors.textHighLight))),
-                    selected: isSelected,
-                    selectedColor: AppColors.primaryRuby,
-                    checkmarkColor: Colors.white,
-                    backgroundColor: isDark ? AppColors.surfaceVariantDark : Colors.white,
-                    side: BorderSide(color: isSelected ? AppColors.primaryRuby : (isDark ? AppColors.borderDark : AppColors.borderLight)),
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = selected ? cat : 'All';
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-
             // Main Display Area
             Expanded(
-              child: !isSearchOrFilterActive
-                  ? _buildRecentSearches(isDark)
-                  : _buildResultsView(results, isWide, isDark),
+              child: _buildResultsView(results, isWide, isDark),
             ),
           ],
         ),
@@ -198,79 +150,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  Widget _buildRecentSearches(bool isDark) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Recent Searches', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _recentSearches.map((keyword) {
-              return ActionChip(
-                label: Text(keyword, style: const TextStyle(fontWeight: FontWeight.w600)),
-                avatar: const Icon(Icons.history_rounded, size: 18, color: AppColors.primaryRuby),
-                backgroundColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                onPressed: () {
-                  _searchController.text = keyword;
-                  setState(() => _query = keyword);
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
 
-          const Text('Trending Couture Discovery Tags', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['#TempleGold', '#BridalKanjivaram', '#AirbrushMakeup', '#SameDayStitching', '#ZardosiWeaves', '#HomeTrial'].map((t) => ActionChip(
-              label: Text(t, style: const TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w800)),
-              backgroundColor: isDark ? AppColors.primaryRuby.withValues(alpha: 0.15) : AppColors.blushPink.withValues(alpha: 0.4),
-              side: BorderSide(color: AppColors.primaryRuby.withValues(alpha: 0.3)),
-              onPressed: () {
-                _searchController.text = t.replaceAll('#', '');
-                setState(() => _query = t.replaceAll('#', ''));
-              },
-            )).toList(),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-
-          // Search Tip Box
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              gradient: isDark ? AppColors.primaryGradient : null,
-              color: isDark ? null : AppColors.blushPink.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome, color: AppColors.accentGold, size: 28),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('VIP Concierge Search Tip', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : AppColors.primaryRuby)),
-                      const SizedBox(height: 4),
-                      Text('Use filters to quickly narrow down boutiques that offer private "Home Measurement Trials" or are open right now in your neighborhood.', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : AppColors.neutralCharcoal)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildResultsView(List<StoreModel> results, bool isWide, bool isDark) {
     if (results.isEmpty) {

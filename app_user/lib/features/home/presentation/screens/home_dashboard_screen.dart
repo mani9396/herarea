@@ -7,6 +7,7 @@ import 'package:her_area/core/widgets/store_card.dart';
 import 'package:shared/models/store_model.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
+import 'package:shared/widgets/category_icon_widget.dart';
 
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
@@ -220,7 +221,11 @@ class HomeDashboardScreen extends ConsumerWidget {
                                     shape: BoxShape.circle,
                                     border: Border.all(color: AppTheme.primaryRuby.withValues(alpha: 0.15)),
                                   ),
-                                  child: const Icon(Icons.category_rounded, color: AppTheme.primaryRuby, size: 28),
+                                  child: CategoryIconWidget(
+                                    iconUrl: cat.iconUrl,
+                                    color: AppTheme.primaryRuby,
+                                    size: 28,
+                                  ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(cat.name.length > 12 ? '${cat.name.substring(0, 10)}..' : cat.name, 

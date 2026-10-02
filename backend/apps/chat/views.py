@@ -110,3 +110,32 @@ class MessageReadView(APIView):
         unread_messages.update(is_read=True, read_at=timezone.now())
 
         return Response({"success": True}, status=status.HTTP_200_OK)
+
+class ConversationBlockView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Block/Unblock Conversation",
+        responses={200: ConversationSerializer}
+    )
+    def post(self, request, pk):
+        try:
+            conversation = Conversation.objects.get(id=pk)
+        except Conversation.DoesNotExist:
+            return Response({"error": "Conversation not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        action = request.data.get('action')
+        if action not in ["block", "unblock"]:
+            return Response({"error": "Invalid action. Use 'block' or 'unblock'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user == conversation.customer:
+            conversation.blocked_by_customer = (action == "block")
+        elif user == conversation.vendor:
+            conversation.blocked_by_vendor = (action == "block")
+        else:
+            return Response({"error": "Unauthorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        conversation.save()
+        serializer = ConversationSerializer(conversation, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

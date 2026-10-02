@@ -2,20 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/widgets/custom_button.dart';
 import 'package:shared/widgets/custom_text_field.dart';
 
-class AdminProfileScreen extends StatefulWidget {
+final adminNameProvider = StateProvider<String>((ref) => 'Dhanisha IT Executive');
+final adminPhoneProvider = StateProvider<String>((ref) => '+91 98765 43210');
+final adminDeptProvider = StateProvider<String>((ref) => 'Founder HQ');
+
+class AdminProfileScreen extends ConsumerStatefulWidget {
   const AdminProfileScreen({super.key});
 
   @override
-  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+  ConsumerState<AdminProfileScreen> createState() => _AdminProfileScreenState();
 }
 
-class _AdminProfileScreenState extends State<AdminProfileScreen> {
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _deptController = TextEditingController();
+class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _deptController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: ref.read(adminNameProvider));
+    _phoneController = TextEditingController(text: ref.read(adminPhoneProvider));
+    _deptController = TextEditingController(text: ref.read(adminDeptProvider));
+  }
 
   @override
   void dispose() {
@@ -55,18 +68,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                             alignment: Alignment.center,
                             child: const Text('D', style: TextStyle(color: Colors.white, fontSize: 50, fontWeight: FontWeight.w900)),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: AppColors.accentGold,
-                              child: IconButton(
-                                icon: const Icon(Icons.camera_alt_rounded, size: 16, color: AppColors.neutralCharcoal),
-                                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Simulating avatar image upload...'))),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -88,26 +89,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       hintText: 'Founder HQ',
                       controller: _deptController,
                     ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.shade300)),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_rounded, color: Colors.amber, size: 24),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Hardware Key 2FA Enabled', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.neutralCharcoal)),
-                                Text('Your console logins are secured via cryptographic SMS & Authenticator challenges.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -118,6 +99,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                           label: 'Save Profile Alterations 💾',
                           isFullWidth: false,
                           onPressed: () {
+                            ref.read(adminNameProvider.notifier).state = _nameController.text;
+                            ref.read(adminPhoneProvider.notifier).state = _phoneController.text;
+                            ref.read(adminDeptProvider.notifier).state = _deptController.text;
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Executive credentials updated!')));
                             context.pop();
                           },

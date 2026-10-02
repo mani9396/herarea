@@ -80,9 +80,13 @@ class CustomerApiRepository implements IStoreRepository {
   }
 
   @override
-  Future<StoreModel?> getStoreById(String id) async {
+  Future<StoreModel?> getStoreById(String id, {double? lat, double? lon}) async {
     try {
-      final response = await _apiClient.get('${ApiEndpoints.publicStores}$id/');
+      String url = '${ApiEndpoints.publicStores}$id/';
+      if (lat != null && lon != null) {
+        url += '?latitude=$lat&longitude=$lon';
+      }
+      final response = await _apiClient.get(url);
       return StoreModel.fromJson(response);
     } catch (_) {
       return null;
@@ -360,8 +364,9 @@ final storeRepositoryProvider = Provider<IStoreRepository>((ref) {
 });
 
 final allStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
+  final location = ref.watch(userLocationProvider);
   final repo = ref.read(customerApiRepositoryProvider);
-  return repo.getNearbyStores(15.0);
+  return repo.getNearbyStores(100.0, lat: location.latitude, lon: location.longitude);
 });
 
 final nearbyRadiusProvider = StateProvider<double>((ref) => 25.0);

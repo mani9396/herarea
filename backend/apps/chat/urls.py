@@ -4,7 +4,8 @@ from apps.chat.views import (
     ConversationListView,
     ConversationCreateView,
     MessageListView,
-    MessageReadView
+    MessageReadView,
+    ConversationBlockView
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('conversations/start/', ConversationCreateView.as_view(), name='conversation_start'),
     path('conversations/<uuid:pk>/messages/', MessageListView.as_view(), name='message_list'),
     path('conversations/<uuid:pk>/read/', MessageReadView.as_view(), name='message_read'),
+    path('conversations/<uuid:pk>/block/', ConversationBlockView.as_view(), name='conversation_block'),
 ]

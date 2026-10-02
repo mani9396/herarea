@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
-import '../../../data/repositories/chat_api_repository.dart';
-import '../../../data/services/chat_websocket_service.dart';
+import 'chat_api_repository.dart';
+import 'chat_websocket_service.dart';
 
 final chatConversationsProvider = FutureProvider.autoDispose<List<ChatConversationModel>>((ref) async {
   final chatRepo = ref.watch(chatApiRepositoryProvider);

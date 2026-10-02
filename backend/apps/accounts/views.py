@@ -446,9 +446,20 @@ class CustomerLoginView(APIView):
         if not user:
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
             
-        if user.role != UserRole.CUSTOMER:
-            return Response({"error": "Account exists with a different role. Please use the appropriate app for your account."}, status=status.HTTP_403_FORBIDDEN)
-            
+        requested_role = request.data.get('role', 'CUSTOMER')
+        with open('debug_login.txt', 'a') as f:
+            f.write(f"Email: {email}, User Role: {user.role}, Requested Role: {requested_role}\n")
+        
+        # Prevent cross-app login
+        if requested_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+            pass
+        elif user.role != requested_role:
+            with open('debug_login.txt', 'a') as f:
+                f.write("Cross login prevented\n")
+            return Response(
+                {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                status=status.HTTP_403_FORBIDDEN
+            )
         if not user.check_password(password):
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
             

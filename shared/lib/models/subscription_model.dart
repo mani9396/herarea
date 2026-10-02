@@ -91,6 +91,7 @@ class PaymentRecordModel {
   final int? subscription;
   final int? plan;
   final String planName;
+  final String? storeName;
   final double amount;
   final String currency;
   final String? razorpayOrderId;
@@ -104,6 +105,7 @@ class PaymentRecordModel {
     this.subscription,
     this.plan,
     required this.planName,
+    this.storeName,
     required this.amount,
     required this.currency,
     this.razorpayOrderId,
@@ -115,11 +117,12 @@ class PaymentRecordModel {
 
   factory PaymentRecordModel.fromJson(Map<String, dynamic> json) {
     return PaymentRecordModel(
-      id: json['id'] as int? ?? 0,
-      subscription: json['subscription'] as int?,
-      plan: json['plan'] as int?,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? json['id'] as int? ?? 0,
+      subscription: json['subscription'] != null ? (int.tryParse(json['subscription']?.toString() ?? '') ?? json['subscription'] as int?) : null,
+      plan: json['plan'] != null ? (int.tryParse(json['plan']?.toString() ?? '') ?? json['plan'] as int?) : null,
       planName: json['plan_name']?.toString() ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      storeName: json['store_name']?.toString(),
+      amount: double.tryParse(json['amount']?.toString() ?? '') ?? 0.0,
       currency: json['currency']?.toString() ?? 'INR',
       razorpayOrderId: json['razorpay_order_id']?.toString(),
       razorpayPaymentId: json['razorpay_payment_id']?.toString(),

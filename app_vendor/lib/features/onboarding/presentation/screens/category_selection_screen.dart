@@ -20,33 +20,20 @@ class _CategorySelectionScreenState extends ConsumerState<CategorySelectionScree
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedParent == null ? 'Select Store Category' : 'Select Subcategory'),
+        title: const Text('Select Store Category'),
         centerTitle: true,
         elevation: 0,
-        leading: _selectedParent != null
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() => _selectedParent = null),
-              )
-            : IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => context.pop(),
-              ),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: categoriesAsync.when(
         data: (categories) {
           if (categories.isEmpty) {
             return const Center(child: Text('No categories available'));
           }
-
-          if (_selectedParent == null) {
-            return _buildCategoryList(categories);
-          } else {
-            if (_selectedParent!.subcategories.isEmpty) {
-              return const Center(child: Text('No subcategories available'));
-            }
-            return _buildSubcategoryList(_selectedParent!.subcategories);
-          }
+          return _buildCategoryList(categories);
         },
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryRuby)),
         error: (err, stack) => Center(child: Text('Error: $err')),
@@ -63,11 +50,7 @@ class _CategorySelectionScreenState extends ConsumerState<CategorySelectionScree
         final cat = categories[index];
         return CustomCard(
           onTap: () {
-            if (cat.subcategories.isNotEmpty) {
-              setState(() => _selectedParent = cat);
-            } else {
-              context.pop({'category': cat, 'subcategory': null});
-            }
+            context.pop({'category': cat, 'subcategory': null});
           },
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
@@ -83,8 +66,6 @@ class _CategorySelectionScreenState extends ConsumerState<CategorySelectionScree
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 4),
-                    Text('${cat.subcategories.length} subcategories', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   ],
                 ),
               ),

@@ -72,14 +72,14 @@ class AuthApiRepository {
   }
 
   /// Login with email and password.
-  Future<bool> loginWithPassword(String email, String password) async {
+  Future<bool> loginWithPassword(String email, String password, {String role = 'CUSTOMER'}) async {
     lastAttemptedIdentifier = email;
     try {
       final response = await _apiClient.post(
         ApiEndpoints.customerLogin,
-        body: {'email': email, 'password': password},
+        body: {'email': email, 'password': password, 'role': role},
       );
-      return _processJwtResponse(response, email, 'CUSTOMER');
+      return _processJwtResponse(response, email, role);
     } catch (_) {
       return false;
     }

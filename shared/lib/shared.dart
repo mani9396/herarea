@@ -37,6 +37,7 @@ export 'exceptions/api_exception.dart';
 // Utilities & Services
 export 'utils/currency_formatter.dart';
 export 'utils/validation_helpers.dart';
+export 'utils/distance_formatter.dart';
 export 'services/api_client_interface.dart';
 export 'services/dio_api_client.dart';
 export 'services/api_providers.dart';
@@ -50,3 +51,6 @@ export 'responsive/responsive_layout.dart';
 export 'models/category_model.dart';
 export 'models/promotion_public_model.dart';
 export 'models/chat_models.dart';
+export 'chat/chat_api_repository.dart';
+export 'chat/chat_websocket_service.dart';
+export 'chat/chat_providers.dart';

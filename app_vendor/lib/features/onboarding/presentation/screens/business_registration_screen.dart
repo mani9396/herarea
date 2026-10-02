@@ -49,12 +49,15 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
           _emailController.text = store.whatsappNumber; // Using as contact phone/email placeholder
           _phoneController.text = store.phoneNumber;
           _selectedCategory = store.category;
-          _selectedSubcategory = store.subcategory;
           _hasHomeMeasurement = store.hasHomeMeasurement;
           _lat = store.latitude;
           _lon = store.longitude;
           _area = store.address;
           _city = store.city;
+          _emailController.text = store.contactEmail;
+          _phoneController.text = store.phoneNumber.isNotEmpty 
+              ? store.phoneNumber 
+              : store.whatsappNumber;
           _existingImages = store.gallery;
         });
       }
@@ -87,12 +90,13 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
           name: _nameController.text,
           description: _descController.text,
           category: _selectedCategory,
-          subcategory: _selectedSubcategory,
           latitude: _lat,
           longitude: _lon,
           address: _area,
           city: _city,
-          whatsappNumber: _phoneController.text,
+          contactEmail: _emailController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          whatsappNumber: _phoneController.text.trim(),
           hasHomeMeasurement: _hasHomeMeasurement,
         );
         final res = await repo.updateStore(updated);
@@ -102,7 +106,6 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
           'business_name': _nameController.text,
           'description': _descController.text,
           if (_selectedCategory != null) 'category': _selectedCategory!.id,
-          if (_selectedSubcategory != null) 'subcategory': _selectedSubcategory!.id,
           'latitude': _lat,
           'longitude': _lon,
           'area': (_area?.isNotEmpty == true) ? _area : 'Unknown Area',
@@ -176,7 +179,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                   hintText: 'Select Specialty',
                   controller: TextEditingController(
                     text: _selectedCategory != null 
-                      ? '${_selectedCategory!.name}${_selectedSubcategory != null ? " - ${_selectedSubcategory!.name}" : ""}' 
+                      ? _selectedCategory!.name
                       : ''
                   ),
                   suffixWidget: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
@@ -185,7 +188,6 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                     if (res != null) {
                       setState(() {
                         _selectedCategory = res['category'];
-                        _selectedSubcategory = res['subcategory'];
                       });
                     }
                   },

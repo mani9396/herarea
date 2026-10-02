@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:shared/shared.dart';
-import '../repositories/chat_api_repository.dart';
+import 'chat_api_repository.dart';
 
 enum ChatConnectionState { disconnected, connecting, connected, error }
 

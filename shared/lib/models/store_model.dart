@@ -129,6 +129,7 @@ class StoreMediaModel {
 
 class StoreModel {
   final String id;
+  final String vendorId;
   final String name;
   final CategoryModel category;
   final CategoryModel? subcategory;
@@ -137,6 +138,7 @@ class StoreModel {
   final double distanceKm;
   final String address;
   final String city;
+  final String contactEmail;
   final String phoneNumber;
   final String whatsappNumber;
   final bool isVerified;
@@ -160,6 +162,7 @@ class StoreModel {
 
   const StoreModel({
     required this.id,
+    required this.vendorId,
     required this.name,
     required this.category,
     this.subcategory,
@@ -168,6 +171,7 @@ class StoreModel {
     required this.distanceKm,
     required this.address,
     required this.city,
+    required this.contactEmail,
     required this.phoneNumber,
     required this.whatsappNumber,
     required this.isVerified,
@@ -193,6 +197,7 @@ class StoreModel {
   factory StoreModel.fromJson(Map<String, dynamic> json) {
     return StoreModel(
       id: json['id']?.toString() ?? '',
+      vendorId: json['vendor_id']?.toString() ?? '',
       name: json['business_name'] ?? json['name'] ?? json['store_name'] ?? '',
       category: json['category'] is Map 
           ? CategoryModel.fromJson(json['category'] as Map<String, dynamic>) 
@@ -207,6 +212,7 @@ class StoreModel {
       distanceKm: double.tryParse(json['distance_km']?.toString() ?? '') ?? 0.0,
       address: json['address_line_1'] ?? json['address'] ?? json['street_address'] ?? '',
       city: json['city'] ?? '',
+      contactEmail: json['contact_email'] ?? json['email'] ?? '',
       phoneNumber: json['contact_phone'] ?? json['phone_number'] ?? json['phone'] ?? '',
       whatsappNumber: json['whatsapp_number'] ?? json['whatsapp'] ?? '',
       isVerified: json['is_verified'] ?? false,
@@ -241,6 +247,7 @@ class StoreModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'vendor_id': vendorId,
       'name': name,
       'category': category.toJson(),
       'subcategory': subcategory?.toJson(),
@@ -249,6 +256,7 @@ class StoreModel {
       'distance_km': distanceKm,
       'address': address,
       'city': city,
+      'contact_email': contactEmail,
       'phone_number': phoneNumber,
       'whatsapp_number': whatsappNumber,
       'is_verified': isVerified,
@@ -274,6 +282,7 @@ class StoreModel {
 
   StoreModel copyWith({
     String? id,
+    String? vendorId,
     String? name,
     CategoryModel? category,
     CategoryModel? subcategory,
@@ -282,6 +291,7 @@ class StoreModel {
     double? distanceKm,
     String? address,
     String? city,
+    String? contactEmail,
     String? phoneNumber,
     String? whatsappNumber,
     bool? isVerified,
@@ -305,6 +315,7 @@ class StoreModel {
   }) {
     return StoreModel(
       id: id ?? this.id,
+      vendorId: vendorId ?? this.vendorId,
       name: name ?? this.name,
       category: category ?? this.category,
       subcategory: subcategory ?? this.subcategory,
@@ -313,6 +324,7 @@ class StoreModel {
       distanceKm: distanceKm ?? this.distanceKm,
       address: address ?? this.address,
       city: city ?? this.city,
+      contactEmail: contactEmail ?? this.contactEmail,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
       isVerified: isVerified ?? this.isVerified,

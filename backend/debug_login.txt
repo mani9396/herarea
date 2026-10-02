@@ -1,0 +1,28 @@
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: ragavendra@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: pk@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: pk@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: ADMIN
+Cross login prevented
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: ADMIN
+Cross login prevented
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: admin@herarea.com, User Role: ADMIN, Requested Role: ADMIN
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER

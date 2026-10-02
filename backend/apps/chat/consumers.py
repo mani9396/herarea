@@ -58,6 +58,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }))
             return
 
+        is_blocked = await self.check_if_blocked()
+        if is_blocked:
+            await self.send(text_data=json.dumps({
+                'error': 'This conversation is blocked. Messages cannot be sent.'
+            }))
+            return
+
         saved_msg = await self.save_message(message)
 
         await self.channel_layer.group_send(
@@ -110,3 +117,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'created_at': msg.created_at.isoformat(),
             'is_read': msg.is_read
         }
+
+    @database_sync_to_async
+    def check_if_blocked(self):
+        self.conversation.refresh_from_db()
+        return self.conversation.blocked_by_customer or self.conversation.blocked_by_vendor

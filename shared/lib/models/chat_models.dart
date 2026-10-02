@@ -32,6 +32,8 @@ class ChatConversationModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int unreadCount;
+  final bool blockedByCustomer;
+  final bool blockedByVendor;
 
   ChatConversationModel({
     required this.id,
@@ -41,6 +43,8 @@ class ChatConversationModel {
     required this.createdAt,
     required this.updatedAt,
     this.unreadCount = 0,
+    this.blockedByCustomer = false,
+    this.blockedByVendor = false,
   });
 
   factory ChatConversationModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +56,8 @@ class ChatConversationModel {
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) ?? DateTime.now() : DateTime.now(),
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at']) ?? DateTime.now() : DateTime.now(),
       unreadCount: json['unread_count'] is int ? json['unread_count'] as int : 0,
+      blockedByCustomer: json['blocked_by_customer'] == true,
+      blockedByVendor: json['blocked_by_vendor'] == true,
     );
   }
 
@@ -63,6 +69,8 @@ class ChatConversationModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? unreadCount,
+    bool? blockedByCustomer,
+    bool? blockedByVendor,
   }) {
     return ChatConversationModel(
       id: id ?? this.id,
@@ -72,6 +80,8 @@ class ChatConversationModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       unreadCount: unreadCount ?? this.unreadCount,
+      blockedByCustomer: blockedByCustomer ?? this.blockedByCustomer,
+      blockedByVendor: blockedByVendor ?? this.blockedByVendor,
     );
   }
 }

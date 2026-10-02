@@ -6,6 +6,7 @@ import 'package:shared/models/store_model.dart';
 import 'package:shared/models/category_model.dart';
 import 'package:her_area/core/widgets/store_card.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:shared/widgets/category_icon_widget.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -16,7 +17,6 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   CategoryModel? _selectedParentCategory;
-  CategoryModel? _selectedSubCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -26,21 +26,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectedSubCategory != null 
-              ? _selectedSubCategory!.name 
-              : _selectedParentCategory != null 
-                  ? _selectedParentCategory!.name 
-                  : 'All Specialties',
+          _selectedParentCategory != null 
+              ? _selectedParentCategory!.name 
+              : 'All Specialties',
         ),
         leading: (_selectedParentCategory != null)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () {
-                  if (_selectedSubCategory != null) {
-                    setState(() => _selectedSubCategory = null);
-                  } else {
-                    setState(() => _selectedParentCategory = null);
-                  }
+                  setState(() => _selectedParentCategory = null);
                 },
               )
             : null,
@@ -51,11 +45,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           error: (err, _) => Center(child: Text('Error: $err')),
           data: (categories) {
             if (_selectedParentCategory == null) {
-              return _buildCategoryGrid(context, categories, true);
-            } else if (_selectedSubCategory == null) {
-              return _buildCategoryGrid(context, _selectedParentCategory!.subcategories, false);
+              return _buildCategoryGrid(context, categories);
             } else {
-              return _buildCategoryStoreList(context, allStores, _selectedSubCategory!);
+              return _buildCategoryStoreList(context, allStores, _selectedParentCategory!);
             }
           },
         ),
@@ -63,14 +55,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     );
   }
 
-  Widget _buildCategoryGrid(BuildContext context, List<CategoryModel> categories, bool isParent) {
+  Widget _buildCategoryGrid(BuildContext context, List<CategoryModel> categories) {
     if (categories.isEmpty) {
       return const Center(child: Text('No categories found.'));
     }
+    final screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount = 2; // Mobile
+    if (screenWidth > 600 && screenWidth <= 900) {
+      crossAxisCount = 4; // Tablet
+    } else if (screenWidth > 900) {
+      crossAxisCount = 6; // Desktop
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
         childAspectRatio: 0.9,
@@ -81,11 +81,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         return GestureDetector(
           onTap: () {
             setState(() {
-              if (isParent) {
-                _selectedParentCategory = category;
-              } else {
-                _selectedSubCategory = category;
-              }
+              _selectedParentCategory = category;
             });
           },
           child: Container(
@@ -105,7 +101,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     color: AppTheme.blushPink,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.category_rounded, size: 34, color: AppTheme.primaryRuby),
+                  child: CategoryIconWidget(
+                    iconUrl: category.iconUrl,
+                    color: AppTheme.primaryRuby,
+                    size: 34,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(

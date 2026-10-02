@@ -35,9 +35,12 @@ class AdminMainWrapperScreen extends StatelessWidget {
               child: const Icon(Icons.admin_panel_settings_rounded, size: 20, color: AppColors.primaryRuby),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'HER AREA CONSOLE',
-              style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+            const Expanded(
+              child: Text(
+                'HER AREA CONSOLE',
+                style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(width: 12),
             Container(

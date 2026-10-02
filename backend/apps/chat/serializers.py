@@ -15,7 +15,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['id', 'customer', 'vendor', 'last_message_at', 'created_at', 'updated_at', 'unread_count']
+        fields = ['id', 'customer', 'vendor', 'last_message_at', 'created_at', 'updated_at', 'unread_count', 'blocked_by_customer', 'blocked_by_vendor']
 
     def get_unread_count(self, obj):
         request = self.context.get('request')

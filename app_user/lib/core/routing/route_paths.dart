@@ -20,6 +20,7 @@ class RoutePaths {
   static const String nearby = '/nearby';
   static const String search = '/search';
   static const String profile = '/profile';
+  static const String messages = '/messages';
 
   // Customer Profile & Auxiliary Features
   static const String favorites = '/favorites';

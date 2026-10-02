@@ -4,6 +4,6 @@ abstract class IStoreRepository {
   Future<List<StoreModel>> getNearbyStores(double radiusKm, {double? lat, double? lon});
   Future<List<StoreModel>> getStoresByCategory(String categorySlug);
   Future<List<StoreModel>> searchStores(String query, {double? maxDistance, double? minRating, String? priceTier, bool onlyOpen = false});
-  Future<StoreModel?> getStoreById(String id);
+  Future<StoreModel?> getStoreById(String id, {double? lat, double? lon});
   Future<Map<String, dynamic>?> getStoreDossier(String storeId);
 }
