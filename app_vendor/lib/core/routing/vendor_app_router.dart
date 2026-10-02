@@ -44,11 +44,14 @@ import 'package:app_vendor/features/profile/presentation/screens/help_support_sc
 import 'package:app_vendor/features/profile/presentation/screens/about_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/privacy_policy_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/terms_conditions_screen.dart';
+import 'package:app_vendor/features/chat/presentation/screens/vendor_chat_list_screen.dart';
+import 'package:app_vendor/features/chat/presentation/screens/vendor_chat_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'rootVendorNav');
 final GlobalKey<NavigatorState> _shellDashKey = GlobalKey<NavigatorState>(debugLabel: 'dashNav');
 final GlobalKey<NavigatorState> _shellProductsKey = GlobalKey<NavigatorState>(debugLabel: 'prodNav');
 final GlobalKey<NavigatorState> _shellOrdersKey = GlobalKey<NavigatorState>(debugLabel: 'ordNav');
+final GlobalKey<NavigatorState> _shellChatKey = GlobalKey<NavigatorState>(debugLabel: 'chatNav');
 final GlobalKey<NavigatorState> _shellAnalyticsKey = GlobalKey<NavigatorState>(debugLabel: 'analyNav');
 final GlobalKey<NavigatorState> _shellProfileKey = GlobalKey<NavigatorState>(debugLabel: 'profNav');
 
@@ -258,6 +261,15 @@ final vendorRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _shellChatKey,
+          routes: [
+            GoRoute(
+              path: VendorRoutePaths.chat,
+              builder: (context, state) => const VendorChatListScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
           navigatorKey: _shellAnalyticsKey,
           routes: [
             GoRoute(
@@ -276,6 +288,13 @@ final vendorRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/chat/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return VendorChatScreen(conversationId: id);
+      },
     ),
   ],
 );

@@ -9,6 +9,7 @@ class ListingPlan(models.Model):
     currency = models.CharField(max_length=10, default="INR")
     duration_days = models.PositiveIntegerField(help_text="Duration in days")
     is_active = models.BooleanField(default=True)
+    customer_chat = models.BooleanField(default=False, help_text="Entitlement for customer chat")
     display_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

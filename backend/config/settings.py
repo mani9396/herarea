@@ -14,7 +14,7 @@ sys.path.insert(0, str(BASE_DIR / 'apps'))
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'her-area-secure-dev-key-9a8c7b6a-e5f4-3d2c-1b0f')
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',')]
 
@@ -29,6 +29,7 @@ X_FRAME_OPTIONS = 'DENY'
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -54,6 +55,8 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.operations',
     'apps.subscriptions',
+    'channels',
+    'apps.chat',
 ]
 
 MIDDLEWARE = [
@@ -301,3 +304,12 @@ ZEPTOMAIL_API_URL = config(
     'ZEPTOMAIL_API_URL',
     default='https://api.zeptomail.in/v1.1/email'
 )
+# Channels Configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [config('REDIS_URL', default='redis://127.0.0.1:6379/1')],
+        },
+    },
+}

@@ -6,6 +6,9 @@ import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/widgets/custom_button.dart';
 import 'package:shared/widgets/empty_state_widget.dart';
+import 'dart:convert';
+import 'package:flutter_iconpicker/flutter_iconpicker.dart';
+import 'package:flutter_iconpicker/Models/configuration.dart';
 
 class CategoryManagementScreen extends ConsumerStatefulWidget {
   const CategoryManagementScreen({super.key});
@@ -17,13 +20,13 @@ class CategoryManagementScreen extends ConsumerStatefulWidget {
 class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScreen> {
   void _showAddOrEditDialog({CategoryModel? existing, CategoryModel? parent}) {
     final titleController = TextEditingController(text: existing?.name ?? '');
-    final iconController = TextEditingController(text: existing?.iconUrl ?? 'brush');
+    final iconController = TextEditingController(text: existing?.iconUrl);
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(existing == null ? (parent == null ? 'Create New Category ✨' : 'Create Subcategory ✨') : 'Edit Category ✏️', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(existing == null ? 'Create New Category ✨' : 'Edit Category ✏️', style: const TextStyle(fontWeight: FontWeight.bold)),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
           child: SingleChildScrollView(
@@ -35,12 +38,39 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                   controller: titleController,
                   decoration: const InputDecoration(labelText: 'Category Title (e.g. Designer Footwear)', border: OutlineInputBorder()),
                 ),
-                if (parent == null) ...[
-                  TextField(
-                    controller: iconController,
-                    decoration: const InputDecoration(labelText: 'Material Icon Name', hintText: 'brush, face, diamond', border: OutlineInputBorder()),
-                  ),
-                ],
+                const SizedBox(height: 16),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: iconController,
+                  builder: (context, value, child) {
+                    Widget preview;
+                    if (value.text.startsWith('http')) {
+                      preview = ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(value.text, width: 28, height: 28, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 20)),
+                      );
+                    } else if (value.text.isNotEmpty && value.text.runes.length <= 3 && !RegExp(r'[a-zA-Z]').hasMatch(value.text)) {
+                      preview = Text(value.text, style: const TextStyle(fontSize: 22));
+                    } else {
+                      preview = Icon(_parseIcon(value.text) ?? Icons.image_search_rounded, color: AppColors.primaryRuby);
+                    }
+
+                    return TextField(
+                      controller: iconController,
+                      decoration: InputDecoration(
+                        labelText: 'Category Logo (Emoji, Image URL, or Icon Name)',
+                        hintText: 'e.g. 🥻, 📷, or https://...',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: CircleAvatar(
+                            backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.12),
+                            child: preview,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                ),
               ],
             ),
           ),
@@ -55,8 +85,6 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
               final allCats = ref.read(adminCategoriesProvider);
 
               if (existing == null) {
-                // TODO: For subcategories, API should accept parent_category
-                // Right now we'll just optimistically update or depend on API
                 notif.addCategory(CategoryModel(
                   id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
                   name: titleController.text.trim(),
@@ -165,7 +193,21 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
             CircleAvatar(
               radius: 26,
               backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.12),
-              child: Icon(_mapIcon(cat.iconUrl ?? 'category'), color: AppColors.primaryRuby, size: 28),
+              child: Builder(
+                builder: (context) {
+                  final val = cat.iconUrl ?? '';
+                  if (val.startsWith('http')) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(26),
+                      child: Image.network(val, width: 36, height: 36, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.broken_image)),
+                    );
+                  } else if (val.isNotEmpty && val.runes.length <= 3 && !RegExp(r'[a-zA-Z]').hasMatch(val)) {
+                    return Text(val, style: const TextStyle(fontSize: 24));
+                  } else {
+                    return Icon(_parseIcon(val) ?? Icons.category_rounded, color: AppColors.primaryRuby, size: 28);
+                  }
+                },
+              ),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -183,8 +225,6 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text('${cat.subcategories.length} Subcategories', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
                   const SizedBox(height: 4),
                   Text('Icon Reference: ${cat.iconUrl ?? "none"}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                 ],
@@ -216,18 +256,25 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
     );
   }
 
-  IconData _mapIcon(String name) {
-    switch (name.toLowerCase()) {
-      case 'brush':
-        return Icons.brush_rounded;
-      case 'auto_awesome':
-        return Icons.auto_awesome_rounded;
-      case 'face_retouching_natural':
-        return Icons.face_retouching_natural_rounded;
-      case 'design_services':
-        return Icons.design_services_rounded;
-      default:
-        return Icons.category_rounded;
+  IconData? _parseIcon(String? iconString) {
+    if (iconString == null || iconString.isEmpty) return null;
+    try {
+      final map = jsonDecode(iconString);
+      final iconPickerIcon = deserializeIcon(map);
+      return iconPickerIcon?.data;
+    } catch (e) {
+      // Fallback to legacy string parsing
+      switch (iconString.toLowerCase()) {
+        case 'brush': return Icons.brush_rounded;
+        case 'auto_awesome': return Icons.auto_awesome_rounded;
+        case 'face_retouching_natural': return Icons.face_retouching_natural_rounded;
+        case 'design_services': return Icons.design_services_rounded;
+        case 'checkroom': return Icons.checkroom_rounded;
+        case 'photo_camera': return Icons.photo_camera_rounded;
+        case 'spa': return Icons.spa_rounded;
+        case 'diamond': return Icons.diamond_rounded;
+        default: return Icons.category_rounded;
+      }
     }
   }
 }

@@ -11,8 +11,11 @@ class AdminRoutePaths {
   static const String moderation = '/moderation';
   static const String customers = '/customers';
   static const String analytics = '/analytics';
+  static const String promotions = '/promotions';
 
   // Detail & Action Routes
+  static const String promotionsCreate = '/promotions/create';
+  static const String promotionEdit = '/promotions/:id/edit';
   static const String vendorDetails = '/vendor-details/:id';
   static const String profileApprovals = '/profile-approvals';
   static const String storeApprovals = '/store-approvals';
@@ -44,4 +47,5 @@ class AdminRoutePaths {
   // Helper methods to generate dynamic parameterized URLs
   static String getVendorDetailsUrl(String vendorId) => '/vendor-details/$vendorId';
   static String getCustomerDetailsUrl(String customerId) => '/customer-details/$customerId';
+  static String getPromotionEditUrl(String promotionId) => '/promotions/$promotionId/edit';
 }

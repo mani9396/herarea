@@ -61,13 +61,34 @@ class PublicStoreDetailView(APIView):
 
     @extend_schema(summary="Get Approved Store Showroom Profile", responses={200: PublicStoreShowroomSerializer})
     def get(self, request, pk):
+        lat_str = request.query_params.get('latitude')
+        lon_str = request.query_params.get('longitude')
+
         try:
-            showroom = BusinessProfile.objects.select_related('category', 'vendor').get(
+            qs = BusinessProfile.objects.select_related('category', 'vendor').filter(
                 pk=pk, 
                 vendor__status=VendorStatus.APPROVED,
                 status=StoreStatus.PUBLISHED,
                 subscriptions__status='ACTIVE'
             )
+
+            if lat_str and lon_str:
+                try:
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                    distance_expr = ExpressionWrapper(
+                        6371.0 * ACos(
+                            Cos(Radians(lat)) * Cos(Radians(F('latitude'))) *
+                            Cos(Radians(F('longitude')) - Radians(lon)) +
+                            Sin(Radians(lat)) * Sin(Radians(F('latitude')))
+                        ),
+                        output_field=FloatField()
+                    )
+                    qs = qs.annotate(distance_km=distance_expr)
+                except (ValueError, TypeError):
+                    pass
+
+            showroom = qs.get()
         except BusinessProfile.DoesNotExist:
             raise exceptions.NotFound("Showroom not found, or partner studio has not completed Admin clearance.")
         

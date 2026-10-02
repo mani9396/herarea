@@ -22,6 +22,7 @@ class VendorRoutePaths {
   static const String dashboard = '/dashboard';
   static const String products = '/products';
   static const String ordersEnquiries = '/orders';
+  static const String chat = '/chat';
   static const String analytics = '/analytics';
   static const String profile = '/profile';
 
@@ -67,4 +68,5 @@ class VendorRoutePaths {
   static String buildEnquiryDetailsPath(String id) => '/orders/details/$id';
   static String buildReviewDetailsPath(String id) => '/reviews/details/$id';
   static String buildNotificationDetailsPath(String id) => '/notifications/details/$id';
+  static String buildChatDetailsPath(String id) => '/chat/$id';
 }

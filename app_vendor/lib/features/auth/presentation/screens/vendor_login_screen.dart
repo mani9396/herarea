@@ -25,6 +25,7 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
     final success = await ref.read(authApiRepositoryProvider).loginWithPassword(
       _identifierController.text.trim(),
       _passwordController.text,
+      role: 'VENDOR',
     );
     if (!mounted) return;
     setState(() => _isLoading = false);

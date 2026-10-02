@@ -41,49 +41,67 @@ class AdminSettingsScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: AppColors.accentGold.withValues(alpha: 0.4))),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(color: AppColors.primaryRuby, shape: BoxShape.circle, border: Border.all(color: AppColors.accentGold, width: 2)),
-                          alignment: Alignment.center,
-                          child: const Text('D', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Administrator Profile', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
-                              const SizedBox(height: 2),
-                              const Text('Superadmin Governance HQ', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600, fontSize: 13)),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                                decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-                                child: const Text('SUPERADMIN FOUNDER ACCESS TIER', style: TextStyle(color: AppColors.accentGold, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                              ),
-                            ],
+                    child: Builder(builder: (context) {
+                      final isMobile = MediaQuery.of(context).size.width < 600;
+                      
+                      final avatar = Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(color: AppColors.primaryRuby, shape: BoxShape.circle, border: Border.all(color: AppColors.accentGold, width: 2)),
+                        alignment: Alignment.center,
+                        child: const Text('D', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+                      );
+                      
+                      final profileInfo = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Administrator Profile', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
+                          const SizedBox(height: 2),
+                          const Text('Superadmin Governance HQ', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
+                            child: const Text('SUPERADMIN FOUNDER ACCESS TIER', style: TextStyle(color: AppColors.accentGold, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                           ),
-                        ),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.manage_accounts_rounded, size: 18),
-                          label: const Text('Edit Profile'),
-                          onPressed: () => context.push(AdminRoutePaths.adminProfile),
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                      
+                      final editBtn = OutlinedButton.icon(
+                        icon: const Icon(Icons.manage_accounts_rounded, size: 18),
+                        label: const Text('Edit Profile'),
+                        onPressed: () => context.push(AdminRoutePaths.adminProfile),
+                      );
+
+                      if (isMobile) {
+                        return Column(
+                          children: [
+                            Row(
+                              children: [
+                                avatar,
+                                const SizedBox(width: 20),
+                                Expanded(child: profileInfo),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(width: double.infinity, child: editBtn),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          avatar,
+                          const SizedBox(width: 20),
+                          Expanded(child: profileInfo),
+                          const SizedBox(width: 16),
+                          editBtn,
+                        ],
+                      );
+                    }),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xxl),
-                const Text('Administrative & Team Governance', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
-                const SizedBox(height: AppSpacing.md),
-                _buildSettingsItem(context, 'Role-Based Access Control (RBAC)', 'Manage staff permissions for moderators and finance officers', Icons.security_rounded, AppColors.primaryRuby, () => context.push(AdminRoutePaths.rolesPermissions)),
-                const SizedBox(height: AppSpacing.sm),
-                const SizedBox(height: AppSpacing.sm),
-                _buildSettingsItem(context, 'System UI States Showcase', 'Inspect empty queues, 403 forbidden access, and network error views', Icons.devices_other_rounded, Colors.amber.shade800, () => context.push(AdminRoutePaths.systemStatesShowcase)),
-                const SizedBox(height: AppSpacing.xl),
                 const Text('Platform Monetization & Subscriptions', style: TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.neutralCharcoal)),
                 const SizedBox(height: AppSpacing.md),
                 _buildSettingsItem(context, 'Listing Plans', 'Manage subscription plans and pricing for vendors', Icons.monetization_on_rounded, Colors.green, () => context.push(AdminRoutePaths.planManagement)),

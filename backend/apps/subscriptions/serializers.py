@@ -20,11 +20,12 @@ class VendorSubscriptionSerializer(serializers.ModelSerializer):
 
 class PaymentRecordSerializer(serializers.ModelSerializer):
     plan_name = serializers.CharField(source='plan.name', read_only=True)
+    store_name = serializers.CharField(source='store.business_name', read_only=True)
 
     class Meta:
         model = PaymentRecord
         fields = [
-            'id', 'subscription', 'plan', 'plan_name', 'amount', 'currency', 
+            'id', 'subscription', 'plan', 'plan_name', 'store_name', 'amount', 'currency', 
             'transaction_id', 'provider_payment_id', 'payment_provider', 'status', 
             'created_at', 'verified_at'
         ]

@@ -32,6 +32,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
         final success = await ref.read(authApiRepositoryProvider).loginWithPassword(
           _emailController.text,
           _passwordController.text,
+          role: 'ADMIN',
         );
         if (mounted) {
           if (success) {

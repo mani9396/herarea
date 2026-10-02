@@ -20,11 +20,13 @@ class BusinessProfileSerializer(serializers.ModelSerializer):
     # Relax DRF validation bounds so Flutter can send high-precision floats
     latitude = serializers.DecimalField(max_digits=22, decimal_places=16, required=False, allow_null=True)
     longitude = serializers.DecimalField(max_digits=22, decimal_places=16, required=False, allow_null=True)
+    
+    vendor_id = serializers.UUIDField(source='vendor.user_id', read_only=True)
 
     class Meta:
         model = BusinessProfile
         fields = [
-            'id', 'category', 'category_name', 'category_slug', 
+            'id', 'vendor_id', 'category', 'category_name', 'category_slug', 
             'subcategory', 'subcategory_name', 'subcategory_slug',
             'business_name', 'description', 
             'address_line_1', 'address_line_2', 'area', 'city', 'state', 'country', 'postal_code', 
@@ -78,6 +80,7 @@ class PublicStoreShowroomSerializer(serializers.ModelSerializer):
     subcategory_name = serializers.CharField(source='subcategory.name', read_only=True)
     subcategory_slug = serializers.CharField(source='subcategory.slug', read_only=True)
     vendor_status = serializers.CharField(source='vendor.status', read_only=True)
+    vendor_id = serializers.UUIDField(source='vendor.user_id', read_only=True)
     distance_km = serializers.FloatField(read_only=True, required=False)
     gallery = StoreMediaSerializer(many=True, read_only=True)
     rating = serializers.SerializerMethodField()
@@ -86,7 +89,7 @@ class PublicStoreShowroomSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessProfile
         fields = [
-            'id', 'business_name', 'description', 'category_name', 'category_slug', 
+            'id', 'vendor_id', 'business_name', 'description', 'category_name', 'category_slug', 
             'subcategory_name', 'subcategory_slug', 'vendor_status', 'distance_km',
             'address_line_1', 'address_line_2', 'area', 'city', 'state', 'country', 'postal_code', 
             'contact_email', 'contact_phone', 

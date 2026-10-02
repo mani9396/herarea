@@ -35,9 +35,12 @@ class AdminMainWrapperScreen extends StatelessWidget {
               child: const Icon(Icons.admin_panel_settings_rounded, size: 20, color: AppColors.primaryRuby),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'HER AREA CONSOLE',
-              style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+            const Expanded(
+              child: Text(
+                'HER AREA CONSOLE',
+                style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(width: 12),
             Container(
@@ -112,6 +115,11 @@ class AdminMainWrapperScreen extends StatelessWidget {
                       selectedIcon: Icon(Icons.insights_rounded),
                       label: Text('Analytics'),
                     ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.campaign_outlined),
+                      selectedIcon: Icon(Icons.campaign_rounded),
+                      label: Text('Promotions'),
+                    ),
                   ],
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
@@ -149,6 +157,11 @@ class AdminMainWrapperScreen extends StatelessWidget {
                   icon: Icon(Icons.insights_rounded),
                   selectedIcon: Icon(Icons.insights_rounded, color: AppColors.primaryRuby),
                   label: 'Stats',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.campaign_outlined),
+                  selectedIcon: Icon(Icons.campaign_rounded, color: AppColors.primaryRuby),
+                  label: 'Promos',
                 ),
               ],
             ),

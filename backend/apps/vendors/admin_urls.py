@@ -7,6 +7,7 @@ from apps.vendors.admin_views import (
     AdminVendorRejectView,
     AdminVendorSuspendView,
     AdminVendorCreateView,
+    AdminVendorChatStatusView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('<uuid:pk>/approve/', AdminVendorApproveView.as_view(), name='admin-vendor-approve'),
     path('<uuid:pk>/reject/', AdminVendorRejectView.as_view(), name='admin-vendor-reject'),
     path('<uuid:pk>/suspend/', AdminVendorSuspendView.as_view(), name='admin-vendor-suspend'),
+    path('<uuid:pk>/chat-status/', AdminVendorChatStatusView.as_view(), name='admin-vendor-chat-status'),
 ]

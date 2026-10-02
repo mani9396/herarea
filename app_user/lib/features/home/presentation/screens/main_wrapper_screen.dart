@@ -41,6 +41,11 @@ class MainWrapperScreen extends StatelessWidget {
             label: 'Search',
           ),
           NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            selectedIcon: Icon(Icons.chat_bubble_rounded, color: AppTheme.primaryRuby),
+            label: 'Messages',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
             selectedIcon: Icon(Icons.person_rounded, color: AppTheme.primaryRuby),
             label: 'Profile',

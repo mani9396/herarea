@@ -40,12 +40,45 @@ enum AdminStatus {
   }
 }
 
+enum AdminChatStatus {
+  active,
+  paused,
+  suspended,
+  disabled;
+
+  String get displayName {
+    switch (this) {
+      case AdminChatStatus.active:
+        return 'Active';
+      case AdminChatStatus.paused:
+        return 'Paused';
+      case AdminChatStatus.suspended:
+        return 'Suspended';
+      case AdminChatStatus.disabled:
+        return 'Disabled';
+    }
+  }
+
+  String get apiCode => name.toUpperCase();
+
+  static AdminChatStatus fromString(String? val) {
+    if (val == null) return AdminChatStatus.disabled;
+    final clean = val.trim().toLowerCase();
+    return AdminChatStatus.values.firstWhere(
+      (e) => e.name == clean || e.displayName.toLowerCase() == clean,
+      orElse: () => AdminChatStatus.disabled,
+    );
+  }
+}
+
 class AdminVendorModel {
   final String id;
   final String storeName;
   final String ownerName;
   final String email;
   final String phoneNumber;
+  final String? storeEmail;
+  final String? storePhone;
   final String category;
   final String address;
   final String gstNumber;
@@ -55,6 +88,7 @@ class AdminVendorModel {
   final int totalProducts;
   final double totalRevenue;
   final AdminStatus status;
+  final AdminChatStatus chatStatus;
   final String createdAt;
   final String? rejectionReason;
 
@@ -64,6 +98,8 @@ class AdminVendorModel {
     required this.ownerName,
     required this.email,
     required this.phoneNumber,
+    this.storeEmail,
+    this.storePhone,
     required this.category,
     required this.address,
     required this.gstNumber,
@@ -73,6 +109,7 @@ class AdminVendorModel {
     required this.totalProducts,
     required this.totalRevenue,
     required this.status,
+    required this.chatStatus,
     required this.createdAt,
     this.rejectionReason,
   });
@@ -84,8 +121,10 @@ class AdminVendorModel {
       ownerName: json['owner_name'] ?? json['user']?['full_name'] ?? 'Studio Founder',
       email: json['email'] ?? json['user']?['email'] ?? 'studio@herarea.in',
       phoneNumber: json['phone_number'] ?? json['user']?['phone_number'] ?? '+91 90000 00000',
+      storeEmail: json['business_profile']?['contact_email'] ?? json['contact_email'],
+      storePhone: json['business_profile']?['contact_phone'] ?? json['contact_phone'],
       category: json['category'] ?? json['category_name'] ?? 'Boutiques',
-      address: json['address'] ?? json['business_address'] ?? 'Hyderabad, Telangana',
+      address: json['address'] ?? json['business_address'] ?? 'Not Provided',
       gstNumber: json['gst_number'] ?? json['gstin'] ?? 'Unspecified',
       panNumber: json['pan_number'] ?? json['pan'] ?? 'Unspecified',
       documentUrl: json['document_url'] ?? json['kyc_doc'] ?? 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
@@ -93,6 +132,7 @@ class AdminVendorModel {
       totalProducts: num.tryParse(json['total_products']?.toString() ?? '')?.toInt() ?? 12,
       totalRevenue: num.tryParse(json['total_revenue']?.toString() ?? '')?.toDouble() ?? 150000.0,
       status: AdminStatus.fromString(json['status']?.toString()),
+      chatStatus: AdminChatStatus.fromString(json['chat_status']?.toString()),
       createdAt: json['created_at']?.toString().substring(0, 10) ?? '2026-08-01',
       rejectionReason: json['rejection_reason'],
     );
@@ -114,6 +154,7 @@ class AdminVendorModel {
       'total_products': totalProducts,
       'total_revenue': totalRevenue,
       'status': status.apiCode,
+      'chat_status': chatStatus.apiCode,
       'created_at': createdAt,
       'rejection_reason': rejectionReason,
     };
@@ -121,6 +162,7 @@ class AdminVendorModel {
 
   AdminVendorModel copyWith({
     AdminStatus? status,
+    AdminChatStatus? chatStatus,
     String? rejectionReason,
   }) {
     return AdminVendorModel(
@@ -138,6 +180,7 @@ class AdminVendorModel {
       totalProducts: totalProducts,
       totalRevenue: totalRevenue,
       status: status ?? this.status,
+      chatStatus: chatStatus ?? this.chatStatus,
       createdAt: createdAt,
       rejectionReason: rejectionReason ?? this.rejectionReason,
     );
@@ -586,5 +629,148 @@ class AdminNotificationItem {
       'target_group': targetGroup,
       'sent_at': sentAt,
     };
+  }
+}
+
+enum PromotionStatus {
+  scheduled,
+  active,
+  suspended,
+  expired;
+
+  String get displayName {
+    switch (this) {
+      case PromotionStatus.scheduled:
+        return 'Scheduled';
+      case PromotionStatus.active:
+        return 'Active';
+      case PromotionStatus.suspended:
+        return 'Suspended';
+      case PromotionStatus.expired:
+        return 'Expired';
+    }
+  }
+
+  String get apiCode => name.toUpperCase();
+
+  static PromotionStatus fromString(String? val) {
+    if (val == null) return PromotionStatus.scheduled;
+    final clean = val.trim().toLowerCase();
+    return PromotionStatus.values.firstWhere(
+      (e) => e.name == clean || e.displayName.toLowerCase() == clean,
+      orElse: () => PromotionStatus.scheduled,
+    );
+  }
+}
+
+class AdminPromotionModel {
+  final String id;
+  final String title;
+  final String? subtitle;
+  final String imageUrl;
+  final String promotionType;
+  final String? internalDestinationType;
+  final String? internalDestinationId;
+  final String? externalUrl;
+  final String startAt;
+  final String endAt;
+  final PromotionStatus status;
+  final int priority;
+
+  const AdminPromotionModel({
+    required this.id,
+    required this.title,
+    this.subtitle,
+    required this.imageUrl,
+    required this.promotionType,
+    this.internalDestinationType,
+    this.internalDestinationId,
+    this.externalUrl,
+    required this.startAt,
+    required this.endAt,
+    required this.status,
+    required this.priority,
+  });
+
+  factory AdminPromotionModel.fromJson(Map<String, dynamic> json) {
+    // If the API returns 'destination' as an object (as per PromotionPublicSerializer), 
+    // handle it defensively in case Admin API does or doesn't.
+    final dest = json['destination'] as Map<String, dynamic>?;
+    
+    final backendStatus = PromotionStatus.fromString(json['status']?.toString() ?? json['effective_status']?.toString());
+    PromotionStatus effectiveStatus = backendStatus;
+    if (backendStatus != PromotionStatus.suspended) {
+      final start = DateTime.tryParse(json['start_at']?.toString() ?? '') ?? DateTime.now();
+      final end = DateTime.tryParse(json['end_at']?.toString() ?? '') ?? DateTime.now().add(const Duration(days: 7));
+      final now = DateTime.now();
+      if (now.isAfter(end)) {
+        effectiveStatus = PromotionStatus.expired;
+      } else if (now.isBefore(start)) {
+        effectiveStatus = PromotionStatus.scheduled;
+      } else {
+        effectiveStatus = PromotionStatus.active;
+      }
+    }
+
+    return AdminPromotionModel(
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? 'Promotion',
+      subtitle: json['subtitle'],
+      imageUrl: json['image_url'] ?? json['image'] ?? '',
+      promotionType: json['promotion_type'] ?? 'APP',
+      internalDestinationType: json['internal_destination_type'] ?? dest?['type'],
+      internalDestinationId: json['internal_destination_id'] ?? dest?['id'],
+      externalUrl: json['external_url'] ?? dest?['url'],
+      startAt: json['start_at']?.toString() ?? DateTime.now().toIso8601String(),
+      endAt: json['end_at']?.toString() ?? DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+      status: effectiveStatus,
+      priority: num.tryParse(json['priority']?.toString() ?? '')?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'image_url': imageUrl,
+      'promotion_type': promotionType,
+      'internal_destination_type': internalDestinationType,
+      'internal_destination_id': internalDestinationId,
+      'external_url': externalUrl,
+      'start_at': startAt,
+      'end_at': endAt,
+      'status': status.apiCode,
+      'priority': priority,
+    };
+  }
+
+  AdminPromotionModel copyWith({
+    String? title,
+    String? subtitle,
+    String? imageUrl,
+    String? promotionType,
+    String? internalDestinationType,
+    String? internalDestinationId,
+    String? externalUrl,
+    String? startAt,
+    String? endAt,
+    PromotionStatus? status,
+    int? priority,
+  }) {
+    return AdminPromotionModel(
+      id: id,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      imageUrl: imageUrl ?? this.imageUrl,
+      promotionType: promotionType ?? this.promotionType,
+      internalDestinationType: internalDestinationType ?? this.internalDestinationType,
+      internalDestinationId: internalDestinationId ?? this.internalDestinationId,
+      externalUrl: externalUrl ?? this.externalUrl,
+      startAt: startAt ?? this.startAt,
+      endAt: endAt ?? this.endAt,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+    );
   }
 }

@@ -23,6 +23,8 @@ import 'package:her_area/features/profile/presentation/screens/edit_profile_scre
 import 'package:her_area/features/profile/presentation/screens/settings_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/help_support_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/about_screen.dart';
+import 'package:her_area/features/chat/presentation/screens/customer_chat_list_screen.dart';
+import 'package:her_area/features/chat/presentation/screens/customer_chat_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/terms_privacy_screen.dart';
 
 final appRouter = GoRouter(
@@ -70,6 +72,12 @@ final appRouter = GoRouter(
         return StoreDetailsScreen(storeId: id);
       },
     ),
+    GoRoute(
+      path: '/chat/:id',
+      builder: (context, state) => CustomerChatScreen(
+        conversationId: state.pathParameters['id']!,
+      ),
+    ),
     // StatefulShellRoute utilizing RoutePaths for clean web URL endpoint transitions
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -105,6 +113,14 @@ final appRouter = GoRouter(
             GoRoute(
               path: RoutePaths.search,
               builder: (context, state) => const SearchScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: RoutePaths.messages,
+              builder: (context, state) => const CustomerChatListScreen(),
             ),
           ],
         ),

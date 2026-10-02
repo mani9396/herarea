@@ -80,9 +80,13 @@ class CustomerApiRepository implements IStoreRepository {
   }
 
   @override
-  Future<StoreModel?> getStoreById(String id) async {
+  Future<StoreModel?> getStoreById(String id, {double? lat, double? lon}) async {
     try {
-      final response = await _apiClient.get('${ApiEndpoints.publicStores}$id/');
+      String url = '${ApiEndpoints.publicStores}$id/';
+      if (lat != null && lon != null) {
+        url += '?latitude=$lat&longitude=$lon';
+      }
+      final response = await _apiClient.get(url);
       return StoreModel.fromJson(response);
     } catch (_) {
       return null;
@@ -138,30 +142,15 @@ class CustomerApiRepository implements IStoreRepository {
     }
   }
 
-  /// Retrieve active promotional banner image URLs
-  Future<List<String>> getPromoBanners() async {
+  /// Retrieve active promotional banners
+  Future<List<PromotionPublicModel>> getPromoBanners() async {
     try {
-      final response = await _apiClient.get(ApiEndpoints.publicPromotions);
-      if (response is List) {
-        final list = response as List;
-        final urls = list
-            .map((item) => (item as Map<String, dynamic>)['image_url']?.toString() ?? '')
-            .where((url) => url.isNotEmpty)
-            .toList();
-        if (urls.isNotEmpty) return urls;
-      } else if (response is Map<String, dynamic> && response['results'] is List) {
-        final list = response['results'] as List;
-        final urls = list
-            .map((item) => (item as Map<String, dynamic>)['image_url']?.toString() ?? '')
-            .where((url) => url.isNotEmpty)
-            .toList();
-        if (urls.isNotEmpty) return urls;
+      final response = await _apiClient.get(ApiEndpoints.publicBanners);
+      if (response['results'] is List) {
+        return (response['results'] as List).map((item) => PromotionPublicModel.fromJson(item as Map<String, dynamic>)).toList();
+      } else if (response['data'] is List) {
+        return (response['data'] as List).map((item) => PromotionPublicModel.fromJson(item as Map<String, dynamic>)).toList();
       }
-    } catch (_) {}
-    try {
-      final stores = await getNearbyStores(15.0);
-      final urls = stores.map((s) => s.gallery.isNotEmpty ? s.gallery.first.image : '').where((url) => url.isNotEmpty).toList();
-      if (urls.isNotEmpty) return urls;
     } catch (_) {}
     return [];
   }
@@ -375,8 +364,9 @@ final storeRepositoryProvider = Provider<IStoreRepository>((ref) {
 });
 
 final allStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
+  final location = ref.watch(userLocationProvider);
   final repo = ref.read(customerApiRepositoryProvider);
-  return repo.getNearbyStores(15.0);
+  return repo.getNearbyStores(100.0, lat: location.latitude, lon: location.longitude);
 });
 
 final nearbyRadiusProvider = StateProvider<double>((ref) => 25.0);
@@ -388,7 +378,7 @@ final nearbyStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
   return repo.getNearbyStores(radius, lat: location.latitude, lon: location.longitude);
 });
 
-final promoBannersProvider = FutureProvider<List<String>>((ref) async {
+final promoBannersProvider = FutureProvider<List<PromotionPublicModel>>((ref) async {
   final repo = ref.read(customerApiRepositoryProvider);
   return repo.getPromoBanners();
 });
