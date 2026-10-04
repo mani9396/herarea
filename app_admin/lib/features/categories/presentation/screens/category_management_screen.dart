@@ -7,8 +7,6 @@ import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/widgets/custom_button.dart';
 import 'package:shared/widgets/empty_state_widget.dart';
 import 'dart:convert';
-import 'package:flutter_iconpicker/flutter_iconpicker.dart';
-import 'package:flutter_iconpicker/Models/configuration.dart';
 
 class CategoryManagementScreen extends ConsumerStatefulWidget {
   const CategoryManagementScreen({super.key});
@@ -258,23 +256,29 @@ class _CategoryManagementScreenState extends ConsumerState<CategoryManagementScr
 
   IconData? _parseIcon(String? iconString) {
     if (iconString == null || iconString.isEmpty) return null;
-    try {
-      final map = jsonDecode(iconString);
-      final iconPickerIcon = deserializeIcon(map);
-      return iconPickerIcon?.data;
-    } catch (e) {
-      // Fallback to legacy string parsing
-      switch (iconString.toLowerCase()) {
-        case 'brush': return Icons.brush_rounded;
-        case 'auto_awesome': return Icons.auto_awesome_rounded;
-        case 'face_retouching_natural': return Icons.face_retouching_natural_rounded;
-        case 'design_services': return Icons.design_services_rounded;
-        case 'checkroom': return Icons.checkroom_rounded;
-        case 'photo_camera': return Icons.photo_camera_rounded;
-        case 'spa': return Icons.spa_rounded;
-        case 'diamond': return Icons.diamond_rounded;
-        default: return Icons.category_rounded;
-      }
+    
+    String iconName = iconString.toLowerCase();
+    
+    // Check if it's a JSON string from legacy icon picker
+    if (iconString.startsWith('{') && iconString.contains('icon')) {
+      try {
+        final map = jsonDecode(iconString);
+        if (map['icon'] != null) {
+           iconName = map['icon'].toString().toLowerCase();
+        }
+      } catch (_) {}
+    }
+
+    switch (iconName) {
+      case 'brush': return Icons.brush_rounded;
+      case 'auto_awesome': return Icons.auto_awesome_rounded;
+      case 'face_retouching_natural': return Icons.face_retouching_natural_rounded;
+      case 'design_services': return Icons.design_services_rounded;
+      case 'checkroom': return Icons.checkroom_rounded;
+      case 'photo_camera': return Icons.photo_camera_rounded;
+      case 'spa': return Icons.spa_rounded;
+      case 'diamond': return Icons.diamond_rounded;
+      default: return Icons.category_rounded;
     }
   }
 }
