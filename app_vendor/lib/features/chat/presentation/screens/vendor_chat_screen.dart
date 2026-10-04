@@ -95,7 +95,7 @@ class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
                     await ref.read(chatApiRepositoryProvider).blockConversation(widget.conversationId, value);
                     ref.invalidate(chatConversationsProvider);
                   } catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   }
