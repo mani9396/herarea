@@ -85,8 +85,8 @@ class AdminOtpRequestView(APIView):
             try:
                 zeptomail_api_url = getattr(settings, 'ZEPTOMAIL_API_URL', 'https://api.zeptomail.in/v1.1/email')
                 
-                logger.info("Admin OTP email token configured: %s", bool(zeptomail_token))
-                logger.info("Admin OTP email API URL: %s", zeptomail_api_url)
+                logger.info("ADMIN OTP: token configured=%s", bool(zeptomail_token))
+                logger.info("ADMIN OTP: ZeptoMail URL=%s", zeptomail_api_url)
                 
                 response = requests.post(
                     zeptomail_api_url,
@@ -104,7 +104,11 @@ class AdminOtpRequestView(APIView):
                     timeout=30,
                 )
                 
-                logger.info("Admin OTP ZeptoMail response status: %s, body: %s", response.status_code, response.text[:200])
+                logger.info(
+                    "ADMIN OTP: ZeptoMail status=%s response=%s",
+                    response.status_code,
+                    response.text[:300]
+                )
                 
                 if not response.ok:
                     safe_response = response.text[:200]
