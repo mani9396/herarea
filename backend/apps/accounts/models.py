@@ -48,3 +48,15 @@ class User(AbstractBaseUser, PermissionsMixin, AbstractTimestampUUIDModel):
 
     def __str__(self):
         return f"{self.phone_number} ({self.role})"
+
+class AdminLoginHistory(AbstractTimestampUUIDModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='admin_logins')
+    admin_name = models.CharField(max_length=50, help_text="The specific admin name used during login")
+    
+    class Meta:
+        verbose_name = 'Admin Login History'
+        verbose_name_plural = 'Admin Login Histories'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.admin_name} logged in at {self.created_at}"

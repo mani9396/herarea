@@ -42,15 +42,17 @@ class AdminMainWrapperScreen extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.red.shade900,
-                borderRadius: BorderRadius.circular(12),
+            if (width > 400) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade900,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text('SUPERADMIN', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
               ),
-              child: const Text('SUPERADMIN', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-            ),
+            ]
           ],
         ),
         elevation: 1,

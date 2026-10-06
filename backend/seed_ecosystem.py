@@ -35,39 +35,21 @@ def run():
     cust_pass = make_password("Customer@123")
     vendor_pass = make_password("Vendor@123")
     
-    # 1. Seed Super Admin
-    superadmin = User.objects.create(
+    # 1. Seed Real Admin
+    # Ensure only the production admin exists in seeded data
+    admin_user = User.objects.create(
         phone_number="+919000000000",
-        email="superadmin@herarea.com",
-        role=UserRole.SUPERADMIN,
+        email="admin@herarea.com",
+        role=UserRole.ADMIN,
         is_active=True,
         is_verified=True,
         is_staff=True,
         is_superuser=True,
-        password=super_pass
-    )
-    print("[OK] Created 1 Super Admin (+919000000000)")
-
-    # 2. Seed 2 Admin users
-    admin1 = User.objects.create(
-        phone_number="+919000000001",
-        email="admin1@herarea.com",
-        role=UserRole.ADMIN,
-        is_active=True,
-        is_verified=True,
-        is_staff=True,
         password=admin_pass
     )
-    admin2 = User.objects.create(
-        phone_number="+919000000002",
-        email="admin2@herarea.com",
-        role=UserRole.ADMIN,
-        is_active=True,
-        is_verified=True,
-        is_staff=True,
-        password=admin_pass
-    )
-    print("[OK] Created 2 Admin accounts (+919000000001, +919000000002)")
+    # We assign superadmin variable to admin_user so that the rest of the script that references `superadmin` works (e.g. for approvals).
+    superadmin = admin_user
+    print("[OK] Created 1 Admin (admin@herarea.com)")
 
     # 3. Seed 20 Customer accounts
     customers = []
@@ -343,7 +325,7 @@ def run():
 
     print("\n=======================================================")
     print("[OK] PHASE 7 DEMO DATA SEEDING SUCCESSFULLY COMPLETED!")
-    print(f"Total Users: {User.objects.count()} (1 SuperAdmin, 2 Admins, 5 Vendors, 20 Customers)")
+    print(f"Total Users: {User.objects.count()} (1 Admin, 5 Vendors, 20 Customers)")
     print(f"Total Studios: {BusinessProfile.objects.count()} | Categories: {Category.objects.count()}")
     print(f"Catalog: {Product.objects.filter(item_type='PRODUCT').count()} Products | {Product.objects.filter(item_type='SERVICE').count()} Services")
     print(f"Offers: {Offer.objects.count()} | Reviews: {Review.objects.count()} | Favorites: {Favorite.objects.count()}")
