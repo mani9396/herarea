@@ -55,12 +55,17 @@ class AdminOtpRequestView(APIView):
         # We must return a generic success message even if the user is not found to prevent enumeration
         # However, we only send the email if the user is a valid admin.
         if user:
+            zeptomail_token = getattr(settings, 'ZEPTOMAIL_SEND_MAIL_TOKEN', None)
+            if not zeptomail_token:
+                logger.error("ZEPTOMAIL_SEND_MAIL_TOKEN is not configured")
+                return Response({"error": "Email service configuration error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
             cache.set(cache_key + '_ts', '1', timeout=60)
             cache.delete(_make_attempts_key(identifier)) # Reset attempts
             
-            logger.info(f"Admin OTP generated for {identifier}")
+            logger.info("Admin OTP generated and dispatched for authorized admin.")
             
             # Send Email via ZeptoMail
             subject = "HER AREA - Admin Portal Access Code"
@@ -78,27 +83,31 @@ class AdminOtpRequestView(APIView):
             """
             
             try:
-                zeptomail_token = settings.ZEPTOMAIL_SEND_MAIL_TOKEN
-                if zeptomail_token:
-                    zeptomail_api_url = getattr(settings, 'ZEPTOMAIL_API_URL', 'https://api.zeptomail.in/v1.1/email')
-                    response = requests.post(
-                        zeptomail_api_url,
-                        headers={
-                            "Accept": "application/json",
-                            "Content-Type": "application/json",
-                            "Authorization": f"Zoho-enczapikey {zeptomail_token}",
-                        },
-                        json={
-                            "from": {"address": "noreply@herarea.com", "name": "HER AREA Admin"},
-                            "to": [{"email_address": {"address": identifier}}],
-                            "subject": subject,
-                            "htmlbody": html_message,
-                        },
-                        timeout=30,
-                    )
-                    response.raise_for_status()
+                zeptomail_api_url = getattr(settings, 'ZEPTOMAIL_API_URL', 'https://api.zeptomail.in/v1.1/email')
+                response = requests.post(
+                    zeptomail_api_url,
+                    headers={
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "Authorization": f"Zoho-enczapikey {zeptomail_token}",
+                    },
+                    json={
+                        "from": {"address": "noreply@herarea.com", "name": "HER AREA Admin"},
+                        "to": [{"email_address": {"address": identifier}}],
+                        "subject": subject,
+                        "htmlbody": html_message,
+                    },
+                    timeout=30,
+                )
+                
+                if not response.ok:
+                    safe_response = response.text[:200]
+                    logger.error(f"ZeptoMail API error: status {response.status_code}, response: {safe_response}")
+                
+                response.raise_for_status()
+                
             except Exception as e:
-                logger.error(f"Failed to send Admin OTP to {identifier}: {e}")
+                logger.error("Failed to send Admin OTP via ZeptoMail.")
                 return Response({"error": "Failed to send email. Check API configuration."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({"message": "OTP has been sent to the registered admin email."})
