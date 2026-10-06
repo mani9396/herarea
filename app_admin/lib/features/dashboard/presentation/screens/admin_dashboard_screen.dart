@@ -84,8 +84,9 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildHeaderBanner(BuildContext context, AdminDashboardStats stats) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: EdgeInsets.all(isMobile ? 20 : 28),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF2B1020), Color(0xFF4B1832)],
@@ -102,47 +103,75 @@ class AdminDashboardScreen extends ConsumerWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Platform Executive Command Center', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5)),
-                    const SizedBox(height: 4),
+                    Text('Platform Executive Command Center', style: TextStyle(color: AppColors.accentGold, fontWeight: FontWeight.bold, fontSize: isMobile ? 11 : 13, letterSpacing: 1.0)),
+                    const SizedBox(height: 8),
                     Text(
                       'Hyderabad Regional Operations 📌',
-                      style: TextStyle(fontFamily: AppTypography.displayFont, color: Colors.white, fontSize: MediaQuery.of(context).size.width < 600 ? 22 : 30, fontWeight: FontWeight.w900),
+                      style: TextStyle(fontFamily: AppTypography.displayFont, color: Colors.white, fontSize: isMobile ? 22 : 30, fontWeight: FontWeight.w900),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white24),
+              if (!isMobile) ...[
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 18),
+                      SizedBox(width: 8),
+                      Text('All Systems Green', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
+                    ],
+                  ),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 18),
-                    SizedBox(width: 8),
-                    Text('All Systems Green', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
-                  ],
-                ),
+              ]
+            ],
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24),
               ),
-            ],
-          ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 14),
+                  SizedBox(width: 6),
+                  Text('All Systems Green', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(child: _buildBannerStatItem('Total Customers', '${stats.totalCustomers}', Icons.groups_rounded, Colors.cyanAccent)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildBannerStatItem('Verified Vendors', '${stats.totalVendors}', Icons.storefront_rounded, Colors.orangeAccent)),
-            ],
-          ),
+          if (isMobile) ...[
+            _buildBannerStatItem('Total Customers', '${stats.totalCustomers}', Icons.groups_rounded, Colors.cyanAccent),
+            const SizedBox(height: 12),
+            _buildBannerStatItem('Verified Vendors', '${stats.totalVendors}', Icons.storefront_rounded, Colors.orangeAccent),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(child: _buildBannerStatItem('Total Customers', '${stats.totalCustomers}', Icons.groups_rounded, Colors.cyanAccent)),
+                const SizedBox(width: 16),
+                Expanded(child: _buildBannerStatItem('Verified Vendors', '${stats.totalVendors}', Icons.storefront_rounded, Colors.orangeAccent)),
+              ],
+            ),
+          ],
         ],
       ),
     );

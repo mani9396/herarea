@@ -231,6 +231,33 @@ class AuthApiRepository {
   Future<void> logout() async {
     await _authNotifier.logout(_apiClient);
   }
+
+  /// Admin OTP request
+  Future<bool> adminRequestOtp(String email, String adminName) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminRequestOtp,
+        body: {'email': email, 'admin_name': adminName},
+      );
+      return (response['status_code'] as int? ?? 200) <= 204 ||
+          response.containsKey('message');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Admin OTP verify
+  Future<bool> adminVerifyOtp(String email, String otp, String adminName) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.adminVerifyOtp,
+        body: {'email': email, 'otp': otp, 'admin_name': adminName},
+      );
+      return _processJwtResponse(response, email, 'ADMIN');
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 /// Singleton Auth API repository provider

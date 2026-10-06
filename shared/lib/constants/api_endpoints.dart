@@ -70,6 +70,8 @@ class ApiEndpoints {
   static const String adminEnquiries = '/api/v1/admin/enquiries/';
 
   // 8. Executive Admin Governance (/api/v1/admin/)
+  static const String adminRequestOtp = '/api/v1/admin/auth/request-otp/';
+  static const String adminVerifyOtp = '/api/v1/admin/auth/verify-otp/';
   static const String adminDashboardStats = '/api/v1/admin/dashboard/stats/';
   static const String adminCategories = '/api/v1/admin/categories/';
   static const String adminAllVendors = '/api/v1/admin/vendors/all/';
