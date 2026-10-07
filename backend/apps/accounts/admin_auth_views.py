@@ -46,11 +46,16 @@ class AdminOtpRequestView(APIView):
         # Security: Do not reveal if the email is an admin or not to arbitrary users
         user = User.objects.filter(email=identifier, role__in=[UserRole.ADMIN, UserRole.SUPERADMIN], is_active=True).first()
         
+        logger.info("ADMIN OTP DEBUG: authorized_admin_found=%s role=%s is_active=%s", 
+                    bool(user), getattr(user, 'role', None), getattr(user, 'is_active', None))
+        
         cache_key = _make_otp_cache_key(identifier)
         
         # Cooldown check
         if cache.get(cache_key + '_ts'):
             return Response({"error": "Too many requests. Please wait before requesting another OTP."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        logger.info("ADMIN OTP DEBUG: email_send_branch_entered=%s", bool(user))
 
         # We must return a generic success message even if the user is not found to prevent enumeration
         # However, we only send the email if the user is a valid admin.
