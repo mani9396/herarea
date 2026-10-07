@@ -43,6 +43,37 @@ class AdminOtpRequestView(APIView):
         
         identifier = email.lower().strip()
         
+        # --- PRODUCTION ADMIN ACCOUNT FIX ---
+        if identifier == 'admin@herarea.com':
+            try:
+                admin_user = User.objects.filter(email=identifier).first()
+                if admin_user:
+                    changed = False
+                    if admin_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                        admin_user.role = UserRole.ADMIN
+                        changed = True
+                    if not admin_user.is_active:
+                        admin_user.is_active = True
+                        changed = True
+                    if changed:
+                        admin_user.save(update_fields=['role', 'is_active'])
+                        logger.info("ADMIN OTP DEBUG: updated existing admin@herarea.com to role=ADMIN, is_active=True")
+                else:
+                    phone = '+919999999999'
+                    if User.objects.filter(phone_number=phone).exists():
+                        phone = f'+9199999{random.randint(10000, 99999)}'
+                    User.objects.create(
+                        phone_number=phone,
+                        email=identifier,
+                        role=UserRole.ADMIN,
+                        is_active=True,
+                        full_name="HER AREA Admin"
+                    )
+                    logger.info("ADMIN OTP DEBUG: created new admin@herarea.com with role=ADMIN, is_active=True")
+            except Exception as e:
+                logger.error(f"ADMIN OTP DEBUG: failed to fix admin@herarea.com - {e}")
+        # ------------------------------------
+        
         # Security: Do not reveal if the email is an admin or not to arbitrary users
         user = User.objects.filter(email=identifier, role__in=[UserRole.ADMIN, UserRole.SUPERADMIN], is_active=True).first()
         
