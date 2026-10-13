@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/v1/admin/', include('apps.operations.admin_urls')),
     path('api/v1/admin/subscriptions/', include('apps.subscriptions.admin_urls')),
     path('api/v1/subscriptions/', include('apps.subscriptions.urls')),
+    path('api/v1/games/', include('apps.games.urls')),
 ]
 
 if settings.DEBUG:

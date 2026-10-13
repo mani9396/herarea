@@ -45,6 +45,7 @@ export 'services/auth_token_storage.dart';
 export 'services/auth_api_repository.dart';
 export 'providers/pending_registration_provider.dart';
 export 'common/common_typedefs.dart';
+export 'package:shared_preferences/shared_preferences.dart';
 
 // Responsive
 export 'responsive/responsive_layout.dart';

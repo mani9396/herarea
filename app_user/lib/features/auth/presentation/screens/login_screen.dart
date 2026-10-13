@@ -277,7 +277,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       decoration: const BoxDecoration(
         gradient: AppColors.primaryGradient,
       ),
-      padding: const EdgeInsets.all(48),
       child: Stack(
         children: [
           // Background ambient rings
@@ -294,10 +293,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
 
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
@@ -345,105 +347,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 1.6,
                 ),
               ),
-              const SizedBox(height: 48),
-
-              // Glassmorphic Featured Showcase Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                        const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          '5.0 VERIFIED REVIEW',
-                          style: TextStyle(
-                            fontFamily: AppTypography.bodyFont,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.accentGoldLight,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '"Found the most wonderful artisans for my bridal trousseau within 3 km. Truly exceptional tailoring quality and punctuality!"',
-                      style: TextStyle(
-                        fontFamily: AppTypography.bodyFont,
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.white,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.primaryRubyLight,
-                          child: const Text(
-                            'A',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Ananya Rao',
-                              style: TextStyle(
-                                fontFamily: AppTypography.bodyFont,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Client at Vanya Handloom & Zari Studio',
-                              style: TextStyle(
-                                fontFamily: AppTypography.bodyFont,
-                                fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  _buildFeatureBadge(Icons.radar_rounded, 'Exact Radius Search'),
-                  const SizedBox(width: 24),
-                  _buildFeatureBadge(Icons.event_seat_rounded, 'Private Trial Suites'),
-                ],
-              ),
+              const SizedBox(height: 36),
+              _buildFeatureBadge(Icons.radar_rounded, 'Exact Radius Search'),
+              const SizedBox(height: 16),
+              _buildFeatureBadge(Icons.event_seat_rounded, 'Private Trial Suites'),
+              const SizedBox(height: 16),
+              _buildFeatureBadge(Icons.verified_user_outlined, '100% Verified Boutiques'),
+              const SizedBox(height: 16),
+              _buildFeatureBadge(Icons.chat_bubble_outline_rounded, 'Direct Artisan Chat'),
             ],
           ),
-        ],
+        ),
       ),
-    );
+    ],
+  ),
+);
   }
 
   Widget _buildFeatureBadge(IconData icon, String title) {

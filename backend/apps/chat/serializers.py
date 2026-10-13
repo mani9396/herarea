@@ -24,8 +24,15 @@ class ConversationSerializer(serializers.ModelSerializer):
         return 0
 
 
-class MessageSerializer(serializers.ModelSerializer):
+class SimpleMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
-        fields = ['id', 'conversation', 'sender', 'message', 'is_read', 'read_at', 'created_at']
+        fields = ['id', 'message', 'sender']
+
+class MessageSerializer(serializers.ModelSerializer):
+    reply_to = SimpleMessageSerializer(read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'sender', 'message', 'reply_to', 'is_read', 'read_at', 'created_at']
         read_only_fields = ['id', 'sender', 'is_read', 'read_at', 'created_at']

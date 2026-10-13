@@ -73,7 +73,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.9,
+        childAspectRatio: screenWidth <= 400 ? 0.80 : 0.88,
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {

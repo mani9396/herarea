@@ -46,8 +46,8 @@ class ActiveChatNotifier extends StateNotifier<AsyncValue<List<ChatMessageModel>
     }
   }
 
-  Future<void> sendMessage(String text) async {
-    _chatWebSocketService.sendMessage(text);
+  Future<void> sendMessage(String text, {String? replyToId}) async {
+    _chatWebSocketService.sendMessage(text, replyToId: replyToId);
   }
 
   @override

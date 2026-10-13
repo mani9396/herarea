@@ -42,7 +42,6 @@ class ChatWebSocketService {
       final token = await _chatApiRepository.getWsToken();
       if (token == null) {
         _updateState(ChatConnectionState.error);
-        _scheduleReconnect();
         return;
       }
 
@@ -112,9 +111,13 @@ class ChatWebSocketService {
     });
   }
 
-  void sendMessage(String text) {
+  void sendMessage(String text, {String? replyToId}) {
     if (_currentState == ChatConnectionState.connected && _channel != null) {
-      _channel!.sink.add(jsonEncode({'message': text}));
+      final payload = <String, dynamic>{'message': text};
+      if (replyToId != null) {
+        payload['reply_to_id'] = replyToId;
+      }
+      _channel!.sink.add(jsonEncode(payload));
     }
   }
 

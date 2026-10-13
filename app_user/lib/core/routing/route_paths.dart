@@ -21,6 +21,12 @@ class RoutePaths {
   static const String search = '/search';
   static const String profile = '/profile';
   static const String messages = '/messages';
+  static const String games = '/games';
+
+  // Games Deep-links
+  static const String gamesHistory = '/games/history';
+  static const String gamesScorecard = '/games/scorecard';
+  static const String gamePlay = '/games/:id';
 
   // Customer Profile & Auxiliary Features
   static const String favorites = '/favorites';

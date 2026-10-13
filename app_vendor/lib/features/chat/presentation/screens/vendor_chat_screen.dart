@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:swipe_to/swipe_to.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared/shared.dart';
-
-
-
 class VendorChatScreen extends ConsumerStatefulWidget {
   
   final String conversationId;
@@ -17,12 +16,14 @@ class VendorChatScreen extends ConsumerStatefulWidget {
 
 class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
   final _textController = TextEditingController();
-  final _scrollController = ScrollController();
+  final _itemScrollController = ItemScrollController();
+  final _focusNode = FocusNode();
+  ChatMessageModel? _replyingTo;
 
   @override
   void dispose() {
     _textController.dispose();
-    _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -37,8 +38,12 @@ class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
       return;
     }
 
-    ref.read(activeChatProvider(widget.conversationId).notifier).sendMessage(text);
+    ref.read(activeChatProvider(widget.conversationId).notifier).sendMessage(text, replyToId: _replyingTo?.id);
     _textController.clear();
+    setState(() {
+      _replyingTo = null;
+    });
+    _focusNode.requestFocus();
   }
 
   @override
@@ -126,17 +131,54 @@ class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  controller: _scrollController,
+                return ScrollablePositionedList.builder(
+                  itemScrollController: _itemScrollController,
                   reverse: true, // Display latest at the bottom
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final currentUserId = ref.read(authSessionProvider).currentUser?.id;
+                    final currentUserId = conversation?.vendor.id ?? ref.read(authSessionProvider).currentUser?.id;
                     final isMe = message.senderId == currentUserId;
 
-                    return _buildMessageBubble(message, isMe);
+                    bool showDateHeader = false;
+                    if (index == messages.length - 1) {
+                      showDateHeader = true;
+                    } else {
+                      final current = message.createdAt.toLocal();
+                      final previous = messages[index + 1].createdAt.toLocal();
+                      if (current.day != previous.day || current.month != previous.month || current.year != previous.year) {
+                        showDateHeader = true;
+                      }
+                    }
+
+                    Widget bubble = _buildMessageBubble(
+                      message: message,
+                      isMe: isMe,
+                      conversation: conversation,
+                      onReplyTapped: () {
+                        if (message.replyTo != null) {
+                          final replyIndex = messages.indexWhere((m) => m.id == message.replyTo!.id);
+                          if (replyIndex != -1) {
+                            _itemScrollController.scrollTo(
+                              index: replyIndex,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOutCubic,
+                            );
+                          }
+                        }
+                      },
+                    );
+
+                    if (showDateHeader) {
+                      return Column(
+                        children: [
+                          _buildDateHeader(message.createdAt.toLocal()),
+                          bubble,
+                        ],
+                      );
+                    }
+                    return bubble;
                   },
                 );
               },
@@ -151,45 +193,128 @@ class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessageModel message, bool isMe) {
+  Widget _buildDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDate = DateTime(date.year, date.month, date.day);
+
+    String dateText;
+    if (messageDate == today) {
+      dateText = 'Today';
+    } else if (messageDate == yesterday) {
+      dateText = 'Yesterday';
+    } else {
+      dateText = DateFormat('MMMM d, yyyy').format(date);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        dateText,
+        style: const TextStyle(
+          color: Colors.black54,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble({
+    required ChatMessageModel message,
+    required bool isMe,
+    required ChatConversationModel? conversation,
+    VoidCallback? onReplyTapped,
+  }) {
     final timeString = DateFormat('h:mm a').format(message.createdAt.toLocal());
     
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? AppColors.primaryRuby : Colors.grey.shade200,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isMe ? 16 : 4),
-            bottomRight: Radius.circular(isMe ? 4 : 16),
+    final currentUserId = conversation?.vendor.id ?? ref.read(authSessionProvider).currentUser?.id;
+    
+    return SwipeTo(
+      onRightSwipe: (details) {
+        setState(() {
+          _replyingTo = message;
+        });
+        _focusNode.requestFocus();
+      },
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.message,
-              style: TextStyle(
-                color: isMe ? Colors.white : AppColors.neutralCharcoal,
-                fontSize: 15,
-              ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isMe ? AppColors.primaryRuby : Colors.grey.shade200,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(isMe ? 16 : 4),
+              bottomRight: Radius.circular(isMe ? 4 : 16),
             ),
-            const SizedBox(height: 4),
-            Text(
-              timeString,
-              style: TextStyle(
-                color: isMe ? Colors.white70 : Colors.grey.shade600,
-                fontSize: 11,
+          ),
+          child: Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (message.replyTo != null)
+                GestureDetector(
+                  onTap: onReplyTapped,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          message.replyTo!.senderId == currentUserId ? 'You' : 'Customer',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: isMe ? Colors.white70 : AppColors.primaryRuby,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          message.replyTo!.message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isMe ? Colors.white70 : Colors.black87,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Text(
+                message.message,
+                style: TextStyle(
+                  color: isMe ? Colors.white : AppColors.neutralCharcoal,
+                  fontSize: 15,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                timeString,
+                style: TextStyle(
+                  color: isMe ? Colors.white70 : Colors.grey.shade600,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -233,42 +358,94 @@ class _VendorChatScreenState extends ConsumerState<VendorChatScreen> {
         ],
       ),
       child: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
           children: [
-            Expanded(
-              child: Container(
+            if (_replyingTo != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: TextField(
-                  controller: _textController,
-                  maxLines: 5,
-                  minLines: 1,
-                  maxLength: 2000,
-                  textInputAction: TextInputAction.newline,
-                  decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    border: InputBorder.none,
-                    counterText: '', // Hide default counter to save space
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.reply, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Replying to...',
+                            style: TextStyle(
+                              color: AppColors.primaryRuby,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            _replyingTo!.message,
+                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          _replyingTo = null;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              margin: const EdgeInsets.only(bottom: 2),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryRuby,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                onPressed: _sendMessage,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: TextField(
+                      controller: _textController,
+                      focusNode: _focusNode,
+                      maxLines: 5,
+                      minLines: 1,
+                      maxLength: 2000,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText: 'Type a message...',
+                        border: InputBorder.none,
+                        counterText: '', // Hide default counter to save space
+                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryRuby,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    onPressed: _sendMessage,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

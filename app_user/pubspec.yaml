@@ -44,6 +44,9 @@ dependencies:
   dio: ^5.11.0
   share_plus: ^13.3.0
   url_launcher: ^6.3.2
+  swipe_to: ^1.0.6
+  scrollable_positioned_list: ^0.3.8
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

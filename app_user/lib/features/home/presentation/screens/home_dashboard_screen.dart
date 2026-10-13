@@ -2,18 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared/theme/app_theme.dart';
+import 'package:shared/shared.dart';
 import 'package:her_area/core/widgets/store_card.dart';
-import 'package:shared/models/store_model.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
 import 'package:shared/widgets/category_icon_widget.dart';
 
-class HomeDashboardScreen extends ConsumerWidget {
+class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final storesAsync = ref.watch(nearbyStoresProvider);
     final bannersAsync = ref.watch(promoBannersProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -44,9 +57,21 @@ class HomeDashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Hi, ${ref.watch(userProfileProvider).name.isNotEmpty ? ref.watch(userProfileProvider).name.split(' ').first : 'Guest'} ✨',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          Builder(
+                            builder: (context) {
+                              final profileName = ref.watch(userProfileProvider).name;
+                              final sessionUser = ref.watch(authSessionProvider).currentUser?.fullName;
+                              String greetingName = 'Welcome';
+                              if (profileName.isNotEmpty && profileName != 'Guest') {
+                                greetingName = profileName.split(' ').first;
+                              } else if (sessionUser != null && sessionUser.isNotEmpty && sessionUser != 'HER AREA User') {
+                                greetingName = sessionUser.split(' ').first;
+                              }
+                              return Text(
+                                'Hi, $greetingName ✨',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              );
+                            },
                           ),
                           GestureDetector(
                             onTap: () => _showLocationChangeDialog(context, ref),
@@ -54,9 +79,13 @@ class HomeDashboardScreen extends ConsumerWidget {
                               children: [
                                 const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.primaryRuby),
                                 const SizedBox(width: 2),
-                                Text(
-                                  userLocation.cityName,
-                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                Expanded(
+                                  child: Text(
+                                    userLocation.cityName,
+                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                                 const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppTheme.primaryRuby),
                               ],
@@ -86,7 +115,55 @@ class HomeDashboardScreen extends ConsumerWidget {
                 ),
               ),
 
+              // Global Search Bar
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search for stores, services, categories...',
+                      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                      prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryRuby, size: 22),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.primaryRuby),
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+              
+              
               // Promotional Carousel Banner
+              if (_searchQuery.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 8, bottom: 16),
@@ -175,13 +252,16 @@ class HomeDashboardScreen extends ConsumerWidget {
               ),
 
               // Explore by Category Header
+              if (_searchQuery.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Discover Specialties', style: Theme.of(context).textTheme.titleLarge),
+                      Expanded(
+                        child: Text('Discover Specialties', style: Theme.of(context).textTheme.titleLarge),
+                      ),
                       TextButton(
                         onPressed: () => context.go('/categories'),
                         child: const Text('View All', style: TextStyle(color: AppTheme.primaryRuby, fontWeight: FontWeight.w700)),
@@ -192,6 +272,7 @@ class HomeDashboardScreen extends ConsumerWidget {
               ),
 
               // Horizontal Category Pills / Icons
+              if (_searchQuery.isEmpty)
               categoriesAsync.when(
                 loading: () => const SliverToBoxAdapter(
                   child: SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
@@ -241,18 +322,22 @@ class HomeDashboardScreen extends ConsumerWidget {
               ),
 
               // Verified Neighborhood Stores Header
+              if (_searchQuery.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Trusted & Verified Near You', style: Theme.of(context).textTheme.titleLarge),
-                          Text('Hand-curated local stores within your neighborhood', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Trusted & Verified Near You', style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 2),
+                            Text('Hand-curated local stores within your neighborhood', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                          ],
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.tune_rounded, color: AppTheme.primaryRuby),
@@ -269,21 +354,44 @@ class HomeDashboardScreen extends ConsumerWidget {
                   child: Center(child: Padding(padding: EdgeInsets.all(40.0), child: CircularProgressIndicator())),
                 ),
                 error: (err, stack) => SliverToBoxAdapter(child: Center(child: Text('Error loading stores: $err'))),
-                data: (stores) => SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final store = stores[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 0),
-                        child: StoreCard(
-                          store: store,
-                          onTap: () => context.push('/store-details/${store.id}'),
+                data: (stores) {
+                  final filteredStores = _searchQuery.isEmpty
+                      ? stores
+                      : stores.where((s) {
+                          final q = _searchQuery.toLowerCase();
+                          return s.name.toLowerCase().contains(q) ||
+                              s.category.name.toLowerCase().contains(q) ||
+                              s.description.toLowerCase().contains(q) ||
+                              s.serviceTags.any((t) => t.toLowerCase().contains(q));
+                        }).toList();
+
+                  if (filteredStores.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Text('No results found for "$_searchQuery"'),
                         ),
-                      );
-                    },
-                    childCount: stores.length,
-                  ),
-                ),
+                      ),
+                    );
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final store = filteredStores[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 0),
+                          child: StoreCard(
+                            store: store,
+                            onTap: () => context.push('/store-details/${store.id}'),
+                          ),
+                        );
+                      },
+                      childCount: filteredStores.length,
+                    ),
+                  );
+                },
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],

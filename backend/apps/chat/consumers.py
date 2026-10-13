@@ -39,6 +39,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             message = text_data_json.get('message', '').strip()
+            reply_to_id = text_data_json.get('reply_to_id')
         except json.JSONDecodeError:
             return
 
@@ -65,7 +66,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }))
             return
 
-        saved_msg = await self.save_message(message)
+        saved_msg = await self.save_message(message, reply_to_id)
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -101,19 +102,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return vendor.vendor_profile.effective_chat_access
 
     @database_sync_to_async
-    def save_message(self, text):
+    def save_message(self, text, reply_to_id=None):
         msg = Message.objects.create(
             conversation=self.conversation,
             sender=self.user,
-            message=text
+            message=text,
+            reply_to_id=reply_to_id
         )
         self.conversation.last_message_at = msg.created_at
         self.conversation.save(update_fields=['last_message_at'])
+        
+        reply_to_data = None
+        if msg.reply_to:
+            reply_to_data = {
+                'id': str(msg.reply_to.id),
+                'message': msg.reply_to.message,
+                'sender': str(msg.reply_to.sender.id)
+            }
+
         return {
             'id': str(msg.id),
             'conversation_id': str(self.conversation.id),
             'sender_id': str(self.user.id),
             'message': msg.message,
+            'reply_to': reply_to_data,
             'created_at': msg.created_at.isoformat(),
             'is_read': msg.is_read
         }
