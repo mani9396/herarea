@@ -41,19 +41,8 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
   Future<void> _initRestore() async {
     final access = await _storage.getAccessToken();
     final refresh = await _storage.getRefreshToken();
-    final role = await _storage.getUserRole();
     if (access != null && access.isNotEmpty) {
-      UserModel? user;
-      if (role != null) {
-        user = UserModel(
-          id: '',
-          phoneNumber: '',
-          fullName: 'HER AREA User',
-          role: UserRole.fromCode(role),
-          studioStatus: role.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
-        );
-      }
-      state = state.copyWith(accessToken: access, refreshToken: refresh, currentUser: user);
+      state = state.copyWith(accessToken: access, refreshToken: refresh);
     }
   }
 
@@ -61,7 +50,6 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
     state = state.copyWith(isRestoring: true);
     final access = await _storage.getAccessToken();
     final refresh = await _storage.getRefreshToken();
-    final role = await _storage.getUserRole();
     if (access != null && access.isNotEmpty) {
       state = state.copyWith(accessToken: access, refreshToken: refresh);
       apiClient.setAuthToken(access, refreshToken: refresh);
@@ -71,36 +59,18 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
         state = state.copyWith(currentUser: user, isRestoring: false);
       } on ApiException catch (e) {
         if (e.statusCode == 401 || e.statusCode == 403) {
-          // Token is strictly invalid/expired. Do not fallback to offline backup.
-          state = state.copyWith(isRestoring: false);
-        } else if (role != null) {
-          final backupUser = UserModel(
-            id: '',
-            phoneNumber: '',
-            fullName: 'HER AREA User',
-            role: UserRole.fromCode(role),
-            studioStatus: role.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
-          );
-          state = state.copyWith(currentUser: backupUser, isRestoring: false);
+          // Token is strictly invalid or expired. Clear tokens completely.
+          await _storage.clearTokens();
+          apiClient.setAuthToken(null, refreshToken: null);
+          state = const AuthSessionState(isRestoring: false);
         } else {
           state = state.copyWith(isRestoring: false);
         }
       } catch (_) {
-        if (role != null) {
-          final backupUser = UserModel(
-            id: '',
-            phoneNumber: '',
-            fullName: 'HER AREA User',
-            role: UserRole.fromCode(role),
-            studioStatus: role.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
-          );
-          state = state.copyWith(currentUser: backupUser, isRestoring: false);
-        } else {
-          state = state.copyWith(isRestoring: false);
-        }
+        state = state.copyWith(isRestoring: false);
       }
     } else {
-      state = state.copyWith(isRestoring: false);
+      state = const AuthSessionState(isRestoring: false);
     }
   }
 

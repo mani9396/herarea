@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:shared/shared.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/features/onboarding/presentation/screens/splash_screen.dart';
 import 'package:her_area/features/auth/presentation/screens/login_screen.dart';
@@ -26,9 +27,42 @@ import 'package:her_area/features/profile/presentation/screens/about_screen.dart
 import 'package:her_area/features/chat/presentation/screens/customer_chat_list_screen.dart';
 import 'package:her_area/features/chat/presentation/screens/customer_chat_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/terms_privacy_screen.dart';
+import 'package:her_area/features/games/presentation/screens/games_home_screen.dart';
+import 'package:her_area/features/games/presentation/screens/game_play_screen.dart';
+import 'package:her_area/features/games/presentation/screens/game_history_screen.dart';
+import 'package:her_area/features/games/presentation/screens/game_scorecard_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: RoutePaths.splash,
+  redirect: (context, state) async {
+    final publicRoutes = {
+      RoutePaths.splash,
+      RoutePaths.login,
+      RoutePaths.signup,
+      RoutePaths.forgotPassword,
+      RoutePaths.resetPassword,
+      RoutePaths.otpVerification,
+      RoutePaths.createPassword,
+      RoutePaths.termsPrivacy,
+      RoutePaths.about,
+    };
+
+    final isPublic = publicRoutes.contains(state.matchedLocation);
+    final token = await AuthTokenStorage().getAccessToken();
+    final hasToken = token != null && token.isNotEmpty;
+
+    // Direct unauthenticated users to login, preventing guest access
+    if (!hasToken && !isPublic) {
+      return RoutePaths.login;
+    }
+
+    // Direct already authenticated users away from auth gates
+    if (hasToken && (state.matchedLocation == RoutePaths.login || state.matchedLocation == RoutePaths.signup)) {
+      return RoutePaths.home;
+    }
+
+    return null;
+  },
   routes: [
     GoRoute(path: RoutePaths.splash, builder: (context, state) => const SplashScreen()),
     GoRoute(path: RoutePaths.login, builder: (context, state) => const LoginScreen()),
@@ -78,6 +112,28 @@ final appRouter = GoRouter(
         conversationId: state.pathParameters['id']!,
       ),
     ),
+    GoRoute(
+      path: RoutePaths.search,
+      builder: (context, state) => const SearchScreen(),
+    ),
+    
+    // Game sub-routes
+    GoRoute(
+      path: RoutePaths.gamesHistory,
+      builder: (context, state) => const GameHistoryScreen(),
+    ),
+    GoRoute(
+      path: RoutePaths.gamesScorecard,
+      builder: (context, state) => const GameScorecardScreen(),
+    ),
+    GoRoute(
+      path: RoutePaths.gamePlay,
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? 'ludo';
+        return GamePlayScreen(gameId: id);
+      },
+    ),
+
     // StatefulShellRoute utilizing RoutePaths for clean web URL endpoint transitions
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -111,8 +167,8 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: RoutePaths.search,
-              builder: (context, state) => const SearchScreen(),
+              path: RoutePaths.games,
+              builder: (context, state) => const GamesHomeScreen(),
             ),
           ],
         ),

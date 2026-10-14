@@ -24,11 +24,12 @@ class Message(AbstractBaseModel):
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     message = models.TextField()
+    reply_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        ordering = ['created_at']
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"Message by {self.sender.email} in {self.conversation.id}"

@@ -36,9 +36,9 @@ class MainWrapperScreen extends StatelessWidget {
             label: 'Nearby',
           ),
           NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search_rounded, color: AppTheme.primaryRuby),
-            label: 'Search',
+            icon: Icon(Icons.sports_esports_outlined),
+            selectedIcon: Icon(Icons.sports_esports_rounded, color: AppTheme.primaryRuby),
+            label: 'Games',
           ),
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline_rounded),

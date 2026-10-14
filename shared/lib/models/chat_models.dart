@@ -86,11 +86,32 @@ class ChatConversationModel {
   }
 }
 
+class ReplyMessageModel {
+  final String id;
+  final String message;
+  final String senderId;
+
+  ReplyMessageModel({
+    required this.id,
+    required this.message,
+    required this.senderId,
+  });
+
+  factory ReplyMessageModel.fromJson(Map<String, dynamic> json) {
+    return ReplyMessageModel(
+      id: json['id']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      senderId: json['sender']?.toString() ?? '',
+    );
+  }
+}
+
 class ChatMessageModel {
   final String id;
   final String conversationId;
   final String senderId;
   final String message;
+  final ReplyMessageModel? replyTo;
   final bool isRead;
   final DateTime? readAt;
   final DateTime createdAt;
@@ -100,6 +121,7 @@ class ChatMessageModel {
     required this.conversationId,
     required this.senderId,
     required this.message,
+    this.replyTo,
     this.isRead = false,
     this.readAt,
     required this.createdAt,
@@ -109,8 +131,9 @@ class ChatMessageModel {
     return ChatMessageModel(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversation']?.toString() ?? '',
-      senderId: json['sender']?.toString() ?? '',
+      senderId: json['sender']?.toString() ?? json['sender_id']?.toString() ?? '',
       message: json['message']?.toString() ?? '',
+      replyTo: json['reply_to'] != null ? ReplyMessageModel.fromJson(json['reply_to']) : null,
       isRead: json['is_read'] == true,
       readAt: json['read_at'] != null ? DateTime.tryParse(json['read_at']) : null,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) ?? DateTime.now() : DateTime.now(),
@@ -122,6 +145,7 @@ class ChatMessageModel {
     String? conversationId,
     String? senderId,
     String? message,
+    ReplyMessageModel? replyTo,
     bool? isRead,
     DateTime? readAt,
     DateTime? createdAt,
@@ -131,6 +155,7 @@ class ChatMessageModel {
       conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
       message: message ?? this.message,
+      replyTo: replyTo ?? this.replyTo,
       isRead: isRead ?? this.isRead,
       readAt: readAt ?? this.readAt,
       createdAt: createdAt ?? this.createdAt,
