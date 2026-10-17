@@ -6,10 +6,12 @@ import 'package:shared/shared.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String resetToken;
+  final String? email;
 
   const ResetPasswordScreen({
     super.key,
     required this.resetToken,
+    this.email,
   });
 
   @override
@@ -52,8 +54,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   void _onSubmit() async {
     if (!_isPasswordStrong()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please ensure your new password meets all strength requirements.'),
+        const SnackBar(
+          content: Text('Please ensure your new password meets all strength requirements.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -72,12 +74,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
       setState(() => _isLoading = true);
 
-      // Email was entered in the forgot password screen and should be in the pendingRegistrationProvider or lastAttemptedIdentifier
-      final pendingReg = ref.read(pendingRegistrationProvider);
-      final email = pendingReg?.email ?? AuthApiRepository.lastAttemptedIdentifier;
+      final targetEmail = (widget.email != null && widget.email!.trim().isNotEmpty)
+          ? widget.email!.trim()
+          : (ref.read(pendingRegistrationProvider)?.email ?? AuthApiRepository.lastAttemptedIdentifier);
 
       final success = await ref.read(authApiRepositoryProvider).resetPassword(
-        email: email,
+        email: targetEmail,
         resetToken: widget.resetToken,
         password: _passwordController.text,
         confirmPassword: _confirmPasswordController.text,
@@ -98,10 +100,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           );
           context.go(RoutePaths.login);
         } else {
+          final err = AuthApiRepository.lastErrorMessage;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to update password. Your link may have expired.'),
+            SnackBar(
+              content: Text(
+                err.isNotEmpty
+                    ? err
+                    : 'Failed to update password. Your reset session may have expired.',
+              ),
               backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }

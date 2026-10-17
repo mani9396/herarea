@@ -4,8 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 from apps.accounts.permissions import IsAdminRole
-from apps.catalog.models import Product, Offer, GalleryImage, Promotion, PromotionStatus
-from apps.catalog.serializers import ProductSerializer, PublicPromotionSerializer, GalleryImageSerializer, PromotionAdminSerializer
+from apps.catalog.models import Product, Offer, GalleryImage, Promotion, PromotionStatus, Story, StoryStatus
+from apps.catalog.serializers import ProductSerializer, PublicPromotionSerializer, GalleryImageSerializer, PromotionAdminSerializer, StorySerializer
+from apps.notifications.services import NotificationEngine
 
 logger = logging.getLogger('her_area')
 
@@ -201,7 +202,9 @@ class AdminPromotionListView(APIView):
     def post(self, request):
         serializer = PromotionAdminSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(created_by=request.user)
+            promotion = serializer.save(created_by=request.user)
+            # Automatically dispatch personalized push notification to all active Customers
+            NotificationEngine.broadcast_promotion_to_customers(promotion)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         logger.error(f"Promotion validation failed: {serializer.errors}")
         print(f"Promotion validation failed: {serializer.errors}")
@@ -267,11 +270,62 @@ class AdminPromotionActionView(APIView):
 
         if action == 'suspend':
             promotion.status = PromotionStatus.SUSPENDED
+            promotion.save()
         elif action == 'resume':
             promotion.status = PromotionStatus.ACTIVE
+            promotion.save()
+            NotificationEngine.broadcast_promotion_to_customers(promotion)
+        elif action == 'broadcast':
+            NotificationEngine.broadcast_promotion_to_customers(promotion)
         else:
-            return Response({"error": "Invalid action. Use 'suspend' or 'resume'."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid action. Use 'suspend', 'resume', or 'broadcast'."}, status=status.HTTP_400_BAD_REQUEST)
             
-        promotion.save()
         logger.info(f"Admin {request.user.phone_number} {action}d promotion {pk}.")
         return Response(PromotionAdminSerializer(promotion, context={'request': request}).data, status=status.HTTP_200_OK)
+
+
+class AdminStoryListView(APIView):
+    """
+    Executive moderation queue allowing Platform Admins to inspect all live/active Stories across all boutiques.
+    """
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="List all Stories for Moderation")
+    def get(self, request):
+        status_filter = request.query_params.get('status')
+        qs = Story.objects.select_related('store', 'product').all()
+        if status_filter:
+            qs = qs.filter(status=status_filter.upper())
+        else:
+            qs = qs.filter(is_active=True, status=StoryStatus.ACTIVE)
+        stories = qs.order_by('-published_at')
+        serializer = StorySerializer(stories, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AdminStoryDetailView(APIView):
+    """
+    Admin moderation operations on an individual Story (Inspect or Take Down/Revoke).
+    """
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="Get Story Details for Admin")
+    def get(self, request, pk):
+        try:
+            story = Story.objects.select_related('store', 'product').get(pk=pk)
+            return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+        except Story.DoesNotExist:
+            raise exceptions.NotFound("Story not found.")
+
+    @extend_schema(summary="Take Down / Revoke a Story")
+    def delete(self, request, pk):
+        try:
+            story = Story.objects.get(pk=pk)
+            story.is_active = False
+            story.status = StoryStatus.ARCHIVED
+            story.save(update_fields=['is_active', 'status', 'updated_at'])
+            logger.info(f"Admin {request.user.phone_number} removed Story {pk} belonging to {story.store.business_name}.")
+            return Response({"detail": "Story revoked and taken down successfully."}, status=status.HTTP_204_NO_CONTENT)
+        except Story.DoesNotExist:
+            raise exceptions.NotFound("Story not found.")
+

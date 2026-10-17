@@ -46,13 +46,7 @@ class VendorWelcomeScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 16, color: Colors.white70, height: 1.5),
                       ),
-                      const SizedBox(height: AppSpacing.xxl),
-                      _buildFeatureTile('Zero Commission O2O', 'Retain 100% of your earnings on every fitting inquiry.'),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildFeatureTile('Direct WhatsApp Leads', 'Brides connect with you without intermediary platform delays.'),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildFeatureTile('Verified Gold Badge', 'Build community trust with curated artisan portfolio galleries.'),
-                      const SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.xxxl),
                       CustomButton(
                         label: 'Get Started — Register Studio ✨',
                         variant: ButtonVariant.primary,
@@ -75,33 +69,6 @@ class VendorWelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureTile(String title, String desc) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.stars_rounded, color: AppColors.accentGold, size: 28),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(desc, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
             ),
           ),
         ],

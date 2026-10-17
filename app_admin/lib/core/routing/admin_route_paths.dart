@@ -24,6 +24,7 @@ class AdminRoutePaths {
   static const String galleryModeration = '/moderation/gallery';
   static const String offerModeration = '/moderation/offers';
   static const String reviewModeration = '/moderation/reviews';
+  static const String storyModeration = '/moderation/stories';
   
   static const String customerDetails = '/customer-details/:id';
   static const String categories = '/categories';

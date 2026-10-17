@@ -31,6 +31,8 @@ class VendorRoutePaths {
   static const String editProduct = '/products/edit/:id';
   static const String productDetails = '/products/details/:id';
   static const String gallery = '/gallery';
+  static const String stories = '/stories';
+  static const String addStory = '/stories/add';
   
   // Subscriptions
   static const String planSelection = '/plan-selection';

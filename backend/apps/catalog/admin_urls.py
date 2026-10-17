@@ -11,6 +11,8 @@ from apps.catalog.admin_views import (
     AdminPromotionListView,
     AdminPromotionDetailView,
     AdminPromotionActionView,
+    AdminStoryListView,
+    AdminStoryDetailView,
 )
 
 urlpatterns = [
@@ -24,6 +26,9 @@ urlpatterns = [
     
     path('gallery/', AdminGalleryListView.as_view(), name='admin-gallery-list'),
     path('gallery/<uuid:pk>/', AdminGalleryDetailView.as_view(), name='admin-gallery-detail'),
+
+    path('stories/', AdminStoryListView.as_view(), name='admin-story-list'),
+    path('stories/<uuid:pk>/', AdminStoryDetailView.as_view(), name='admin-story-detail'),
 
     path('banners/', AdminPromotionListView.as_view(), name='admin-banner-list'),
     path('banners/<uuid:pk>/', AdminPromotionDetailView.as_view(), name='admin-banner-detail'),

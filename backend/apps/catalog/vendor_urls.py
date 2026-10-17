@@ -7,6 +7,8 @@ from apps.catalog.vendor_views import (
     VendorGalleryDetailView,
     VendorOfferListView,
     VendorOfferDetailView,
+    VendorStoryListView,
+    VendorStoryDetailView,
 )
 
 urlpatterns = [
@@ -17,4 +19,7 @@ urlpatterns = [
     path('gallery/<uuid:pk>/', VendorGalleryDetailView.as_view(), name='vendor-catalog-gallery-detail'),
     path('offers/', VendorOfferListView.as_view(), name='vendor-catalog-offer-list'),
     path('offers/<uuid:pk>/', VendorOfferDetailView.as_view(), name='vendor-catalog-offer-detail'),
+    path('stories/', VendorStoryListView.as_view(), name='vendor-catalog-story-list'),
+    path('stories/<uuid:pk>/', VendorStoryDetailView.as_view(), name='vendor-catalog-story-detail'),
 ]
+

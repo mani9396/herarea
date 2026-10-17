@@ -1,3 +1,5 @@
+import '../constants/api_endpoints.dart';
+
 enum CatalogItemType {
   product('PRODUCT', 'Couture Product'),
   service('SERVICE', 'Consultation Service');
@@ -71,7 +73,16 @@ class CatalogItemModel {
     return null;
   }
 
+  static String resolveUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final url = raw.trim();
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    final base = ApiEndpoints.defaultBaseUrl;
+    return url.startsWith('/') ? '$base$url' : '$base/$url';
+  }
+
   factory CatalogItemModel.fromJson(Map<String, dynamic> json) {
+    final rawImage = json['image_url'] ?? json['image'];
     return CatalogItemModel(
       id: json['id']?.toString() ?? '',
       storeId: json['store']?.toString() ?? json['store_id']?.toString() ?? '',
@@ -81,9 +92,9 @@ class CatalogItemModel {
       itemType: CatalogItemType.fromString(json['item_type']),
       price: _parseDouble(json['price']) ?? 2500.0,
       discountedPrice: _parseDouble(json['discounted_price']),
-      imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600',
+      imageUrl: resolveUrl(rawImage),
       additionalImages: json['additional_images'] != null
-          ? List<String>.from(json['additional_images'] as Iterable)
+          ? (json['additional_images'] as Iterable).map((e) => resolveUrl(e?.toString())).toList()
           : const [],
       isAvailable: (json['stock_status'] != 'OUT_OF_STOCK') && (json['is_available'] ?? true),
       durationMinutes: (json['duration_minutes'] ?? json['service_duration_minutes'] as num?)?.toInt() ?? 60,

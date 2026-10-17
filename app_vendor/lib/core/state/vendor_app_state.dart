@@ -65,12 +65,13 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
     }
   }
 
-  Future<void> addProduct(VendorProductModel product) async {
+  Future<void> addProduct(VendorProductModel product, {dynamic imageFile}) async {
     // Add locally for optimistic UI
     state = [product, ...state];
-    if (_repository == null) return;
+    final repo = _repository;
+    if (repo == null) return;
     try {
-      final created = await _repository!.createProduct(product);
+      final created = await repo.createProduct(product, imageFile: imageFile);
       if (created != null) {
         state = [
           for (final p in state)
@@ -84,12 +85,20 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
     }
   }
 
-  void updateProduct(VendorProductModel updated) {
+  Future<void> updateProduct(VendorProductModel updated, {dynamic imageFile}) async {
     state = [
       for (final p in state)
         if (p.id == updated.id) updated else p,
     ];
-    _repository?.updateProduct(updated);
+    try {
+      final res = await _repository?.updateProduct(updated, imageFile: imageFile);
+      if (res != null) {
+        state = [
+          for (final p in state)
+            if (p.id == updated.id) res else p,
+        ];
+      }
+    } catch (_) {}
   }
 
   void toggleAvailability(String id) {
@@ -104,9 +113,10 @@ class VendorProductsNotifier extends StateNotifier<List<VendorProductModel>> {
   }
   
   Future<void> submitProduct(String id) async {
-    if (_repository == null) return;
+    final repo = _repository;
+    if (repo == null) return;
     try {
-      final updated = await _repository!.submitProduct(id);
+      final updated = await repo.submitProduct(id);
       state = [
         for (final p in state)
           if (p.id == id) updated else p,

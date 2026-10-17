@@ -103,6 +103,44 @@ class CustomerApiRepository implements IStoreRepository {
     }
   }
 
+  /// Fetch approved product offering by ID
+  Future<CatalogItemModel?> getProductById(String id) async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.publicProductDetail(id));
+      if (response is Map<String, dynamic>) {
+        return CatalogItemModel.fromJson(response);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetch active 24-hour Stories published by approved boutique partners
+  Future<List<StoryModel>> getStories({String? storeId}) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (storeId != null && storeId.isNotEmpty) {
+        queryParams['store_id'] = storeId;
+      }
+      final response = await _apiClient.get(
+        ApiEndpoints.publicStories,
+        queryParameters: queryParams,
+      );
+      List<dynamic> list = [];
+      if (response['results'] is List) {
+        list = response['results'] as List;
+      } else if (response['data'] is List) {
+        list = response['data'] as List;
+      }
+      return list
+          .map((json) => StoryModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Submit bespoke consultation appointment booking request to studio partner
   Future<BookingModel?> bookAppointment(BookingModel booking) async {
     try {
@@ -146,11 +184,13 @@ class CustomerApiRepository implements IStoreRepository {
   Future<List<PromotionPublicModel>> getPromoBanners() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicBanners);
+      List<dynamic> list = [];
       if (response['results'] is List) {
-        return (response['results'] as List).map((item) => PromotionPublicModel.fromJson(item as Map<String, dynamic>)).toList();
+        list = response['results'] as List;
       } else if (response['data'] is List) {
-        return (response['data'] as List).map((item) => PromotionPublicModel.fromJson(item as Map<String, dynamic>)).toList();
+        list = response['data'] as List;
       }
+      return list.map((item) => PromotionPublicModel.fromJson(item as Map<String, dynamic>)).toList();
     } catch (_) {}
     return [];
   }
@@ -386,6 +426,11 @@ final promoBannersProvider = FutureProvider<List<PromotionPublicModel>>((ref) as
 final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
   final repo = ref.read(customerApiRepositoryProvider);
   return repo.getCategories();
+});
+
+final customerStoriesProvider = FutureProvider<List<StoryModel>>((ref) async {
+  final repo = ref.read(customerApiRepositoryProvider);
+  return repo.getStories();
 });
 
 // Favorites Provider with Live Backend Synchronization

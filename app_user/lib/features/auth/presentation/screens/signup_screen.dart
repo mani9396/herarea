@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
+import 'package:her_area/features/auth/presentation/widgets/auth_ui_components.dart';
 import 'package:shared/shared.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -16,11 +17,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _dobController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  
+
   bool _isLoading = false;
   bool _agreedToTerms = false;
   bool _agreedToPrivacyPolicy = false;
-  
+
   String? _selectedGender;
   DateTime? _selectedDate;
 
@@ -51,14 +52,24 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      
+
       final email = _emailController.text.trim();
       final fullName = _nameController.text.trim();
-      final dobStr = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
-      final gender = _selectedGender == 'Female' ? 'FEMALE' : _selectedGender == 'Male' ? 'MALE' : 'PREFER_NOT_TO_SAY';
-      
-      final success = await ref.read(authApiRepositoryProvider).requestOtp(email, role: 'CUSTOMER', purpose: 'REGISTRATION', fullName: fullName);
-      
+      final dobStr =
+          "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+      final gender = _selectedGender == 'Female'
+          ? 'FEMALE'
+          : _selectedGender == 'Male'
+              ? 'MALE'
+              : 'PREFER_NOT_TO_SAY';
+
+      final success = await ref.read(authApiRepositoryProvider).requestOtp(
+            email,
+            role: 'CUSTOMER',
+            purpose: 'REGISTRATION',
+            fullName: fullName,
+          );
+
       if (mounted) {
         setState(() => _isLoading = false);
         if (success) {
@@ -93,7 +104,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         return Theme(
           data: theme.copyWith(
             colorScheme: theme.colorScheme.copyWith(
-              primary: AppColors.primaryRuby,
+              primary: AuthTokens.brandPink,
+              onPrimary: Colors.white,
             ),
           ),
           child: child!,
@@ -103,7 +115,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+        _dobController.text =
+            "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
       });
     }
   }
@@ -131,16 +144,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               children: [
                 Expanded(
                   flex: 5,
-                  child: _buildBrandShowcasePanel(isDark),
+                  child: _buildDesktopBrandPanel(),
                 ),
                 Expanded(
                   flex: 6,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
-                        child: _buildSignupForm(isDark),
+                  child: Container(
+                    color: isDark ? const Color(0xFF190F14) : const Color(0xFFFFF7F9),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
+                          child: AuthFormCard(
+                            child: _buildSignupForm(isDark),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -149,15 +167,44 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             );
           }
 
-          return SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 540),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xl),
-                  child: _buildSignupForm(isDark),
+          // Mobile-First Layout
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: AuthTokens.backgroundGradient,
+            ),
+            child: Stack(
+              children: [
+                const AuthBackgroundDecoration(),
+                SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 8),
+                            // Compact brand header with official logo
+                            const AuthBrandHeader(
+                              compact: true,
+                              customHeadline: 'Join our exclusive women-first local community',
+                            ),
+                            const SizedBox(height: 20),
+
+                            // White / Light-Pink Form Card
+                            AuthFormCard(
+                              child: _buildSignupForm(isDark),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -171,50 +218,53 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSpacing.sm),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.4), width: 1.2),
+              Flexible(
+                child: Text(
+                  'Create Account',
+                  style: TextStyle(
+                    fontFamily: AppTypography.displayFont,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-                child: const Icon(Icons.favorite_rounded, color: AppColors.primaryRuby, size: 30),
               ),
-              const Spacer(),
               TextButton.icon(
                 onPressed: () => context.pop(),
-                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: AppColors.primaryRuby),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  minimumSize: const Size(44, 40),
+                ),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16, color: AuthTokens.brandMagenta),
                 label: const Text(
-                  'Sign In Instead',
-                  style: TextStyle(fontFamily: AppTypography.bodyFont, fontWeight: FontWeight.w700, color: AppColors.primaryRuby),
+                  'Sign In',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontWeight: FontWeight.w700,
+                    color: AuthTokens.brandMagenta,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            'Join Our Community',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontFamily: AppTypography.displayFont,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 4),
           Text(
             'Create your verified account to unlock direct appointments, home measurement bookings, and private trial suites.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
-                  height: 1.5,
-                ),
+            style: TextStyle(
+              fontFamily: AppTypography.bodyFont,
+              fontSize: 13,
+              color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: 20),
 
           // Full Name Input
-          CustomTextField(
+          AuthTextField(
             label: 'Full Name',
             hintText: 'e.g. Priya Nambiar',
             controller: _nameController,
@@ -228,7 +278,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
 
           // Email Input
-          CustomTextField(
+          AuthTextField(
             label: 'Email Address',
             hintText: 'e.g. priya@gmail.com',
             helperText: 'A 6-digit verification code will be sent to confirm ownership.',
@@ -248,7 +298,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
 
           // Date of Birth
-          CustomTextField(
+          AuthTextField(
             label: 'Date of Birth',
             hintText: 'Select your date of birth',
             controller: _dobController,
@@ -265,85 +315,105 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               return null;
             },
           ),
-          const SizedBox(height: AppSpacing.lg),
-          
-          // Gender
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(
+
+          // Gender Dropdown
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   'Gender',
                   style: TextStyle(
                     fontFamily: AppTypography.bodyFont,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
                   ),
                 ),
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                hint: Text(
-                  'Select gender',
-                  style: TextStyle(
-                    fontFamily: AppTypography.bodyFont,
-                    color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _selectedGender,
+                  hint: Text(
+                    'Select gender',
+                    style: TextStyle(
+                      fontFamily: AppTypography.bodyFont,
+                      fontSize: 14,
+                      color: isDark ? AppColors.textDisabledDark : const Color(0xFFA69099),
+                    ),
                   ),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF2E1C24) : const Color(0xFFFCF7F9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF4A2A38) : AuthTokens.inputBorder,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF4A2A38) : AuthTokens.inputBorder,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: AuthTokens.brandPink,
+                        width: 2.0,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+                    ),
+                    prefixIcon: const Icon(Icons.people_outline_rounded, color: AuthTokens.brandPink, size: 20),
+                  ),
+                  items: ['Female', 'Male', 'Prefer not to say']
+                      .map((label) => DropdownMenuItem(
+                            value: label,
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontFamily: AppTypography.bodyFont,
+                                fontSize: 14.5,
+                                color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() => _selectedGender = value);
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select your gender';
+                    }
+                    return null;
+                  },
                 ),
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  filled: true,
-                  fillColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryRuby, width: 2),
-                  ),
-                  prefixIcon: const Icon(Icons.people_outline_rounded, color: AppColors.primaryRuby),
-                ),
-                items: ['Female', 'Male', 'Prefer not to say']
-                    .map((label) => DropdownMenuItem(
-                          value: label,
-                          child: Text(label),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => _selectedGender = value);
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select your gender';
-                  }
-                  return null;
-                },
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.lg),
 
           // Terms of Service Checkbox
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 height: 24,
                 width: 24,
                 child: Checkbox(
                   value: _agreedToTerms,
-                  activeColor: AppColors.primaryRuby,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  activeColor: AuthTokens.brandPink,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                   onChanged: (val) => setState(() => _agreedToTerms = val ?? false),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
@@ -351,13 +421,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     text: TextSpan(
                       style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
-                        fontSize: 13,
-                        color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                        fontSize: 12.5,
+                        color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
                         height: 1.4,
                       ),
                       children: const [
                         TextSpan(text: 'I agree to the HER AREA '),
-                        TextSpan(text: 'Terms & Conditions', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(
+                          text: 'Terms & Conditions',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: AuthTokens.brandMagenta),
+                        ),
                         TextSpan(text: '.'),
                       ],
                     ),
@@ -366,21 +439,23 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 10),
+
           // Privacy Policy Checkbox
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 height: 24,
                 width: 24,
                 child: Checkbox(
                   value: _agreedToPrivacyPolicy,
-                  activeColor: AppColors.primaryRuby,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  activeColor: AuthTokens.brandPink,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                   onChanged: (val) => setState(() => _agreedToPrivacyPolicy = val ?? false),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
@@ -388,13 +463,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     text: TextSpan(
                       style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
-                        fontSize: 13,
-                        color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                        fontSize: 12.5,
+                        color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
                         height: 1.4,
                       ),
                       children: const [
                         TextSpan(text: 'I agree to the HER AREA '),
-                        TextSpan(text: 'Privacy Policy', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryRuby)),
+                        TextSpan(
+                          text: 'Privacy Policy',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: AuthTokens.brandMagenta),
+                        ),
                         TextSpan(text: '.'),
                       ],
                     ),
@@ -403,187 +481,75 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: 22),
 
-          CustomButton(
+          // Prominent Magenta Submit Button
+          AuthPrimaryButton(
             label: 'Send Verification OTP Token',
             icon: Icons.auto_awesome,
             isLoading: _isLoading,
             onPressed: _onSignup,
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: 20),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Already registered with HER AREA? ',
-                style: TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  fontSize: 14,
-                  color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.pop(),
-                child: const Text(
-                  'Sign In',
+          // Already Registered / Sign In Link
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Already registered with HER AREA? ',
                   style: TextStyle(
                     fontFamily: AppTypography.bodyFont,
-                    fontSize: 14,
-                    color: AppColors.primaryRuby,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
                   ),
                 ),
-              ),
-            ],
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontFamily: AppTypography.bodyFont,
+                      fontSize: 13,
+                      color: AuthTokens.brandMagenta,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildBrandShowcasePanel(bool isDark) {
+  Widget _buildDesktopBrandPanel() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: AppColors.primaryGradient,
+        gradient: AuthTokens.backgroundGradient,
       ),
-      padding: const EdgeInsets.all(48),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.accentGold.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AppColors.accentGold, width: 1.2),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.auto_awesome, color: AppColors.accentGoldLight, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'BESPOKE ARTISANAL COMMUNITY',
-                  style: TextStyle(
-                    fontFamily: AppTypography.bodyFont,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accentGoldLight,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          const Text(
-            'Empowering Women’s\nLocal Discovery.',
-            style: TextStyle(
-              fontFamily: AppTypography.displayFont,
-              fontSize: 42,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1.15,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            "Join thousands of modern women discovering vetted tailoring masters, organic beauty spas, and heirloom jewelers without middleman commissions.",
-            style: TextStyle(
-              fontFamily: AppTypography.bodyFont,
-              fontSize: 16,
-              color: AppColors.surfaceVariantLight.withValues(alpha: 0.9),
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 48),
-
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariantDark.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.35), width: 1),
-              boxShadow: const [
-                BoxShadow(color: Colors.black38, blurRadius: 20, offset: Offset(0, 8)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                    const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'FEATURED MAGGAM MASTER',
-                      style: TextStyle(
-                        fontFamily: AppTypography.bodyFont,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.accentGoldLight,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
+          const AuthBackgroundDecoration(),
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: const [
+                    AuthBrandHeader(compact: false),
+                    SizedBox(height: 36),
+                    AuthFeatureBadgesRow(),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  '"Master artisans delivered my customized Maggam embroidery exactly on schedule. The finishing is breathtaking!"',
-                  style: TextStyle(
-                    fontFamily: AppTypography.bodyFont,
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.white,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.accentGoldDark,
-                      child: const Text(
-                        'S',
-                        style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Srinidhi Shetty',
-                          style: TextStyle(
-                            fontFamily: AppTypography.bodyFont,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Client at Tejasi Maggam & Zardosi Studio',
-                          style: TextStyle(
-                            fontFamily: AppTypography.bodyFont,
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ],

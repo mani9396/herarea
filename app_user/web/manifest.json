@@ -1,11 +1,11 @@
 {
-    "name": "her_area",
-    "short_name": "her_area",
+    "name": "HER AREA",
+    "short_name": "HER AREA",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#EE337A",
+    "description": "HER AREA - Women's Fashion & Lifestyle Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_admin/domain/models/admin_models.dart';
-import 'package:shared/models/category_model.dart';
+import 'package:shared/shared.dart';
 import 'package:app_admin/data/repositories/admin_api_repository.dart';
 
 // --- Vendors State Notifier ---
@@ -102,9 +102,10 @@ class AdminProductsNotifier extends StateNotifier<List<AdminProductModel>> {
   }
 
   Future<void> moderateProduct(String id, String action, String remarks) async {
-    if (_repository == null) return;
+    final repo = _repository;
+    if (repo == null) return;
     try {
-      final updatedProduct = await _repository!.moderateProduct(id, action, remarks);
+      final updatedProduct = await repo.moderateProduct(id, action, remarks);
       state = [
         for (final p in state)
           if (p.id == id) updatedProduct else p,
@@ -115,9 +116,10 @@ class AdminProductsNotifier extends StateNotifier<List<AdminProductModel>> {
   }
 
   Future<void> deleteProduct(String id) async {
-    if (_repository == null) return;
+    final repo = _repository;
+    if (repo == null) return;
     try {
-      final success = await _repository!.deleteProduct(id);
+      final success = await repo.deleteProduct(id);
       if (success) {
         state = state.where((p) => p.id != id).toList();
       }
@@ -526,6 +528,46 @@ final adminPromotionsProvider = StateNotifierProvider<AdminPromotionsNotifier, A
   return AdminPromotionsNotifier(repo);
 });
 
+// --- Stories Moderation State Notifier ---
+class AdminStoriesNotifier extends StateNotifier<AsyncValue<List<StoryModel>>> {
+  final AdminApiRepository? _repository;
+
+  AdminStoriesNotifier([this._repository]) : super(const AsyncValue.loading()) {
+    loadStories();
+  }
+
+  Future<void> loadStories() async {
+    final repo = _repository;
+    if (repo == null) {
+      state = const AsyncValue.data([]);
+      return;
+    }
+    state = const AsyncValue.loading();
+    try {
+      final stories = await repo.fetchStories();
+      state = AsyncValue.data(stories);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<bool> takeDownStory(String storyId) async {
+    final repo = _repository;
+    if (repo == null) return false;
+    final success = await repo.deleteStory(storyId);
+    if (success) {
+      final currentList = state.valueOrNull ?? [];
+      state = AsyncValue.data(currentList.where((s) => s.id != storyId).toList());
+    }
+    return success;
+  }
+}
+
+final adminStoriesProvider = StateNotifierProvider<AdminStoriesNotifier, AsyncValue<List<StoryModel>>>((ref) {
+  final repo = ref.watch(adminApiRepositoryProvider);
+  return AdminStoriesNotifier(repo);
+});
+
 // --- Aggregated KPI Stats Provider ---
 class AdminDashboardStats {
   final int totalCustomers;
@@ -537,6 +579,7 @@ class AdminDashboardStats {
   final int pendingOffers;
   final int pendingProfileUpdates;
   final int pendingReviews;
+  final int activeStories;
   final double totalEstimatedRevenue;
 
   const AdminDashboardStats({
@@ -549,12 +592,14 @@ class AdminDashboardStats {
     required this.pendingOffers,
     required this.pendingProfileUpdates,
     required this.pendingReviews,
+    required this.activeStories,
     required this.totalEstimatedRevenue,
   });
 }
 
 final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
   final analytics = ref.watch(adminAnalyticsProvider).valueOrNull;
+  final storiesList = ref.watch(adminStoriesProvider).valueOrNull ?? [];
 
   return AdminDashboardStats(
     totalCustomers: analytics?['total_customers'] ?? 0,
@@ -566,6 +611,7 @@ final adminDashboardStatsProvider = Provider<AdminDashboardStats>((ref) {
     pendingOffers: analytics?['pending_offers'] ?? 0,
     pendingProfileUpdates: analytics?['pending_profile_updates'] ?? 0,
     pendingReviews: analytics?['pending_reviews'] ?? 0,
+    activeStories: storiesList.length,
     totalEstimatedRevenue: (analytics?['total_gmv'] ?? 0).toDouble(),
   );
 });

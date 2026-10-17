@@ -129,17 +129,17 @@ class VendorDashboardScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: CustomButton(
-                  label: 'Add New Product (Phase 3)',
-                  isOutlined: true,
-                  onPressed: () {},
+                  label: 'Stories (24h) 📸',
+                  isOutlined: false,
+                  onPressed: () => context.push(VendorRoutePaths.stories),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: CustomButton(
-                  label: 'Manage Gallery (Phase 3)',
+                  label: 'Add Product 🛍️',
                   isOutlined: true,
-                  onPressed: () {},
+                  onPressed: () => context.push(VendorRoutePaths.addProduct),
                 ),
               ),
             ],
@@ -149,17 +149,17 @@ class VendorDashboardScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: CustomButton(
-                  label: 'Promotional Offers (Phase 3)',
+                  label: 'Promotional Offers 🎟️',
                   isOutlined: true,
-                  onPressed: () {},
+                  onPressed: () => context.push(VendorRoutePaths.offers),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: CustomButton(
-                  label: 'System UI States & Demos 🛡️',
+                  label: 'Manage Gallery 🖼️',
                   isOutlined: true,
-                  onPressed: () => context.push(VendorRoutePaths.systemStatesShowcase),
+                  onPressed: () => context.push(VendorRoutePaths.gallery),
                 ),
               ),
             ],

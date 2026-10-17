@@ -2,9 +2,9 @@ import logging
 from rest_framework import status, permissions, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from apps.notifications.models import Notification
-from apps.notifications.serializers import NotificationSerializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from apps.notifications.models import Notification, DeviceToken
+from apps.notifications.serializers import NotificationSerializer, DeviceTokenSerializer
 
 logger = logging.getLogger('her_area')
 
@@ -51,3 +51,78 @@ class NotificationReadAllView(APIView):
         count = Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         logger.info(f"User {request.user.phone_number} marked {count} notifications as read.")
         return Response({"status": "success", "marked_read_count": count}, status=status.HTTP_200_OK)
+
+
+class DeviceTokenRegisterView(APIView):
+    """Register or update an FCM device token for push notifications."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Register Device Push Token",
+        request=DeviceTokenSerializer,
+        responses={200: OpenApiResponse(description="Token registered successfully.")}
+    )
+    def post(self, request):
+        serializer = DeviceTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+        platform = serializer.validated_data.get('platform', 'ANDROID')
+        app_type = serializer.validated_data.get('app_type', 'CUSTOMER')
+
+        device_token, created = DeviceToken.objects.update_or_create(
+            token=token,
+            defaults={
+                'user': request.user,
+                'platform': platform,
+                'app_type': app_type,
+                'is_active': True,
+            }
+        )
+        logger.info(f"FCM Token {'registered' if created else 'updated'} for {request.user.email or request.user.phone_number} ({platform}/{app_type})")
+        return Response({"status": "success", "message": "Device registered for push notifications."}, status=status.HTTP_200_OK)
+
+
+from apps.notifications.services import NotificationEngine
+
+class DeviceTokenUnregisterView(APIView):
+    """Deactivate an FCM device token on user logout."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Unregister Device Push Token",
+        request=DeviceTokenSerializer,
+        responses={200: OpenApiResponse(description="Token unregistered.")}
+    )
+    def post(self, request):
+        token = request.data.get('token')
+        if token:
+            DeviceToken.objects.filter(token=token, user=request.user).update(is_active=False)
+            logger.info(f"FCM Token deactivated for {request.user.email or request.user.phone_number}")
+        return Response({"status": "success", "message": "Device token deactivated."}, status=status.HTTP_200_OK)
+
+
+class NotificationTestPushView(APIView):
+    """Trigger an instant test push notification to the calling user's active devices."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Send Test Push Notification",
+        responses={200: OpenApiResponse(description="Push notification dispatched.")}
+    )
+    def post(self, request):
+        title = request.data.get('title', 'HER AREA Test Notification 🔔')
+        message = request.data.get('message', 'Push notifications are working perfectly on your device!')
+        action_url = request.data.get('action_url', '/')
+        notification = NotificationEngine.send_notification(
+            recipient=request.user,
+            title=title,
+            message=message,
+            action_url=action_url,
+        )
+        return Response({
+            "status": "success",
+            "message": "Push notification dispatched.",
+            "notification_id": notification.id if notification else None,
+        }, status=status.HTTP_200_OK)
+

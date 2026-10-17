@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 from apps.common.models import AbstractBaseModel
 
 class StockStatus(models.TextChoices):
@@ -244,3 +246,135 @@ class Promotion(AbstractBaseModel):
         if now < self.start_at:
             return PromotionStatus.SCHEDULED
         return PromotionStatus.ACTIVE
+
+
+class StoryType(models.TextChoices):
+    PRODUCT_LINKED = 'product_linked', 'Product Linked'
+    GALLERY_UPLOADED = 'gallery_uploaded', 'Gallery Uploaded'
+
+
+class StoryStatus(models.TextChoices):
+    ACTIVE = 'ACTIVE', 'Active'
+    EXPIRED = 'EXPIRED', 'Expired'
+    ARCHIVED = 'ARCHIVED', 'Archived'
+
+
+class Story(AbstractBaseModel):
+    """
+    Episodic 24-hour visual stories published by approved vendor studio showrooms.
+    Can either directly link to an existing store product (product_linked)
+    or feature showcase media uploaded directly from the device gallery (gallery_uploaded).
+    """
+    business_profile = models.ForeignKey(
+        'business.BusinessProfile',
+        on_delete=models.CASCADE,
+        related_name='stories',
+        db_index=True,
+        help_text='Partner studio showroom owning this story'
+    )
+    story_type = models.CharField(
+        max_length=30,
+        choices=StoryType.choices,
+        default=StoryType.GALLERY_UPLOADED,
+        db_index=True,
+        help_text='Explicit classification determining customer interaction behavior'
+    )
+    media_file = models.FileField(
+        upload_to='stories/media/',
+        null=True,
+        blank=True,
+        help_text='Persistent storage for uploaded story photo or video'
+    )
+    media_url = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text='Direct URL or resolved URI for story media'
+    )
+    media_type = models.CharField(
+        max_length=10,
+        choices=[('IMAGE', 'Image'), ('VIDEO', 'Video')],
+        default='IMAGE',
+        help_text='Type of media: IMAGE or VIDEO'
+    )
+    title = models.CharField(
+        max_length=150,
+        null=True,
+        blank=True,
+        help_text='Optional headline/product name'
+    )
+    caption = models.TextField(
+        null=True,
+        blank=True,
+        help_text='Optional description or caption narrative'
+    )
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Optional regular price in INR'
+    )
+    promotional_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Optional discounted/promotional price in INR'
+    )
+    product = models.ForeignKey(
+        'catalog.Product',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stories',
+        help_text='Linked catalog item for product_linked stories'
+    )
+    published_at = models.DateTimeField(
+        default=timezone.now,
+        db_index=True,
+        help_text='Story publication timestamp'
+    )
+    expires_at = models.DateTimeField(
+        db_index=True,
+        help_text='Story 24-hour expiration timestamp'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StoryStatus.choices,
+        default=StoryStatus.ACTIVE,
+        db_index=True
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = 'Story'
+        verbose_name_plural = 'Stories'
+        ordering = ['-published_at']
+
+    def save(self, *args, **kwargs):
+        if not self.published_at:
+            self.published_at = timezone.now()
+        if not self.expires_at:
+            self.expires_at = self.published_at + timedelta(hours=24)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"[{self.get_story_type_display()}] {self.title or 'Story'} — {self.business_profile.business_name}"
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    @property
+    def effective_media_url(self):
+        if self.media_file:
+            try:
+                return self.media_file.url
+            except Exception:
+                pass
+        return self.media_url or ''
+

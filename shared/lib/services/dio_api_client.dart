@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:shared/constants/api_endpoints.dart';
@@ -31,9 +32,71 @@ class DioApiClient implements IApiClient {
     _setupInterceptors();
   }
 
+  /// Inspects standard JWT exp claim to check whether token has expired or is about to expire
+  bool _isTokenExpired(String? token, {int bufferSeconds = 60}) {
+    if (token == null || token.isEmpty) return true;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final normalized = base64Url.normalize(parts[1]);
+      final payloadString = utf8.decode(base64Url.decode(normalized));
+      final map = jsonDecode(payloadString);
+      if (map is Map && map['exp'] is num) {
+        final expTimestamp = (map['exp'] as num).toInt();
+        final nowTimestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        return (nowTimestamp + bufferSeconds) >= expTimestamp;
+      }
+    } catch (_) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Silently refreshes the access token using the stored refresh token without disturbing the user
+  Future<bool> refreshTokenSilently() async {
+    if (_refreshToken == null || _refreshToken!.isEmpty) return false;
+    try {
+      final refreshDio = Dio(BaseOptions(
+        baseUrl: _dio.options.baseUrl,
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      ));
+      final refreshResponse = await refreshDio.post(
+        ApiEndpoints.tokenRefresh,
+        data: {'refresh': _refreshToken},
+      );
+
+      if (refreshResponse.statusCode == 200 && refreshResponse.data is Map) {
+        final responseData = refreshResponse.data as Map;
+        final newAccess = responseData['access'] as String?;
+        final newRefresh = (responseData['refresh'] as String?) ?? _refreshToken;
+
+        if (newAccess != null && newAccess.isNotEmpty) {
+          _authToken = newAccess;
+          _refreshToken = newRefresh;
+          onTokenRefreshed?.call(newAccess, newRefresh);
+          return true;
+        }
+      }
+    } catch (_) {
+      _authToken = null;
+      _refreshToken = null;
+      onRefreshFailed?.call();
+    }
+    return false;
+  }
+
   void _setupInterceptors() {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
+      onRequest: (options, handler) async {
+        // Proactive token refresh: refresh seamlessly BEFORE sending the request if token is expiring
+        if (_refreshToken != null &&
+            _refreshToken!.isNotEmpty &&
+            options.path != ApiEndpoints.tokenRefresh &&
+            !options.path.contains('token/refresh') &&
+            _isTokenExpired(_authToken)) {
+          await refreshTokenSilently();
+        }
+
         if (_authToken != null && _authToken!.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $_authToken';
         }
@@ -45,35 +108,15 @@ class DioApiClient implements IApiClient {
             _refreshToken!.isNotEmpty &&
             e.requestOptions.path != ApiEndpoints.tokenRefresh &&
             !e.requestOptions.path.contains('token/refresh')) {
-          try {
-            final refreshDio = Dio(BaseOptions(
-              baseUrl: _dio.options.baseUrl,
-              headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-            ));
-            final refreshResponse = await refreshDio.post(
-              ApiEndpoints.tokenRefresh,
-              data: {'refresh': _refreshToken},
-            );
-
-            if (refreshResponse.statusCode == 200 && refreshResponse.data is Map) {
-              final responseData = refreshResponse.data as Map;
-              final newAccess = responseData['access'] as String?;
-              final newRefresh = (responseData['refresh'] as String?) ?? _refreshToken;
-
-              if (newAccess != null && newAccess.isNotEmpty) {
-                _authToken = newAccess;
-                _refreshToken = newRefresh;
-                onTokenRefreshed?.call(newAccess, newRefresh);
-
-                e.requestOptions.headers['Authorization'] = 'Bearer $_authToken';
-                final retryResponse = await _dio.fetch(e.requestOptions);
-                return handler.resolve(retryResponse);
-              }
+          final refreshed = await refreshTokenSilently();
+          if (refreshed) {
+            e.requestOptions.headers['Authorization'] = 'Bearer $_authToken';
+            try {
+              final retryResponse = await _dio.fetch(e.requestOptions);
+              return handler.resolve(retryResponse);
+            } catch (_) {
+              return handler.next(e);
             }
-          } catch (_) {
-            _authToken = null;
-            _refreshToken = null;
-            onRefreshFailed?.call();
           }
         }
         return handler.next(e);
@@ -134,13 +177,16 @@ class DioApiClient implements IApiClient {
           
           if (value is XFile) {
             bytes = await value.readAsBytes();
-            filename = value.name;
+            filename = value.name.isNotEmpty ? value.name : 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
           } else if (value is String) {
             final xFile = XFile(value);
             bytes = await xFile.readAsBytes();
-            filename = xFile.name;
+            filename = xFile.name.isNotEmpty ? xFile.name : 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
           } else {
             throw ApiException(message: 'Unsupported file type provided to postMultipart.');
+          }
+          if (!filename.contains('.')) {
+            filename = '$filename.jpg';
           }
           
           mapData[entry.key] = MultipartFile.fromBytes(bytes, filename: filename);

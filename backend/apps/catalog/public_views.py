@@ -4,8 +4,8 @@ from rest_framework import status, permissions, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from apps.catalog.models import Product, GalleryImage, Offer, Promotion, PromotionStatus
-from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer, PublicPromotionSerializer, PromotionPublicSerializer
+from apps.catalog.models import Product, GalleryImage, Offer, Promotion, PromotionStatus, Story, StoryStatus
+from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StoreCompleteCatalogSerializer, PublicPromotionSerializer, PromotionPublicSerializer, StorySerializer
 from apps.vendors.models import VendorStatus
 from apps.business.models import BusinessProfile
 
@@ -188,3 +188,71 @@ class PublicBannerListView(APIView):
         ).order_by('priority', '-created_at')
         
         return Response(PromotionPublicSerializer(promotions, many=True, context={'request': request}).data, status=status.HTTP_200_OK)
+
+
+class PublicStoryListView(APIView):
+    """
+    Customer App API: Enumerate active 24-hour visual stories published by approved boutique partners.
+    Guarantees that expired stories, suspended studios, and unapproved partners are never served.
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = StorySerializer
+
+    @extend_schema(
+        summary="List Active Showroom Stories",
+        description="Returns active stories strictly within their 24-hour window from approved studios.",
+        parameters=[
+            OpenApiParameter(name='store_id', description="Optional Store UUID filter", required=False, type=str),
+        ],
+        responses={200: StorySerializer(many=True)}
+    )
+    def get(self, request):
+        from django.utils import timezone
+        now = timezone.now()
+
+        queryset = Story.objects.filter(
+            is_active=True,
+            status=StoryStatus.ACTIVE,
+            expires_at__gt=now,
+            business_profile__status='PUBLISHED',
+            business_profile__vendor__status=VendorStatus.APPROVED
+        ).select_related('business_profile', 'product').order_by('-published_at')
+
+        store_id = request.query_params.get('store_id')
+        if store_id:
+            queryset = queryset.filter(business_profile_id=store_id)
+
+        serializer = StorySerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PublicStoryDetailView(APIView):
+    """
+    Inspect a specific active Story.
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = StorySerializer
+
+    @extend_schema(
+        summary="Get Active Story Details",
+        responses={200: StorySerializer}
+    )
+    def get(self, request, pk):
+        from django.utils import timezone
+        now = timezone.now()
+
+        try:
+            story = Story.objects.select_related('business_profile', 'product').get(
+                pk=pk,
+                is_active=True,
+                status=StoryStatus.ACTIVE,
+                expires_at__gt=now,
+                business_profile__status='PUBLISHED',
+                business_profile__vendor__status=VendorStatus.APPROVED
+            )
+        except Story.DoesNotExist:
+            raise exceptions.NotFound("Story is unavailable, archived, or has expired.")
+
+        serializer = StorySerializer(story, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

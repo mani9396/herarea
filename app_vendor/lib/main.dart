@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:app_vendor/firebase_options.dart';
 import 'package:app_vendor/core/routing/vendor_app_router.dart';
 import 'package:app_vendor/core/state/vendor_app_state.dart';
 import 'package:shared/shared.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await PushNotificationService().initialize(
+      onNotificationTap: (actionUrl) {
+        if (actionUrl.isNotEmpty) {
+          vendorRouter.push(actionUrl);
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('Firebase init error in Vendor App: $e');
+  }
   runApp(const ProviderScope(child: HerAreaVendorApp()));
 }
 

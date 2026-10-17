@@ -77,7 +77,7 @@ class AdminApiRepository {
       return false;
     }
   }
-
+  
   /// Reject an onboarding application with documented executive rationale
   Future<bool> rejectVendor(String vendorId, String reason) async {
     try {
@@ -502,6 +502,34 @@ class AdminApiRepository {
   Future<bool> resumePromotion(String id) async {
     try {
       final response = await _apiClient.post(ApiEndpoints.adminBannerResume(id));
+      return (response['status_code'] as int? ?? 200) <= 204;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Fetch all active/live stories across all partner boutiques for moderation
+  Future<List<StoryModel>> fetchStories() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.adminStories);
+      List<dynamic> list = [];
+      if (response['results'] is List) {
+        list = response['results'] as List;
+      } else if (response['data'] is List) {
+        list = response['data'] as List;
+      }
+      return list
+          .map((json) => StoryModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Revoke and take down an inappropriate or non-compliant vendor story
+  Future<bool> deleteStory(String storyId) async {
+    try {
+      final response = await _apiClient.delete(ApiEndpoints.adminStoryDetail(storyId));
       return (response['status_code'] as int? ?? 200) <= 204;
     } catch (e) {
       return false;

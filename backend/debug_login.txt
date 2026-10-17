@@ -59,3 +59,17 @@ Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
 Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
 Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
 Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: VENDOR
+Cross login prevented
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: customertest@herarea.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER
+Email: m@gmail.com, User Role: VENDOR, Requested Role: VENDOR
+Email: manitheking3@gmail.com, User Role: CUSTOMER, Requested Role: CUSTOMER

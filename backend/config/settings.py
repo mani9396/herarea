@@ -199,11 +199,13 @@ REST_FRAMEWORK = {
     },
 }
 
-# JWT Token Architecture (15 min short-lived access, 7 day rotating refresh)
+# JWT Token Architecture: Rolling Sliding-Session Architecture
+# Access token: 7 days in DEBUG, 60 minutes in Production
+# Refresh token: 90 days with automatic rotation on each refresh (sliding session: never expires while actively used)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7) if DEBUG else timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=90),
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
@@ -315,3 +317,10 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Firebase Cloud Messaging (FCM) Configuration
+FIREBASE_SERVICE_ACCOUNT_KEY = config(
+    'FIREBASE_SERVICE_ACCOUNT_KEY',
+    default=str(BASE_DIR / 'config' / 'firebase-service-account.json')
+)
+

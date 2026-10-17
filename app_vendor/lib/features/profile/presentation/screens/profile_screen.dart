@@ -60,6 +60,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 _buildMenuSection('Boutique & Catalog Management', [
+                  _buildMenuItem(context, 'Stories Management 📸 (24h Highlights)', Icons.amp_stories_rounded, () => context.push(VendorRoutePaths.stories)),
                   _buildMenuItem(context, 'Preview Store Profile As Bride', Icons.visibility_rounded, () => context.push(VendorRoutePaths.businessProfile)),
                   _buildMenuItem(context, 'Edit Owner Personal & Contact Info', Icons.person_outline_rounded, () => context.push(VendorRoutePaths.editProfile)),
                   _buildMenuItem(context, 'Showcase Portfolio Gallery', Icons.photo_library_outlined, () => context.push(VendorRoutePaths.gallery)),
