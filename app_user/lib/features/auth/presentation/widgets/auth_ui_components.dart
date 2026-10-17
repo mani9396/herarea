@@ -142,6 +142,7 @@ class AuthBrandHeader extends StatelessWidget {
             width: logoSize,
             height: logoSize,
             decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(compact ? 14 : 22),
               boxShadow: [
                 BoxShadow(
