@@ -133,5 +133,33 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
     });
+    testWidgets('LoginScreen fits completely in one screen on short mobile screens without overflow', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640); // small standard mobile viewport
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      // Verify header, feature pills, form inputs, Sign In button, and Sign Up button are ALL visible simultaneously
+      expect(find.byType(AuthBrandHeader), findsOneWidget);
+      expect(find.byType(AuthFeatureBadgesRow), findsOneWidget);
+      expect(find.text('Email Address'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Create New Member Account'), findsOneWidget);
+
+      // Verify no overflow errors
+      expect(tester.takeException(), isNull);
+
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+    });
   });
 }
