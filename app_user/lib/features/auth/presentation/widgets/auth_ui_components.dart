@@ -129,7 +129,7 @@ class AuthBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logoSize = compact ? 68.0 : 84.0;
+    final logoSize = compact ? 52.0 : 84.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -142,23 +142,23 @@ class AuthBrandHeader extends StatelessWidget {
             width: logoSize,
             height: logoSize,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(compact ? 18 : 22),
+              borderRadius: BorderRadius.circular(compact ? 14 : 22),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  blurRadius: compact ? 12 : 18,
+                  offset: Offset(0, compact ? 4 : 8),
                 ),
                 BoxShadow(
                   color: Colors.white.withValues(alpha: 0.25),
-                  blurRadius: 12,
+                  blurRadius: compact ? 8 : 12,
                   spreadRadius: 1,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(compact ? 18 : 22),
+              borderRadius: BorderRadius.circular(compact ? 14 : 22),
               child: Image.asset(
                 'assets/images/her_area_logo.png',
                 width: logoSize,
@@ -177,7 +177,7 @@ class AuthBrandHeader extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: compact ? 12 : 16),
+        SizedBox(height: compact ? 6 : 16),
 
         // Brand Name: Her Area™
         Text(
@@ -185,14 +185,14 @@ class AuthBrandHeader extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppTypography.displayFont,
-            fontSize: compact ? 26 : 32,
+            fontSize: compact ? 22 : 32,
             fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -0.5,
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: compact ? 3 : 6),
 
         // Tagline: DISCOVER · CONNECT · GROW
         Text(
@@ -200,25 +200,25 @@ class AuthBrandHeader extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppTypography.bodyFont,
-            fontSize: compact ? 10 : 11,
+            fontSize: compact ? 9.5 : 11,
             fontWeight: FontWeight.w700,
-            letterSpacing: 2.4,
+            letterSpacing: compact ? 1.8 : 2.4,
             color: Colors.white.withValues(alpha: 0.92),
           ),
         ),
-        SizedBox(height: compact ? 8 : 12),
+        SizedBox(height: compact ? 5 : 12),
 
         // Headline: A Safer, Brighter Everyday for Every Woman
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
           child: Text(
             customHeadline ?? 'A Safer, Brighter Everyday for Every Woman',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: AppTypography.bodyFont,
-              fontSize: compact ? 13 : 14.5,
+              fontSize: compact ? 11.5 : 14.5,
               fontWeight: FontWeight.w500,
-              height: 1.35,
+              height: 1.3,
               color: Colors.white.withValues(alpha: 0.95),
             ),
           ),
@@ -230,17 +230,18 @@ class AuthBrandHeader extends StatelessWidget {
 
 /// Feature pills for mobile-first brand showcase (Find, Connect, Work, Grow)
 class AuthFeatureBadgesRow extends StatelessWidget {
-  const AuthFeatureBadgesRow({super.key});
+  final bool compact;
+  const AuthFeatureBadgesRow({super.key, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: const [
-        Expanded(child: _FeaturePill(icon: Icons.search_rounded, title: 'Find', subtitle: 'Local Stores')),
-        Expanded(child: _FeaturePill(icon: Icons.people_alt_rounded, title: 'Connect', subtitle: 'With Vendors')),
-        Expanded(child: _FeaturePill(icon: Icons.work_outline_rounded, title: 'Work', subtitle: 'Opportunities')),
-        Expanded(child: _FeaturePill(icon: Icons.favorite_rounded, title: 'Grow', subtitle: 'Together')),
+      children: [
+        Expanded(child: _FeaturePill(icon: Icons.search_rounded, title: 'Find', subtitle: 'Local Stores', compact: compact)),
+        Expanded(child: _FeaturePill(icon: Icons.people_alt_rounded, title: 'Connect', subtitle: 'With Vendors', compact: compact)),
+        Expanded(child: _FeaturePill(icon: Icons.work_outline_rounded, title: 'Work', subtitle: 'Opportunities', compact: compact)),
+        Expanded(child: _FeaturePill(icon: Icons.favorite_rounded, title: 'Grow', subtitle: 'Together', compact: compact)),
       ],
     );
   }
@@ -250,36 +251,41 @@ class _FeaturePill extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool compact;
 
   const _FeaturePill({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final circleSize = compact ? 32.0 : 42.0;
+    final iconSize = compact ? 15.0 : 20.0;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: circleSize,
+          height: circleSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: 0.18),
             border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.2),
           ),
-          child: Icon(icon, color: Colors.white, size: 20),
+          child: Icon(icon, color: Colors.white, size: iconSize),
         ),
-        const SizedBox(height: 5),
+        SizedBox(height: compact ? 2 : 5),
         Text(
           title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 11.5,
+            fontSize: compact ? 10.0 : 11.5,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -290,7 +296,7 @@ class _FeaturePill extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 9.0,
+            fontSize: compact ? 8.0 : 9.0,
           ),
         ),
       ],
@@ -302,11 +308,13 @@ class _FeaturePill extends StatelessWidget {
 class AuthFormCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final bool compact;
 
   const AuthFormCard({
     super.key,
     required this.child,
     this.padding,
+    this.compact = false,
   });
 
   @override
@@ -317,13 +325,13 @@ class AuthFormCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF22161C) : AuthTokens.surfaceCard,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(compact ? 20 : 24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
-            blurRadius: 30,
-            spreadRadius: 2,
-            offset: const Offset(0, 10),
+            blurRadius: compact ? 20 : 30,
+            spreadRadius: compact ? 1 : 2,
+            offset: Offset(0, compact ? 6 : 10),
           ),
         ],
         border: Border.all(
@@ -331,7 +339,7 @@ class AuthFormCard extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      padding: padding ?? EdgeInsets.symmetric(horizontal: compact ? 16 : 18, vertical: compact ? 12 : 24),
       child: child,
     );
   }
@@ -344,6 +352,7 @@ class AuthPrimaryButton extends StatelessWidget {
   final bool isLoading;
   final IconData? icon;
   final bool isSecondary;
+  final bool compact;
 
   const AuthPrimaryButton({
     super.key,
@@ -352,28 +361,33 @@ class AuthPrimaryButton extends StatelessWidget {
     this.isLoading = false,
     this.icon,
     this.isSecondary = false,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final buttonHeight = compact ? 42.0 : 52.0;
+    final borderRadius = BorderRadius.circular(compact ? 21 : 26);
+    final fontSize = compact ? 13.5 : (isSecondary ? 14.5 : 15.0);
+
     if (isSecondary) {
       return SizedBox(
         width: double.infinity,
-        height: 52,
+        height: buttonHeight,
         child: OutlinedButton(
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AuthTokens.brandMagenta, width: 1.5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
             foregroundColor: AuthTokens.brandMagenta,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 18),
+                Icon(icon, size: compact ? 16 : 18),
                 const SizedBox(width: 8),
               ],
               Flexible(
@@ -381,9 +395,9 @@ class AuthPrimaryButton extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppTypography.bodyFont,
-                    fontSize: 14.5,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -396,32 +410,32 @@ class AuthPrimaryButton extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      height: 52,
+      height: buttonHeight,
       decoration: BoxDecoration(
         gradient: AuthTokens.buttonGradient,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: borderRadius,
         boxShadow: [
           BoxShadow(
             color: AuthTokens.brandPink.withValues(alpha: 0.38),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            blurRadius: compact ? 12 : 16,
+            offset: Offset(0, compact ? 4 : 6),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: borderRadius,
           onTap: isLoading ? null : onPressed,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Center(
               child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
+                  ? SizedBox(
+                      width: compact ? 18 : 22,
+                      height: compact ? 18 : 22,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2.2,
                         color: Colors.white,
                       ),
                     )
@@ -434,9 +448,9 @@ class AuthPrimaryButton extends StatelessWidget {
                             label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: AppTypography.bodyFont,
-                              fontSize: 15,
+                              fontSize: fontSize,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                               letterSpacing: 0.2,
@@ -445,7 +459,7 @@ class AuthPrimaryButton extends StatelessWidget {
                         ),
                         if (icon != null) ...[
                           const SizedBox(width: 8),
-                          Icon(icon, color: Colors.white, size: 18),
+                          Icon(icon, color: Colors.white, size: compact ? 16 : 18),
                         ],
                       ],
                     ),
@@ -470,6 +484,7 @@ class AuthTextField extends StatefulWidget {
   final IconData? prefixIcon;
   final Widget? suffixWidget;
   final VoidCallback? onTap;
+  final bool compact;
 
   const AuthTextField({
     super.key,
@@ -484,6 +499,7 @@ class AuthTextField extends StatefulWidget {
     this.prefixIcon,
     this.suffixWidget,
     this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -505,7 +521,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: widget.compact ? 8 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -514,11 +530,11 @@ class _AuthTextFieldState extends State<AuthTextField> {
             style: TextStyle(
               fontFamily: AppTypography.bodyFont,
               fontWeight: FontWeight.w700,
-              fontSize: 13.5,
+              fontSize: widget.compact ? 12.0 : 13.5,
               color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: widget.compact ? 3 : 6),
           TextFormField(
             controller: widget.controller,
             validator: widget.validator,
@@ -528,7 +544,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
             onTap: widget.onTap,
             style: TextStyle(
               fontFamily: AppTypography.bodyFont,
-              fontSize: 15,
+              fontSize: widget.compact ? 13.5 : 15,
               fontWeight: FontWeight.w500,
               color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
             ),
@@ -536,55 +552,62 @@ class _AuthTextFieldState extends State<AuthTextField> {
               hintText: widget.hintText ?? 'Enter ${widget.label.toLowerCase()}',
               hintStyle: TextStyle(
                 fontFamily: AppTypography.bodyFont,
-                fontSize: 14,
+                fontSize: widget.compact ? 12.5 : 14,
                 color: isDark ? AppColors.textDisabledDark : const Color(0xFFA69099),
               ),
               helperText: widget.helperText,
               helperStyle: TextStyle(
                 fontFamily: AppTypography.bodyFont,
-                fontSize: 11.5,
+                fontSize: 11.0,
                 color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
               ),
               filled: true,
               fillColor: isDark
                   ? const Color(0xFF2E1C24)
                   : (widget.readOnly ? const Color(0xFFF9F1F4) : const Color(0xFFFCF7F9)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: widget.compact ? 14 : 18,
+                vertical: widget.compact ? 10 : 15,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(widget.compact ? 12 : 16),
                 borderSide: BorderSide(
                   color: isDark ? const Color(0xFF4A2A38) : AuthTokens.inputBorder,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(widget.compact ? 12 : 16),
                 borderSide: BorderSide(
                   color: isDark ? const Color(0xFF4A2A38) : AuthTokens.inputBorder,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(widget.compact ? 12 : 16),
                 borderSide: const BorderSide(
                   color: AuthTokens.brandPink,
                   width: 2.0,
                 ),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(widget.compact ? 12 : 16),
                 borderSide: const BorderSide(
                   color: AppColors.error,
                   width: 1.5,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(widget.compact ? 12 : 16),
                 borderSide: const BorderSide(
                   color: AppColors.error,
                   width: 2.0,
                 ),
               ),
               prefixIcon: widget.prefixIcon != null
-                  ? Icon(widget.prefixIcon, size: 20, color: AuthTokens.brandPink)
+                  ? Icon(
+                      widget.prefixIcon,
+                      size: widget.compact ? 18 : 20,
+                      color: AuthTokens.brandPink,
+                    )
                   : null,
               suffixIcon: widget.suffixWidget ??
                   (widget.isPassword
@@ -593,7 +616,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
                             _obscureText
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            size: 20,
+                            size: widget.compact ? 18 : 20,
                             color: isDark
                                 ? AppColors.textMediumDark
                                 : const Color(0xFF9E848E),
