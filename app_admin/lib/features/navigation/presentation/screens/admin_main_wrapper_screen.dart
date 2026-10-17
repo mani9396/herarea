@@ -113,11 +113,6 @@ class AdminMainWrapperScreen extends StatelessWidget {
                       label: Text('Customers'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.insights_rounded),
-                      selectedIcon: Icon(Icons.insights_rounded),
-                      label: Text('Analytics'),
-                    ),
-                    NavigationRailDestination(
                       icon: Icon(Icons.campaign_outlined),
                       selectedIcon: Icon(Icons.campaign_rounded),
                       label: Text('Promotions'),
@@ -154,11 +149,6 @@ class AdminMainWrapperScreen extends StatelessWidget {
                   icon: Icon(Icons.people_outline_rounded),
                   selectedIcon: Icon(Icons.people_rounded, color: AppColors.primaryRuby),
                   label: 'Users',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.insights_rounded),
-                  selectedIcon: Icon(Icons.insights_rounded, color: AppColors.primaryRuby),
-                  label: 'Stats',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.campaign_outlined),

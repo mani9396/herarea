@@ -31,8 +31,6 @@ import 'package:app_vendor/features/orders/presentation/screens/review_details_s
 import 'package:app_vendor/features/offers/presentation/screens/offers_management_screen.dart';
 import 'package:app_vendor/features/offers/presentation/screens/add_offer_screen.dart';
 import 'package:app_vendor/features/offers/presentation/screens/edit_offer_screen.dart';
-import 'package:app_vendor/features/analytics/presentation/screens/analytics_screen.dart';
-import 'package:app_vendor/features/analytics/presentation/screens/earnings_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/profile_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/settings_screen.dart';
@@ -43,6 +41,8 @@ import 'package:app_vendor/features/profile/presentation/screens/notification_se
 import 'package:app_vendor/features/profile/presentation/screens/help_support_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/about_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/privacy_policy_screen.dart';
+import 'package:app_vendor/features/stories/presentation/screens/stories_management_screen.dart';
+import 'package:app_vendor/features/stories/presentation/screens/add_story_screen.dart';
 import 'package:app_vendor/features/profile/presentation/screens/terms_conditions_screen.dart';
 import 'package:app_vendor/features/chat/presentation/screens/vendor_chat_list_screen.dart';
 import 'package:app_vendor/features/chat/presentation/screens/vendor_chat_screen.dart';
@@ -52,8 +52,9 @@ final GlobalKey<NavigatorState> _shellDashKey = GlobalKey<NavigatorState>(debugL
 final GlobalKey<NavigatorState> _shellProductsKey = GlobalKey<NavigatorState>(debugLabel: 'prodNav');
 final GlobalKey<NavigatorState> _shellOrdersKey = GlobalKey<NavigatorState>(debugLabel: 'ordNav');
 final GlobalKey<NavigatorState> _shellChatKey = GlobalKey<NavigatorState>(debugLabel: 'chatNav');
-final GlobalKey<NavigatorState> _shellAnalyticsKey = GlobalKey<NavigatorState>(debugLabel: 'analyNav');
 final GlobalKey<NavigatorState> _shellProfileKey = GlobalKey<NavigatorState>(debugLabel: 'profNav');
+final GlobalKey<NavigatorState> _shellStoriesKey = GlobalKey<NavigatorState>(debugLabel: 'storiesNav');
+final GlobalKey<NavigatorState> _shellSubscriptionKey = GlobalKey<NavigatorState>(debugLabel: 'subNav');
 
 final vendorRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -149,6 +150,15 @@ final vendorRouter = GoRouter(
       path: VendorRoutePaths.gallery,
       builder: (context, state) => const GalleryScreen(),
     ),
+
+    GoRoute(
+      path: VendorRoutePaths.addStory,
+      builder: (context, state) {
+        final tabStr = state.uri.queryParameters['tab'];
+        final initialTab = tabStr == 'gallery' ? 1 : 0;
+        return AddStoryScreen(initialTab: initialTab);
+      },
+    ),
     GoRoute(
       path: VendorRoutePaths.enquiryDetails,
       builder: (context, state) {
@@ -183,8 +193,12 @@ final vendorRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: VendorRoutePaths.analytics,
+      redirect: (context, state) => VendorRoutePaths.dashboard,
+    ),
+    GoRoute(
       path: VendorRoutePaths.earnings,
-      builder: (context, state) => const EarningsScreen(),
+      redirect: (context, state) => VendorRoutePaths.dashboard,
     ),
     GoRoute(
       path: VendorRoutePaths.editProfile,
@@ -222,10 +236,7 @@ final vendorRouter = GoRouter(
       path: VendorRoutePaths.planSelection,
       builder: (context, state) => const PlanSelectionScreen(),
     ),
-    GoRoute(
-      path: VendorRoutePaths.activeSubscription,
-      builder: (context, state) => const ActiveSubscriptionScreen(),
-    ),
+
 
     // Stateful Shell Route for 5 primary management tabs
     StatefulShellRoute.indexedStack(
@@ -269,21 +280,31 @@ final vendorRouter = GoRouter(
             ),
           ],
         ),
-        StatefulShellBranch(
-          navigatorKey: _shellAnalyticsKey,
-          routes: [
-            GoRoute(
-              path: VendorRoutePaths.analytics,
-              builder: (context, state) => const AnalyticsScreen(),
-            ),
-          ],
-        ),
+
         StatefulShellBranch(
           navigatorKey: _shellProfileKey,
           routes: [
             GoRoute(
               path: VendorRoutePaths.profile,
               builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          navigatorKey: _shellStoriesKey,
+          routes: [
+            GoRoute(
+              path: VendorRoutePaths.stories,
+              builder: (context, state) => const StoriesManagementScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          navigatorKey: _shellSubscriptionKey,
+          routes: [
+            GoRoute(
+              path: VendorRoutePaths.activeSubscription,
+              builder: (context, state) => const ActiveSubscriptionScreen(),
             ),
           ],
         ),

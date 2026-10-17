@@ -145,14 +145,37 @@ class VendorApiRepository {
   }
 
   /// Add new item to studio showroom (requires approved vendor status)
-  Future<VendorProductModel?> createProduct(VendorProductModel product) async {
+  Future<VendorProductModel?> createProduct(VendorProductModel product, {dynamic imageFile}) async {
     _assertApprovedVendor();
     try {
-      final response = await _apiClient.post(
-        ApiEndpoints.vendorProducts,
-        body: product.toJson(),
-      );
-      return VendorProductModel.fromJson(response);
+      if (imageFile != null) {
+        final fields = <String, dynamic>{
+          'name': product.title,
+          'title': product.title,
+          'category': product.category,
+          if (product.subcategory != null) 'subcategory': product.subcategory,
+          'price': product.price.toString(),
+          'stock_status': product.isAvailable ? 'IN_STOCK' : 'OUT_OF_STOCK',
+          'is_active': product.isAvailable ? 'true' : 'false',
+          'description': product.description,
+          'status': product.status,
+        };
+        final response = await _apiClient.postMultipart(
+          ApiEndpoints.vendorProducts,
+          files: {
+            'image_file': imageFile,
+            'image': imageFile,
+          },
+          fields: fields,
+        );
+        return VendorProductModel.fromJson(response);
+      } else {
+        final response = await _apiClient.post(
+          ApiEndpoints.vendorProducts,
+          body: product.toJson(),
+        );
+        return VendorProductModel.fromJson(response);
+      }
     } catch (e) {
       developer.log('Error creating product: $e', error: e);
       rethrow;
@@ -160,14 +183,37 @@ class VendorApiRepository {
   }
 
   /// Update existing item in studio showroom
-  Future<VendorProductModel?> updateProduct(VendorProductModel product) async {
+  Future<VendorProductModel?> updateProduct(VendorProductModel product, {dynamic imageFile}) async {
     _assertApprovedVendor();
     try {
-      final response = await _apiClient.put(
-        ApiEndpoints.vendorProductDetail(product.id),
-        body: product.toJson(),
-      );
-      return VendorProductModel.fromJson(response);
+      if (imageFile != null) {
+        final fields = <String, dynamic>{
+          'name': product.title,
+          'title': product.title,
+          'category': product.category,
+          if (product.subcategory != null) 'subcategory': product.subcategory,
+          'price': product.price.toString(),
+          'stock_status': product.isAvailable ? 'IN_STOCK' : 'OUT_OF_STOCK',
+          'is_active': product.isAvailable ? 'true' : 'false',
+          'description': product.description,
+          'status': product.status,
+        };
+        final response = await _apiClient.putMultipart(
+          ApiEndpoints.vendorProductDetail(product.id),
+          files: {
+            'image_file': imageFile,
+            'image': imageFile,
+          },
+          fields: fields,
+        );
+        return VendorProductModel.fromJson(response);
+      } else {
+        final response = await _apiClient.put(
+          ApiEndpoints.vendorProductDetail(product.id),
+          body: product.toJson(),
+        );
+        return VendorProductModel.fromJson(response);
+      }
     } catch (e) {
       developer.log('Error updating product', error: e);
       rethrow;
@@ -400,6 +446,106 @@ class VendorApiRepository {
       return {};
     }
   }
+
+  /// Fetch vendor's active 24-hour stories
+  Future<List<StoryModel>> fetchStories() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.vendorStories);
+      List<dynamic> list = [];
+      if (response['results'] is List) {
+        list = response['results'] as List;
+      } else if (response['data'] is List) {
+        list = response['data'] as List;
+      }
+      return list
+          .map((json) => StoryModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      developer.log('Error fetching vendor stories: $e', error: e);
+      return [];
+    }
+  }
+
+  /// Create a new 24-hour Story (either Option A: product_linked or Option B: gallery_uploaded)
+  Future<StoryModel?> createStory({
+    required String storyType,
+    String? productId,
+    dynamic mediaFile,
+    String? mediaUrl,
+    String? title,
+    String? caption,
+    double? price,
+    double? promotionalPrice,
+  }) async {
+    try {
+      if (storyType == 'product_linked') {
+        if (productId == null || productId.isEmpty) {
+          throw Exception('A valid product must be selected for product-linked stories.');
+        }
+        final payload = <String, dynamic>{
+          'story_type': 'product_linked',
+          'product_id': productId,
+        };
+        final response = await _apiClient.post(
+          ApiEndpoints.vendorStories,
+          body: payload,
+        );
+        return StoryModel.fromJson(response);
+      } else {
+        // gallery_uploaded (Option B)
+        final fields = <String, dynamic>{
+          'story_type': 'gallery_uploaded',
+        };
+        if (title != null && title.trim().isNotEmpty) {
+          fields['title'] = title.trim();
+        }
+        if (caption != null && caption.trim().isNotEmpty) {
+          fields['caption'] = caption.trim();
+        }
+        if (price != null) {
+          fields['price'] = price.toString();
+        }
+        if (promotionalPrice != null) {
+          fields['promotional_price'] = promotionalPrice.toString();
+        }
+
+        if (mediaFile != null) {
+          final response = await _apiClient.postMultipart(
+            ApiEndpoints.vendorStories,
+            files: {
+              'media_file': mediaFile,
+              'media': mediaFile,
+            },
+            fields: fields,
+          );
+          return StoryModel.fromJson(response);
+        } else if (mediaUrl != null && mediaUrl.isNotEmpty) {
+          fields['media_url'] = mediaUrl;
+          final response = await _apiClient.post(
+            ApiEndpoints.vendorStories,
+            body: fields,
+          );
+          return StoryModel.fromJson(response);
+        } else {
+          throw Exception('Please select an image or video for your story.');
+        }
+      }
+    } catch (e) {
+      developer.log('Error creating story: $e', error: e);
+      rethrow;
+    }
+  }
+
+  /// Delete an active story immediately
+  Future<bool> deleteStory(String storyId) async {
+    try {
+      await _apiClient.delete(ApiEndpoints.vendorStoryDetail(storyId));
+      return true;
+    } catch (e) {
+      developer.log('Error deleting story: $e', error: e);
+      return false;
+    }
+  }
 }
 
 /// Singleton repository provider injecting the network client and auth session state
@@ -414,4 +560,3 @@ final vendorStoreReviewsProvider = FutureProvider<Map<String, dynamic>>((ref) as
   final repo = ref.read(vendorApiRepositoryProvider);
   return repo.getMyStoreReviews();
 });
-

@@ -112,7 +112,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             ),
                             child: CircleAvatar(
                               radius: 54,
-                              backgroundImage: NetworkImage(profile.avatarUrl),
+                              backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.1),
+                              backgroundImage: profile.avatarUrl.trim().isNotEmpty
+                                  ? NetworkImage(profile.avatarUrl.trim())
+                                  : null,
+                              child: profile.avatarUrl.trim().isEmpty
+                                  ? const Icon(Icons.person_rounded, size: 54, color: AppColors.primaryRuby)
+                                  : null,
                             ),
                           ),
                           InkWell(

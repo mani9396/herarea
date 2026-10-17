@@ -44,3 +44,36 @@ class Notification(AbstractBaseModel):
 
     def __str__(self):
         return f"[{self.notification_type}] To: {self.recipient.phone_number} — {self.title}"
+
+
+class PlatformType(models.TextChoices):
+    ANDROID = 'ANDROID', 'Android Device'
+    IOS = 'IOS', 'iOS Device'
+    WEB = 'WEB', 'Web Browser'
+
+
+class DeviceToken(AbstractBaseModel):
+    """
+    Push notification device registration token (FCM / APNs / Web Push).
+    Associates an authenticated user session with a hardware or browser client.
+    """
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='device_tokens',
+        db_index=True
+    )
+    token = models.CharField(max_length=500, unique=True, help_text='Firebase Cloud Messaging registration token')
+    platform = models.CharField(max_length=10, choices=PlatformType.choices, default=PlatformType.ANDROID)
+    app_type = models.CharField(max_length=20, default='CUSTOMER', help_text='CUSTOMER, VENDOR, or ADMIN')
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Device Token'
+        verbose_name_plural = 'Device Tokens'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email or self.user.phone_number} ({self.platform}/{self.app_type})"

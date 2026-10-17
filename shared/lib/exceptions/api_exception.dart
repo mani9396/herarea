@@ -27,8 +27,39 @@ class ApiException implements Exception {
 
   /// Factory constructor to parse Django structured error JSON dictionary
   factory ApiException.fromJson(Map<String, dynamic> json, {int? defaultStatus}) {
+    String? resolvedMessage;
+    if (json['message'] != null && json['message'].toString().trim().isNotEmpty) {
+      resolvedMessage = json['message'].toString();
+    } else if (json['error'] != null && json['error'] is! bool && json['error'].toString().trim().isNotEmpty) {
+      resolvedMessage = json['error'].toString();
+    } else if (json['detail'] != null && json['detail'].toString().trim().isNotEmpty) {
+      resolvedMessage = json['detail'].toString();
+    } else if (json['details'] != null && json['details'] is String && (json['details'] as String).trim().isNotEmpty) {
+      resolvedMessage = json['details'].toString();
+    } else if (json['non_field_errors'] != null) {
+      final nfe = json['non_field_errors'];
+      if (nfe is List && nfe.isNotEmpty) {
+        resolvedMessage = nfe.first.toString();
+      } else {
+        resolvedMessage = nfe.toString();
+      }
+    } else {
+      // Check for first field-level error in map
+      for (final entry in json.entries) {
+        if (entry.key != 'error' && entry.key != 'status_code' && entry.key != 'error_code' && entry.key != 'timestamp') {
+          if (entry.value is List && (entry.value as List).isNotEmpty) {
+            resolvedMessage = (entry.value as List).first.toString();
+            break;
+          } else if (entry.value is String && (entry.value as String).trim().isNotEmpty) {
+            resolvedMessage = entry.value.toString();
+            break;
+          }
+        }
+      }
+    }
+
     return ApiException(
-      message: json['message']?.toString() ?? json['detail']?.toString() ?? 'An unexpected network or server exception occurred.',
+      message: resolvedMessage ?? 'An unexpected network or server exception occurred.',
       statusCode: (json['status_code'] as num?)?.toInt() ?? defaultStatus,
       errorCode: json['error_code']?.toString() ?? _defaultErrorCode(defaultStatus),
       details: json['details'] ?? json,

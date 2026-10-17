@@ -72,7 +72,18 @@ class ProductManagementScreen extends ConsumerWidget {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.network(p.imageUrl, width: 80, height: 80, fit: BoxFit.cover),
+                            child: Image.network(
+                              p.imageUrl,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 80,
+                                height: 80,
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(

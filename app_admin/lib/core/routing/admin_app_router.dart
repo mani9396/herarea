@@ -26,15 +26,14 @@ import 'package:app_admin/features/moderation/presentation/screens/product_moder
 import 'package:app_admin/features/moderation/presentation/screens/gallery_moderation_screen.dart';
 import 'package:app_admin/features/moderation/presentation/screens/offer_moderation_screen.dart';
 import 'package:app_admin/features/moderation/presentation/screens/review_moderation_screen.dart';
+import 'package:app_admin/features/moderation/presentation/screens/story_moderation_screen.dart';
 
 // Customers & Categories
 import 'package:app_admin/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:app_admin/features/customers/presentation/screens/customer_details_screen.dart';
 import 'package:app_admin/features/categories/presentation/screens/category_management_screen.dart';
 
-// Analytics & Reports
-import 'package:app_admin/features/analytics/presentation/screens/analytics_hub_screen.dart';
-import 'package:app_admin/features/analytics/presentation/screens/reports_export_screen.dart';
+
 
 // Settings & Support
 import 'package:app_admin/features/subscriptions/presentation/screens/plan_management_screen.dart';
@@ -113,16 +112,7 @@ final GoRouter adminAppRouter = GoRouter(
             ),
           ],
         ),
-        // Branch 4: Analytics
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: AdminRoutePaths.analytics,
-              builder: (context, state) => const AnalyticsHubScreen(),
-            ),
-          ],
-        ),
-        // Branch 5: Promotions
+        // Branch 4: Promotions
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -132,6 +122,12 @@ final GoRouter adminAppRouter = GoRouter(
           ],
         ),
       ],
+    ),
+
+    // Analytics redirect to dashboard
+    GoRoute(
+      path: AdminRoutePaths.analytics,
+      redirect: (context, state) => AdminRoutePaths.dashboard,
     ),
 
     // Detail & Sub-routes (rendered over root navigator)
@@ -197,6 +193,11 @@ final GoRouter adminAppRouter = GoRouter(
       builder: (context, state) => const ReviewModerationScreen(),
     ),
     GoRoute(
+      path: AdminRoutePaths.storyModeration,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StoryModerationScreen(),
+    ),
+    GoRoute(
       path: AdminRoutePaths.customerDetails,
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
@@ -211,8 +212,7 @@ final GoRouter adminAppRouter = GoRouter(
     ),
     GoRoute(
       path: AdminRoutePaths.reports,
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ReportsExportScreen(),
+      redirect: (context, state) => AdminRoutePaths.dashboard,
     ),
     GoRoute(
       path: AdminRoutePaths.notificationComposer,

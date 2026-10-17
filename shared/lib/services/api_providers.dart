@@ -38,6 +38,8 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
     _initRestore();
   }
 
+  UserModel? get user => state.currentUser;
+
   Future<void> _initRestore() async {
     final access = await _storage.getAccessToken();
     final refresh = await _storage.getRefreshToken();

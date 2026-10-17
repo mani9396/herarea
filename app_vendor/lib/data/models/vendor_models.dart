@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared/shared.dart';
 
 class VendorProductModel {
   final String id;
@@ -31,7 +32,16 @@ class VendorProductModel {
     this.adminRemarks,
   });
 
+  static String resolveUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    final url = raw.trim();
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    final base = ApiEndpoints.defaultBaseUrl;
+    return url.startsWith('/') ? '$base$url' : '$base/$url';
+  }
+
   factory VendorProductModel.fromJson(Map<String, dynamic> json) {
+    final rawImage = json['image_url'] ?? json['image'];
     return VendorProductModel(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? json['name'] ?? 'Couture Item',
@@ -40,9 +50,9 @@ class VendorProductModel {
       subcategory: json['subcategory'],
       price: (json['price'] != null) ? (num.tryParse(json['price'].toString()) ?? 4500) : 4500,
       isAvailable: (json['stock_status'] != 'OUT_OF_STOCK') && (json['is_active'] ?? true),
-      imageUrl: json['image_url'] ?? json['image'] ?? 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600',
+      imageUrl: resolveUrl(rawImage),
       additionalImages: json['additional_images'] != null
-          ? List<String>.from(json['additional_images'] as Iterable)
+          ? (json['additional_images'] as Iterable).map((e) => resolveUrl(e?.toString())).toList()
           : const [],
       ordersCount: (json['orders_count'] as num?)?.toInt() ?? (json['bookings_count'] as num?)?.toInt() ?? 0,
       description: json['description'] ?? 'Handmade artisan apparel.',

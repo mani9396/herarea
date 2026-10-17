@@ -83,12 +83,22 @@ class OtpSendView(APIView):
                             {"error": "Account exists with a different role. Please use the appropriate app for your account."},
                             status=status.HTTP_403_FORBIDDEN
                         )
+            elif purpose == 'PASSWORD_RESET':
+                existing_user = User.objects.filter(email=identifier).first()
+                if not existing_user:
+                    msg = "No account found with this email address. Please check your email or sign up."
+                    return Response(
+                        {"error": msg, "message": msg},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
 
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
             cache.set(cache_key + '_ts', '1', timeout=60)  # 60-second resend cooldown
 
             logger.info(f"OTP generated for Customer email: {identifier} (role={role})")
+            if settings.DEBUG:
+                logger.info(f"Dev/Email OTP for {identifier}: {otp}")
 
             # Determine customer name based on purpose
             customer_name = "Customer"
@@ -242,15 +252,21 @@ class OtpSendView(APIView):
                     f"OTP email dispatch failed for "
                     f"{identifier}: {exc}"
                 )
-                return Response(
-                    {"error": "Failed to send verification code. Please check your email address or try again later."},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
+                if settings.DEBUG:
+                    logger.warning(f"DEBUG mode active: proceeding with OTP {otp} despite dispatch error: {exc}")
+                else:
+                    return Response(
+                        {"error": "Failed to send verification code. Please check your email address or try again later."},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
 
-            return Response({
+            resp_data = {
                 "message": "Verification code sent to your email address.",
                 "expires_in_seconds": OTP_TTL_SECONDS,
-            }, status=status.HTTP_200_OK)
+            }
+            if settings.DEBUG:
+                resp_data["dev_otp"] = otp
+            return Response(resp_data, status=status.HTTP_200_OK)
 
         else:
             # --- Vendor / Admin phone OTP flow (existing behaviour preserved) ---

@@ -27,3 +27,8 @@ Thumbs.db
 backend/mediafiles/
 mediafiles/
 
+# Firebase Secrets
+*firebase-service-account*.json
+*GoogleService-Info*.plist
+*google-services*.json
+

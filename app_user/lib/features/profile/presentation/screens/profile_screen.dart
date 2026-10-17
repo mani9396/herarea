@@ -21,32 +21,6 @@ class ProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My VIP Dashboard', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w700)),
         centerTitle: true,
-        actions: [
-          Stack(
-            alignment: Alignment.topRight,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, size: 26),
-                tooltip: 'Notifications',
-                onPressed: () => context.push(RoutePaths.notifications),
-              ),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: AppColors.primaryRuby, shape: BoxShape.circle),
-                    child: Text(
-                      '$unreadCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -83,7 +57,13 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               child: CircleAvatar(
                                 radius: 36,
-                                backgroundImage: NetworkImage(profile.avatarUrl),
+                                backgroundColor: Colors.white24,
+                                backgroundImage: profile.avatarUrl.trim().isNotEmpty
+                                    ? NetworkImage(profile.avatarUrl.trim())
+                                    : null,
+                                child: profile.avatarUrl.trim().isEmpty
+                                    ? const Icon(Icons.person_rounded, size: 36, color: Colors.white)
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: AppSpacing.lg),
@@ -180,14 +160,6 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     child: Column(
                       children: [
-                        _buildMenuTile(
-                          context,
-                          icon: Icons.favorite_border_rounded,
-                          title: 'Saved Favorite Stores',
-                          subtitle: '${favIds.length} bookmarked neighborhood studios',
-                          onTap: () => context.push(RoutePaths.favorites),
-                        ),
-                        const Divider(height: 1),
                         _buildMenuTile(
                           context,
                           icon: Icons.notifications_none_rounded,

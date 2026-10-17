@@ -40,7 +40,18 @@ class ProductDetailsScreen extends ConsumerWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(prod.imageUrl, height: 320, fit: BoxFit.cover),
+                  child: Image.network(
+                    prod.imageUrl,
+                    height: 320,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 320,
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: Icon(Icons.broken_image_rounded, size: 56, color: Colors.grey),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(

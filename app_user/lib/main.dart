@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared/constants/app_constants.dart';
 import 'package:her_area/core/routing/app_router.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
-import 'package:shared/theme/app_theme.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:her_area/firebase_options.dart';
+import 'package:shared/shared.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await PushNotificationService().initialize(
+      onNotificationTap: (actionUrl) {
+        if (actionUrl.isNotEmpty) {
+          appRouter.push(actionUrl);
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
   runApp(const ProviderScope(child: HerAreaApp()));
 }
 

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/constants/api_endpoints.dart';
 import 'package:shared/models/user_model.dart';
 import 'package:shared/services/api_client_interface.dart';
 import 'package:shared/services/api_providers.dart';
+import 'package:shared/services/push_notification_service.dart';
 import 'package:shared/exceptions/api_exception.dart';
 
 class AuthApiRepository {
@@ -11,6 +13,9 @@ class AuthApiRepository {
 
   /// Stores the last identifier used (email or phone) for use in OTP verification.
   static String lastAttemptedIdentifier = '';
+
+  /// Stores the last error message returned from authentication endpoints.
+  static String lastErrorMessage = '';
 
   const AuthApiRepository(this._apiClient, this._authNotifier);
 
@@ -23,6 +28,7 @@ class AuthApiRepository {
     if (identifier.isNotEmpty) {
       lastAttemptedIdentifier = identifier;
     }
+    lastErrorMessage = '';
     try {
       final Map<String, dynamic> body;
       if (_isEmail(identifier)) {
@@ -38,10 +44,18 @@ class AuthApiRepository {
         ApiEndpoints.requestOtp,
         body: body,
       );
+      if (response.containsKey('error')) {
+        lastErrorMessage = response['error'].toString();
+        return false;
+      }
       return (response['status_code'] as int? ?? 200) <= 204 ||
           response.containsKey('message') ||
           response.containsKey('expires_in_seconds');
-    } catch (_) {
+    } on ApiException catch (e) {
+      lastErrorMessage = e.message;
+      return false;
+    } catch (e) {
+      lastErrorMessage = e.toString();
       return false;
     }
   }
@@ -142,11 +156,16 @@ class AuthApiRepository {
   /// Verify OTP for a specific purpose (REGISTRATION or PASSWORD_RESET) without returning JWT.
   /// Returns the reset_token if purpose is PASSWORD_RESET, 'true' if REGISTRATION succeeded, or null on failure.
   Future<String?> verifyOtpForPurpose(String email, String otp, String purpose) async {
+    lastErrorMessage = '';
     try {
       final response = await _apiClient.post(
         ApiEndpoints.verifyOtpPurpose,
         body: {'email': email, 'otp': otp, 'purpose': purpose},
       );
+      if (response.containsKey('error')) {
+        lastErrorMessage = response['error'].toString();
+        return null;
+      }
       if (purpose == 'PASSWORD_RESET') {
         return response['reset_token']?.toString();
       }
@@ -154,7 +173,11 @@ class AuthApiRepository {
         return (response['verified'] == true) ? 'true' : null;
       }
       return null;
-    } catch (_) {
+    } on ApiException catch (e) {
+      lastErrorMessage = e.message;
+      return null;
+    } catch (e) {
+      lastErrorMessage = e.toString();
       return null;
     }
   }
@@ -166,6 +189,7 @@ class AuthApiRepository {
     required String password,
     required String confirmPassword,
   }) async {
+    lastErrorMessage = '';
     try {
       final response = await _apiClient.post(
         ApiEndpoints.passwordReset,
@@ -176,8 +200,16 @@ class AuthApiRepository {
           'confirm_password': confirmPassword,
         },
       );
+      if (response.containsKey('error')) {
+        lastErrorMessage = response['error'].toString();
+        return false;
+      }
       return response['success'] == true;
-    } catch (_) {
+    } on ApiException catch (e) {
+      lastErrorMessage = e.message;
+      return false;
+    } catch (e) {
+      lastErrorMessage = e.toString();
       return false;
     }
   }
@@ -217,6 +249,13 @@ class AuthApiRepository {
       } catch (_) {
         // Maintain verified session even if profile fetch has a network delay
       }
+
+      // Register device for push notifications in the background
+      unawaited(PushNotificationService().registerDeviceToken(
+        apiClient: _apiClient,
+        appType: user.role.code,
+      ));
+
       return true;
     }
     return false;
@@ -225,10 +264,18 @@ class AuthApiRepository {
   /// Restore user session credentials from storage
   Future<void> restoreSession() async {
     await _authNotifier.restoreSession(_apiClient);
+    final user = _authNotifier.user;
+    if (user != null) {
+      unawaited(PushNotificationService().registerDeviceToken(
+        apiClient: _apiClient,
+        appType: user.role.code,
+      ));
+    }
   }
 
   /// Revoke tokens on server and completely terminate local session
   Future<void> logout() async {
+    unawaited(PushNotificationService().unregisterDeviceToken(apiClient: _apiClient));
     await _authNotifier.logout(_apiClient);
   }
 

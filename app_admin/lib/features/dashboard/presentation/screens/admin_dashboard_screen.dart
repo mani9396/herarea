@@ -8,8 +8,6 @@ import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 
-import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
-
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -17,7 +15,6 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final analyticsAsync = ref.watch(adminAnalyticsProvider);
     final stats = ref.watch(adminDashboardStatsProvider);
-    final recentActivities = ref.watch(adminActivityLogProvider);
     final adminRevenueAsync = ref.watch(adminRevenueProvider);
 
     return Scaffold(
@@ -273,6 +270,14 @@ class AdminDashboardScreen extends ConsumerWidget {
           Colors.red.shade700,
           () => context.push(AdminRoutePaths.reviewModeration),
         ),
+        _buildPendingCard(
+          context,
+          'Live Stories',
+          '${stats.activeStories}',
+          Icons.auto_stories_rounded,
+          Colors.pink.shade700,
+          () => context.push(AdminRoutePaths.storyModeration),
+        ),
       ],
     );
   }
@@ -407,8 +412,8 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   Widget _buildQuickActionsGrid(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final int crossAxisCount = width < 500 ? 1 : (width < 700 ? 2 : 4);
-    final double aspectRatio = width < 500 ? 3.5 : 2.6;
+    final int crossAxisCount = width < 600 ? 1 : 2;
+    final double aspectRatio = width < 600 ? 3.5 : 2.8;
 
     return GridView.count(
       crossAxisCount: crossAxisCount,
@@ -433,14 +438,6 @@ class AdminDashboardScreen extends ConsumerWidget {
           Icons.category_rounded,
           Colors.indigo.shade700,
           () => context.push(AdminRoutePaths.categories),
-        ),
-        _buildActionShortcut(
-          context,
-          'Export CSV Reports',
-          'Ledgers & vendor audits',
-          Icons.file_download_rounded,
-          Colors.teal.shade700,
-          () => context.push(AdminRoutePaths.reports),
         ),
       ],
     );

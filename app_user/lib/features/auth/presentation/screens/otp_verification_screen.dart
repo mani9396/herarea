@@ -7,10 +7,12 @@ import 'package:shared/shared.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String purpose;
+  final String? email;
 
   const OtpVerificationScreen({
     super.key,
     required this.purpose,
+    this.email,
   });
 
   @override
@@ -24,6 +26,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   bool _isResending = false;
   int _counter = 60;
   Timer? _timer;
+
+  String get _targetEmail {
+    if (widget.email != null && widget.email!.trim().isNotEmpty) {
+      return widget.email!.trim();
+    }
+    final pending = ref.read(pendingRegistrationProvider);
+    if (pending != null && pending.email.trim().isNotEmpty) {
+      return pending.email.trim();
+    }
+    return AuthApiRepository.lastAttemptedIdentifier;
+  }
 
   @override
   void initState() {
@@ -48,13 +61,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     if (otpCode.length < 6) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please enter all 6 digits of the verification code.'), backgroundColor: AppColors.error),
+        const SnackBar(content: Text('Please enter all 6 digits of the verification code.'), backgroundColor: AppColors.error),
       );
       return;
     }
     
-    final email = AuthApiRepository.lastAttemptedIdentifier;
-    final result = await ref.read(authApiRepositoryProvider).verifyOtpForPurpose(email, otpCode, widget.purpose);
+    final targetEmail = _targetEmail;
+    final result = await ref.read(authApiRepositoryProvider).verifyOtpForPurpose(targetEmail, otpCode, widget.purpose);
     
     if (mounted) {
       setState(() => _isLoading = false);
@@ -62,15 +75,23 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         if (widget.purpose == 'REGISTRATION') {
           context.push(RoutePaths.createPassword);
         } else if (widget.purpose == 'PASSWORD_RESET') {
-          context.push(RoutePaths.resetPassword, extra: {'reset_token': result});
+          context.push(RoutePaths.resetPassword, extra: {
+            'reset_token': result,
+            'email': targetEmail,
+          });
         }
       } else {
         // Clear all boxes
         for (var c in _controllers) { c.clear(); }
         if (_focusNodes.isNotEmpty) _focusNodes[0].requestFocus();
+        final err = AuthApiRepository.lastErrorMessage;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid or expired code. Please check your email and try again.'),
+          SnackBar(
+            content: Text(
+              err.isNotEmpty
+                  ? err
+                  : 'Invalid or expired code. Please check your email and try again.',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -80,19 +101,40 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   void _onResend() async {
     if (_isResending) return;
-    final identifier = AuthApiRepository.lastAttemptedIdentifier;
-    if (identifier.isEmpty) return;
+    final targetEmail = _targetEmail;
+    if (targetEmail.isEmpty) return;
     setState(() { _isResending = true; });
-    await ref.read(authApiRepositoryProvider).requestOtp(identifier, role: 'CUSTOMER', purpose: widget.purpose);
+    final success = await ref.read(authApiRepositoryProvider).requestOtp(
+      targetEmail,
+      role: 'CUSTOMER',
+      purpose: widget.purpose,
+    );
     if (mounted) {
       setState(() {
         _isResending = false;
         _counter = 60;
       });
       _startTimer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A new verification code has been sent to your email.'), backgroundColor: AppColors.success),
-      );
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A new verification code has been sent to $targetEmail.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        final err = AuthApiRepository.lastErrorMessage;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              err.isNotEmpty
+                  ? err
+                  : 'Failed to resend code. Please try again.',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -196,7 +238,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                         children: [
                           const TextSpan(text: 'We sent a verification code to your email '),
                           TextSpan(
-                            text: _maskEmail(AuthApiRepository.lastAttemptedIdentifier),
+                            text: _maskEmail(_targetEmail),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: AppColors.primaryRuby,

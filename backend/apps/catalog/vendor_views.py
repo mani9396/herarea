@@ -3,9 +3,10 @@ from rest_framework import status, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
+from django.utils import timezone
 from apps.accounts.permissions import IsVendorRole
-from apps.catalog.models import Product, GalleryImage, Offer
-from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer
+from apps.catalog.models import Product, GalleryImage, Offer, Story, StoryStatus
+from apps.catalog.serializers import ProductSerializer, GalleryImageSerializer, OfferSerializer, StorySerializer, VendorStoryCreateSerializer
 
 logger = logging.getLogger('her_area')
 
@@ -35,11 +36,11 @@ class VendorProductListView(BaseApprovedVendorCatalogView):
     @extend_schema(summary="Create Showroom Product Item", request=ProductSerializer, responses={201: ProductSerializer})
     def post(self, request):
         business = self.get_business_profile(request.user)
-        serializer = ProductSerializer(data=request.data)
+        serializer = ProductSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         product = serializer.save(business_profile=business, created_by=request.user, updated_by=request.user)
         logger.info(f"Product '{product.name}' created by Approved Studio {business.business_name}")
-        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
+        return Response(ProductSerializer(product, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 class VendorProductDetailView(BaseApprovedVendorCatalogView):
@@ -56,7 +57,7 @@ class VendorProductDetailView(BaseApprovedVendorCatalogView):
     @extend_schema(summary="Get Showroom Product Detail", responses={200: ProductSerializer})
     def get(self, request, pk):
         product = self._get_product(request.user, pk)
-        return Response(ProductSerializer(product).data, status=status.HTTP_200_OK)
+        return Response(ProductSerializer(product, context={'request': request}).data, status=status.HTTP_200_OK)
 
     @extend_schema(summary="Update Showroom Product Specification", request=ProductSerializer, responses={200: ProductSerializer})
     def put(self, request, pk):
@@ -66,7 +67,7 @@ class VendorProductDetailView(BaseApprovedVendorCatalogView):
         if product.status in ['PENDING_APPROVAL', 'SUSPENDED', 'HIDDEN']:
             raise exceptions.PermissionDenied(f"Cannot edit product while it is {product.status}.")
 
-        serializer = ProductSerializer(product, data=request.data, partial=True)
+        serializer = ProductSerializer(product, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         
         # Revert to PENDING_APPROVAL if editing an APPROVED product
@@ -77,7 +78,7 @@ class VendorProductDetailView(BaseApprovedVendorCatalogView):
             serializer.save(updated_by=request.user)
             logger.info(f"Product '{product.name}' updated by Studio {request.user.phone_number}")
             
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(ProductSerializer(product, context={'request': request}).data, status=status.HTTP_200_OK)
 
     @extend_schema(summary="Delete Showroom Product (Soft Delete)", responses={204: None})
     def delete(self, request, pk):
@@ -210,3 +211,84 @@ class VendorOfferDetailView(BaseApprovedVendorCatalogView):
         offer = self._get_offer(request.user, pk)
         offer.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class VendorStoryListView(BaseApprovedVendorCatalogView):
+    """
+    Manage episodic 24-hour Stories for the partner boutique.
+    Enforces subscription eligibility and maximum 25 active stories limit.
+    """
+    serializer_class = StorySerializer
+
+    @extend_schema(summary="List Showroom Stories", responses={200: StorySerializer(many=True)})
+    def get(self, request):
+        business = self.get_business_profile(request.user)
+        stories = Story.objects.filter(
+            business_profile=business,
+            is_active=True
+        ).order_by('-published_at')
+        return Response(StorySerializer(stories, many=True).data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Publish Showroom Story", request=VendorStoryCreateSerializer, responses={201: StorySerializer})
+    def post(self, request):
+        business = self.get_business_profile(request.user)
+
+        # 1. Vendor verification & subscription eligibility check
+        vendor_profile = getattr(request.user, 'vendor_profile', None)
+        if not vendor_profile or vendor_profile.status != 'APPROVED':
+            raise exceptions.PermissionDenied("Only approved vendor studios can publish Stories.")
+
+        if not business.is_listing_eligible:
+            raise exceptions.PermissionDenied("An active subscription plan is required to publish Stories.")
+
+        # 2. Check 25-active-Story cap (expired stories do not count toward cap)
+        now = timezone.now()
+        active_stories_count = Story.objects.filter(
+            business_profile=business,
+            is_active=True,
+            status=StoryStatus.ACTIVE,
+            expires_at__gt=now
+        ).count()
+        if active_stories_count >= 25:
+            raise exceptions.ValidationError({
+                "detail": "Maximum limit of 25 active Stories reached. Please delete an active story or wait for existing stories to expire."
+            })
+
+        serializer = VendorStoryCreateSerializer(
+            data=request.data,
+            context={'request': request, 'business_profile': business}
+        )
+        serializer.is_valid(raise_exception=True)
+        story = serializer.save()
+        logger.info(f"Story ({story.story_type}) published by studio {business.business_name}")
+        return Response(StorySerializer(story).data, status=status.HTTP_201_CREATED)
+
+
+class VendorStoryDetailView(BaseApprovedVendorCatalogView):
+    """
+    Inspect or immediately remove a Story from active listings.
+    """
+    serializer_class = StorySerializer
+
+    def _get_story(self, user, pk):
+        business = self.get_business_profile(user)
+        try:
+            return Story.objects.get(pk=pk, business_profile=business)
+        except Story.DoesNotExist:
+            raise exceptions.NotFound("Story not found in your showroom records.")
+
+    @extend_schema(summary="Get Story Details", responses={200: StorySerializer})
+    def get(self, request, pk):
+        story = self._get_story(request.user, pk)
+        return Response(StorySerializer(story).data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Delete Story", responses={204: None})
+    def delete(self, request, pk):
+        story = self._get_story(request.user, pk)
+        # Deleting immediately removes from active listings
+        story.is_active = False
+        story.status = StoryStatus.ARCHIVED
+        story.save()
+        logger.info(f"Story {pk} deleted by studio {request.user.phone_number}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

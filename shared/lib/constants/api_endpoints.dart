@@ -39,12 +39,17 @@ class ApiEndpoints {
   static String vendorProductDetail(String id) => '/api/v1/vendor/catalog/products/$id/';
   static const String vendorGallery = '/api/v1/vendor/catalog/gallery/';
   static const String vendorOffers = '/api/v1/vendor/catalog/offers/';
+  static const String vendorStories = '/api/v1/vendor/catalog/stories/';
+  static String vendorStoryDetail(String id) => '/api/v1/vendor/catalog/stories/$id/';
   static const String vendorStoreReviews = '/api/v1/vendor/store/reviews/';
 
   // 5. Public Showroom & Catalog Discovery (/api/v1/)
   static const String publicStores = '/api/v1/stores/';
   static const String publicStoresNearby = '/api/v1/stores/nearby/';
   static const String publicProducts = '/api/v1/products/';
+  static String publicProductDetail(String id) => '/api/v1/products/$id/';
+  static const String publicStories = '/api/v1/stories/';
+  static String publicStoryDetail(String id) => '/api/v1/stories/$id/';
   static const String publicCategories = '/api/v1/categories/';
   static const String publicPromotions = '/api/v1/promotions/';
   static const String publicBanners = '/api/v1/banners/';
@@ -57,6 +62,8 @@ class ApiEndpoints {
   static const String customerFavorites = '/api/v1/favorites/';
   static const String customerFavoritesToggle = '/api/v1/favorites/toggle/';
   static const String notifications = '/api/v1/notifications/';
+  static const String deviceTokenRegister = '/api/v1/notifications/devices/register/';
+  static const String deviceTokenUnregister = '/api/v1/notifications/devices/unregister/';
 
   // 7. Booking, Orders & Business Operations (Sprint 5)
   static const String customerBookings = '/api/v1/bookings/';
@@ -96,6 +103,9 @@ class ApiEndpoints {
   
   static const String adminGallery = '/api/v1/admin/gallery/';
   static String adminGalleryDetail(String id) => '/api/v1/admin/gallery/$id/';
+  
+  static const String adminStories = '/api/v1/admin/stories/';
+  static String adminStoryDetail(String id) => '/api/v1/admin/stories/$id/';
   
   static const String adminCustomers = '/api/v1/admin/customers/';
   static String adminCustomerDetail(String id) => '/api/v1/admin/customers/$id/';

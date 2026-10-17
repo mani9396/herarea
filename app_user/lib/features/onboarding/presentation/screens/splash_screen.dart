@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/shared.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:her_area/features/auth/presentation/widgets/auth_ui_components.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -120,10 +121,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Luxury Brand Background (Ruby to Obsidian Deep Gradient)
+          // 1. Luxury Brand Background (Matches Login Screen Pink-to-Magenta Gradient)
           Container(
             decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
+              gradient: AuthTokens.backgroundGradient,
             ),
           ),
 
@@ -138,7 +139,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.accentGold.withValues(alpha: 0.15),
+                    Colors.white.withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -155,7 +156,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primaryRubyLight.withValues(alpha: 0.25),
+                    AuthTokens.deepMagenta.withValues(alpha: 0.35),
                     Colors.transparent,
                   ],
                 ),
@@ -163,36 +164,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
             ),
           ),
 
-          // 3. Central Local Discovery Radar / Pulsing Ripple Rings
-          Center(
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return Stack(
-                  alignment: Alignment.center,
-                  children: List.generate(3, (index) {
-                    final delayedValue = (_pulseController.value + (index * 0.33)) % 1.0;
-                    final ringSize = 140.0 + (delayedValue * 180.0);
-                    final ringOpacity = (1.0 - delayedValue) * 0.25;
-
-                    return Container(
-                      width: ringSize,
-                      height: ringSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.accentGold.withValues(alpha: ringOpacity),
-                          width: 1.5,
-                        ),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-
-          // 4. Staged Main Content
+          // 3. Staged Main Content
           SafeArea(
             child: Center(
               child: AnimatedBuilder(
@@ -208,7 +180,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                       children: [
                         const SizedBox(height: 24),
 
-                        // Animated Luxury Emblem
+                        // Animated Luxury Emblem with White HER AREA Logo
                         Opacity(
                           opacity: _emblemOpacity.value,
                           child: Transform.scale(
@@ -244,17 +216,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                 ),
                                 const SizedBox(height: 12),
 
-                                // Expanding Gold Accent Divider
+                                // Expanding White Accent Divider
                                 Container(
                                   width: 80 * _lineExpansion.value,
                                   height: 3,
                                   decoration: BoxDecoration(
-                                    gradient: AppColors.goldGradient,
+                                    color: Colors.white,
                                     borderRadius: BorderRadius.circular(2),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.accentGold.withValues(alpha: 0.5),
-                                        blurRadius: 6,
+                                        color: Colors.white.withValues(alpha: 0.5),
+                                        blurRadius: 8,
                                       ),
                                     ],
                                   ),
@@ -277,7 +249,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                 fontFamily: AppTypography.bodyFont,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.surfaceVariantLight,
+                                color: Colors.white70,
                                 letterSpacing: 0.8,
                               ),
                             ),
@@ -294,19 +266,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 420),
                               child: Container(
-                                padding: const EdgeInsets.all(18),
+                                padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: AppColors.surfaceVariantDark.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.black.withValues(alpha: 0.28),
+                                  borderRadius: BorderRadius.circular(22),
                                   border: Border.all(
-                                    color: AppColors.accentGold.withValues(alpha: 0.4),
+                                    color: Colors.white.withValues(alpha: 0.22),
                                     width: 1,
                                   ),
                                   boxShadow: const [
                                     BoxShadow(
-                                      color: Colors.black38,
-                                      blurRadius: 16,
-                                      offset: Offset(0, 6),
+                                      color: Colors.black26,
+                                      blurRadius: 18,
+                                      offset: Offset(0, 8),
                                     ),
                                   ],
                                 ),
@@ -324,44 +296,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                               child: const Icon(
                                                 Icons.auto_awesome,
                                                 size: 16,
-                                                color: AppColors.accentGold,
+                                                color: Color(0xFFFFB2D1),
                                               ),
                                             );
                                           },
                                         ),
                                         const SizedBox(width: 8),
-                                        Expanded(
+                                        const Expanded(
                                           child: Text(
                                             'LIVE DISCOVERY ENGINE',
                                             style: TextStyle(
                                               fontFamily: AppTypography.bodyFont,
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.accentGoldLight,
+                                              color: Color(0xFFFFD4E5),
                                               letterSpacing: 1.2,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primaryRubyDark,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: AppColors.accentGold.withValues(alpha: 0.4),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'PRODUCTION MODE',
-                                            style: TextStyle(
-                                              fontFamily: AppTypography.bodyFont,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.surfaceVariantLight,
-                                              letterSpacing: 0.8,
-                                            ),
                                           ),
                                         ),
                                       ],
@@ -385,8 +337,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                       borderRadius: BorderRadius.circular(6),
                                       child: LinearProgressIndicator(
                                         value: _progressValue.value,
-                                        backgroundColor: Colors.white.withValues(alpha: 0.1),
-                                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentGold),
+                                        backgroundColor: Colors.white.withValues(alpha: 0.15),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF8AB8)),
                                         minHeight: 5,
                                       ),
                                     ),
@@ -399,7 +351,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                           style: TextStyle(
                                             fontFamily: AppTypography.bodyFont,
                                             fontSize: 11,
-                                            color: Colors.white.withValues(alpha: 0.6),
+                                            color: Colors.white.withValues(alpha: 0.75),
                                           ),
                                         ),
                                         Text(
@@ -407,7 +359,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
                                           style: TextStyle(
                                             fontFamily: AppTypography.bodyFont,
                                             fontSize: 11,
-                                            color: Colors.white.withValues(alpha: 0.6),
+                                            color: Colors.white.withValues(alpha: 0.75),
                                           ),
                                         ),
                                       ],
@@ -432,86 +384,89 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with TickerProvider
   }
 
   Widget _buildLuxuryEmblem() {
-    return Container(
-      width: 124,
-      height: 124,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accentGold.withValues(alpha: 0.35),
-            blurRadius: 32,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Shimmering Gold Border Ring
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.goldGradient,
-              shape: BoxShape.circle,
-            ),
-          ),
-          // Inner Deep Ruby Medallion
-          Container(
-            width: 116,
-            height: 116,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryRubyDark,
-              shape: BoxShape.circle,
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Inner Subtle Gold Accent Circle
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.accentGold.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final auraOpacity = 0.22 + (math.sin(_pulseController.value * math.pi) * 0.14);
+        final auraScale = 1.0 + (_pulseController.value * 0.08);
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // 1. Soft breathing luminous aura behind emblem
+            Transform.scale(
+              scale: auraScale,
+              child: Container(
+                width: 154,
+                height: 154,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: auraOpacity),
+                      AuthTokens.brandPink.withValues(alpha: auraOpacity * 0.5),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.52, 1.0],
                   ),
                 ),
-                // Crown / Diamond Iconography
-                const Icon(
-                  Icons.diamond_rounded,
-                  size: 56,
-                  color: AppColors.surfaceLight,
-                ),
-                Positioned(
-                  top: 26,
-                  right: 28,
-                  child: AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: 0.5 + (_pulseController.value * 0.5),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          size: 16,
-                          color: AppColors.accentGoldLight,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+
+            // 2. Luxury Frosted Squircle Tile (Matches Mobile App Badges)
+            Container(
+              width: 114,
+              height: 114,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.24),
+                    Colors.black.withValues(alpha: 0.20),
+                    Colors.black.withValues(alpha: 0.32),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.38),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.30),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: AuthTokens.brandPink.withValues(alpha: 0.35),
+                    blurRadius: 28,
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    blurRadius: 12,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Image.asset(
+                'assets/images/her_area_logo_white.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/images/her_area_logo.png',
+                    fit: BoxFit.contain,
+                    color: Colors.white,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

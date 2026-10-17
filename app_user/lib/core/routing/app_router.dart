@@ -15,6 +15,7 @@ import 'package:her_area/features/home/presentation/screens/home_dashboard_scree
 import 'package:her_area/features/discovery/presentation/screens/categories_screen.dart';
 import 'package:her_area/features/discovery/presentation/screens/nearby_stores_screen.dart';
 import 'package:her_area/features/store/presentation/screens/store_details_screen.dart';
+import 'package:her_area/features/store/presentation/screens/customer_product_detail_screen.dart';
 import 'package:her_area/features/search/presentation/screens/search_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/profile_screen.dart';
 import 'package:her_area/features/profile/presentation/screens/favorites_screen.dart';
@@ -75,15 +76,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: RoutePaths.resetPassword, 
       builder: (context, state) {
-        final resetToken = (state.extra as Map<String, dynamic>?)?['reset_token'] as String? ?? '';
-        return ResetPasswordScreen(resetToken: resetToken);
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final resetToken = extra['reset_token'] as String? ?? '';
+        final email = extra['email'] as String? ?? '';
+        return ResetPasswordScreen(resetToken: resetToken, email: email);
       }
     ),
     GoRoute(
       path: RoutePaths.otpVerification, 
       builder: (context, state) {
-        final purpose = (state.extra as Map<String, dynamic>?)?['purpose'] as String? ?? 'LOGIN';
-        return OtpVerificationScreen(purpose: purpose);
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final purpose = extra['purpose'] as String? ?? 'LOGIN';
+        final email = extra['email'] as String? ?? '';
+        return OtpVerificationScreen(purpose: purpose, email: email);
       }
     ),
     GoRoute(path: RoutePaths.createPassword, builder: (context, state) => const CreatePasswordScreen()),
@@ -104,6 +109,13 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? 'store_1';
         return StoreDetailsScreen(storeId: id);
+      },
+    ),
+    GoRoute(
+      path: RoutePaths.productDetails,
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return CustomerProductDetailScreen(productId: id);
       },
     ),
     GoRoute(

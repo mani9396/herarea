@@ -195,26 +195,16 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('₹${(vendor.totalRevenue / 1000).toStringAsFixed(1)}k GMV', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.primaryRuby)),
-                  const SizedBox(height: 4),
-                  Text('⭐ ${vendor.rating} (${vendor.totalProducts} items)', style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _showChatControlsDialog(context, ref, vendor),
-                    icon: const Icon(Icons.admin_panel_settings_rounded, size: 16),
-                    label: const Text('Chat Controls'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryRuby,
-                      side: const BorderSide(color: AppColors.primaryRuby),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      minimumSize: const Size(0, 32),
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () => _showChatControlsDialog(context, ref, vendor),
+                icon: const Icon(Icons.admin_panel_settings_rounded, size: 16),
+                label: const Text('Chat Controls'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryRuby,
+                  side: const BorderSide(color: AppColors.primaryRuby),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  minimumSize: const Size(0, 36),
+                ),
               ),
               const SizedBox(width: 8),
               const Icon(Icons.chevron_right_rounded, color: Colors.grey),
@@ -243,7 +233,8 @@ class _VendorListScreenState extends ConsumerState<VendorListScreen> {
                   children: [
                     Text('Vendor: ${vendor.storeName}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     Text('Owner: ${vendor.ownerName}'),
-                    Text('Email: ${vendor.email}'),
+                    if (vendor.email.isNotEmpty)
+                      Text('Email: ${vendor.email}'),
                     const SizedBox(height: 24),
                     const Text('Select Chat Status:', style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
+import 'package:her_area/features/auth/presentation/widgets/auth_ui_components.dart';
 import 'package:shared/shared.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -57,21 +58,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           final isWide = constraints.maxWidth >= 900;
 
           if (isWide) {
-            // Production Two-Column Desktop/Web Split Layout
+            // Usable Desktop Flutter Web Layout
             return Row(
               children: [
                 Expanded(
                   flex: 5,
-                  child: _buildBrandShowcasePanel(isDark),
+                  child: _buildDesktopBrandPanel(),
                 ),
                 Expanded(
                   flex: 6,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-                        child: _buildLoginForm(isDark),
+                  child: Container(
+                    color: isDark ? const Color(0xFF190F14) : const Color(0xFFFFF7F9),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                          child: AuthFormCard(
+                            child: _buildLoginForm(isDark),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -80,16 +86,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           }
 
-          // Single Column Mobile/Tablet Layout
-          return SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xl),
-                  child: _buildLoginForm(isDark),
+          // Mobile-First Pink Gradient Layout inspired by Reference Image 1
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: AuthTokens.backgroundGradient,
+            ),
+            child: Stack(
+              children: [
+                const AuthBackgroundDecoration(),
+                SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 12),
+                            // Prominent official HER AREA logo and header
+                            const AuthBrandHeader(),
+                            const SizedBox(height: 24),
+
+                            // Mobile Feature Pills
+                            const AuthFeatureBadgesRow(),
+                            const SizedBox(height: 28),
+
+                            // Clean White / Light-Pink Form Card
+                            AuthFormCard(
+                              child: _buildLoginForm(isDark),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -103,56 +138,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSpacing.md),
-          // Luxury Hero Medallion
-          Semantics(
-            label: 'HER AREA Diamond Emblem',
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.5), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryRuby.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'Welcome Back',
+                  style: TextStyle(
+                    fontFamily: AppTypography.displayFont,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
+                    letterSpacing: -0.3,
                   ),
-                ],
+                ),
               ),
-              child: const Icon(
-                Icons.diamond_rounded,
-                color: AppColors.primaryRuby,
-                size: 36,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AuthTokens.brandPink.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Member',
+                  style: TextStyle(
+                    fontFamily: AppTypography.bodyFont,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AuthTokens.brandMagenta,
+                  ),
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Sign in to access your local boutiques, private trial suites, and artisan chat.',
+            style: TextStyle(
+              fontFamily: AppTypography.bodyFont,
+              fontSize: 13,
+              color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: 20),
 
-          Text(
-            'Welcome to HER AREA',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontFamily: AppTypography.displayFont,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Discover curated saree boutiques, master maggam artisans, and private bridal studios across your neighborhood.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
-                  height: 1.5,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-
-          // Email Input
-          CustomTextField(
+          // Email Input Field
+          AuthTextField(
             label: 'Email Address',
             hintText: 'Enter your registered email',
-            helperText: 'We will send a 6-digit verification code to this email.',
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             prefixIcon: Icons.email_outlined,
@@ -167,10 +201,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               return null;
             },
           ),
-          const SizedBox(height: AppSpacing.md),
 
-          // Password Input
-          CustomTextField(
+          // Password Input Field with Visibility Toggle
+          AuthTextField(
             label: 'Password',
             hintText: 'Enter your password',
             controller: _passwordController,
@@ -183,55 +216,78 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               return null;
             },
           ),
-          const SizedBox(height: AppSpacing.sm),
 
+          // Forgot Password Link
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => context.push(RoutePaths.forgotPassword),
               style: TextButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                minimumSize: const Size(48, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               ),
               child: const Text(
                 'Forgot Password / Recovery?',
                 style: TextStyle(
                   fontFamily: AppTypography.bodyFont,
-                  color: AppColors.primaryRuby,
+                  color: AuthTokens.brandMagenta,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-          if (_errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  color: AppColors.error,
                   fontSize: 13,
                 ),
               ),
             ),
-          const SizedBox(height: AppSpacing.lg),
+          ),
 
-          CustomButton(
+          // Validation & API Error Message Display
+          if (_errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        fontFamily: AppTypography.bodyFont,
+                        color: AppColors.error,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 8),
+
+          // Prominent Magenta Sign In Button
+          AuthPrimaryButton(
             label: 'Sign In',
-            icon: Icons.login_rounded,
+            icon: Icons.arrow_forward_rounded,
             isLoading: _isLoading,
             onPressed: _onLogin,
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: 24),
 
           // Divider Section
           Row(
             children: [
-              Expanded(child: Divider(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
+              Expanded(
+                child: Divider(
+                  color: isDark ? const Color(0xFF452B35) : const Color(0xFFECD5DE),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text(
                   'NEW TO HER AREA?',
                   style: TextStyle(
@@ -239,31 +295,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
-                    color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
+                    color: isDark ? AppColors.textDisabledDark : const Color(0xFFA68D96),
                   ),
                 ),
               ),
-              Expanded(child: Divider(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
+              Expanded(
+                child: Divider(
+                  color: isDark ? const Color(0xFF452B35) : const Color(0xFFECD5DE),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 18),
 
-          CustomButton(
+          // Create New Member Account Button
+          AuthPrimaryButton(
             label: 'Create New Member Account',
-            variant: ButtonVariant.outline,
+            isSecondary: true,
             icon: Icons.person_add_outlined,
             onPressed: () => context.push(RoutePaths.signup),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: 18),
 
           Center(
             child: Text(
-              'By signing in, you agree to our Terms of Service & Local Vendor Policy.',
+              'By signing in, you agree to our Terms of Service & Privacy Policy.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppTypography.bodyFont,
                 fontSize: 11,
-                color: isDark ? AppColors.textDisabledDark : AppColors.textDisabledLight,
+                color: isDark ? AppColors.textDisabledDark : const Color(0xFF9E8790),
               ),
             ),
           ),
@@ -272,114 +333,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildBrandShowcasePanel(bool isDark) {
+  Widget _buildDesktopBrandPanel() {
     return Container(
       decoration: const BoxDecoration(
-        gradient: AppColors.primaryGradient,
+        gradient: AuthTokens.backgroundGradient,
       ),
       child: Stack(
         children: [
-          // Background ambient rings
-          Positioned(
-            right: -100,
-            bottom: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.15), width: 2),
-              ),
-            ),
-          ),
-
+          const AuthBackgroundDecoration(),
           Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.accentGold.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppColors.accentGold, width: 1.2),
-                ),
-                child: Row(
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.verified_rounded, color: AppColors.accentGoldLight, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      'VERIFIED LOCAL O2O PLATFORM',
-                      style: TextStyle(
-                        fontFamily: AppTypography.bodyFont,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.accentGoldLight,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: const [
+                    AuthBrandHeader(),
+                    SizedBox(height: 36),
+                    AuthFeatureBadgesRow(),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
-              const Text(
-                'Curated Elegance,\nTailored Locally.',
-                style: TextStyle(
-                  fontFamily: AppTypography.displayFont,
-                  fontSize: 42,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.15,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                "Connect directly with trusted maggam specialists, bespoke wedding couturiers, and heirloom jewelers in your exact locality.",
-                style: TextStyle(
-                  fontFamily: AppTypography.bodyFont,
-                  fontSize: 16,
-                  color: AppColors.surfaceVariantLight.withValues(alpha: 0.9),
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 36),
-              _buildFeatureBadge(Icons.radar_rounded, 'Exact Radius Search'),
-              const SizedBox(height: 16),
-              _buildFeatureBadge(Icons.event_seat_rounded, 'Private Trial Suites'),
-              const SizedBox(height: 16),
-              _buildFeatureBadge(Icons.verified_user_outlined, '100% Verified Boutiques'),
-              const SizedBox(height: 16),
-              _buildFeatureBadge(Icons.chat_bubble_outline_rounded, 'Direct Artisan Chat'),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
-  }
-
-  Widget _buildFeatureBadge(IconData icon, String title) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: AppColors.accentGoldLight, size: 18),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontFamily: AppTypography.bodyFont,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -41,6 +41,8 @@ class RoutePaths {
 
   // Store Portfolio & Interaction Deep-Links
   static const String storeDetails = '/store-details/:id';
+  static const String productDetails = '/product-details/:id';
 
   static String buildStoreDetailsPath(String storeId) => '/store-details/$storeId';
+  static String buildProductDetailsPath(String productId) => '/product-details/$productId';
 }
