@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:her_area/firebase_options.dart';
 import 'package:shared/shared.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+import 'package:her_area/core/routing/route_paths.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -13,9 +16,28 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await PushNotificationService().initialize(
-      onNotificationTap: (actionUrl) {
-        if (actionUrl.isNotEmpty) {
-          appRouter.push(actionUrl);
+      onNotificationTap: (actionUrl) async {
+        final url = actionUrl.trim();
+        if (url.isEmpty || url == '/' || url == RoutePaths.splash) {
+          appRouter.go(RoutePaths.home);
+          return;
+        }
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          final uri = Uri.tryParse(url);
+          if (uri != null && await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+          return;
+        }
+        if (url == RoutePaths.home ||
+            url == RoutePaths.categories ||
+            url == RoutePaths.nearby ||
+            url == RoutePaths.games ||
+            url == RoutePaths.messages ||
+            url == RoutePaths.profile) {
+          appRouter.go(url);
+        } else {
+          appRouter.push(url);
         }
       },
     );

@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from apps.accounts.views import (
+    LoginView,
     CustomerLoginView,
     OtpSendView,
     OtpVerifyView,
@@ -14,6 +15,7 @@ from apps.accounts.views import (
     AdminRoleVerificationView,
     SuperAdminRoleVerificationView,
     VendorForcePasswordChangeView,
+    RoleAwareTokenRefreshView,
 )
 
 urlpatterns = [
@@ -22,14 +24,14 @@ urlpatterns = [
     path('otp/verify/', OtpVerifyView.as_view(), name='auth-otp-verify'),
     
     # New Email + Password Flows
-    path('login/', CustomerLoginView.as_view(), name='auth-customer-login'),
+    path('login/', LoginView.as_view(), name='auth-customer-login'),
     path('otp/verify-purpose/', OtpVerifyForPurposeView.as_view(), name='auth-otp-verify-purpose'),
     path('register/', CustomerRegisterCompleteView.as_view(), name='auth-customer-register'),
     path('password-reset/', PasswordResetCompleteView.as_view(), name='auth-password-reset'),
     
     path('vendor/force-password-change/', VendorForcePasswordChangeView.as_view(), name='auth-vendor-force-password-change'),
     
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('token/refresh/', RoleAwareTokenRefreshView.as_view(), name='token-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),
     path('me/', UserProfileView.as_view(), name='auth-me'),
 

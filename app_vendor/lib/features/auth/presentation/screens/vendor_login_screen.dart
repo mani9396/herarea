@@ -37,7 +37,10 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
         context.go(VendorRoutePaths.dashboard);
       }
     } else {
-      setState(() => _errorMessage = 'Authentication failed. Please check your credentials.');
+      final err = AuthApiRepository.lastErrorMessage;
+      setState(() => _errorMessage = (err.isNotEmpty && !err.toLowerCase().contains('unexpected network'))
+          ? err
+          : 'Authentication failed. Please check your credentials.');
     }
   }
 
@@ -45,6 +48,14 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.go(VendorRoutePaths.welcome),
+        ),
+      ),
       body: ResponsiveLayout(
         mobile: _buildContent(context),
         tablet: Center(
@@ -133,17 +144,17 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
           const SizedBox(height: AppSpacing.lg),
           Text('Partner Portal Login', style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: AppSpacing.xs),
-          Text('Enter your registered email and password to access your O2O dashboard.', style: textTheme.bodyMedium?.copyWith(color: AppColors.neutralCharcoal.withValues(alpha: 0.6))),
+          Text('Enter your registered email or mobile number and password to access your O2O dashboard.', style: textTheme.bodyMedium?.copyWith(color: AppColors.neutralCharcoal.withValues(alpha: 0.6))),
           const SizedBox(height: AppSpacing.xl),
           if (_errorMessage != null) ...[
             ErrorView(title: 'Authentication Error', message: _errorMessage!, onRetry: null),
             const SizedBox(height: AppSpacing.md),
           ],
           CustomTextField(
-            label: 'Business Email / Mobile Number',
+            label: 'Email or Mobile Number',
             hintText: 'Enter email or mobile number',
             controller: _identifierController,
-            keyboardType: TextInputType.emailAddress,
+            keyboardType: TextInputType.text,
           ),
           const SizedBox(height: AppSpacing.md),
           CustomTextField(
@@ -155,8 +166,8 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => context.push(VendorRoutePaths.forgotPassword),
-              child: const Text('Forgot PIN?', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600)),
+              onPressed: () => context.go(VendorRoutePaths.forgotPassword),
+              child: const Text('Forgot Password?', style: TextStyle(color: AppColors.primaryRuby, fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -171,7 +182,7 @@ class _VendorLoginScreenState extends ConsumerState<VendorLoginScreen> {
             children: [
               Text("New artisan or boutique? ", style: textTheme.bodyMedium),
               InkWell(
-                onTap: () => context.push(VendorRoutePaths.signup),
+                onTap: () => context.go(VendorRoutePaths.signup),
                 child: Text("Register Business", style: textTheme.bodyMedium?.copyWith(color: AppColors.primaryRuby, fontWeight: FontWeight.bold)),
               ),
             ],

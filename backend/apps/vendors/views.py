@@ -17,6 +17,60 @@ from apps.vendors.permissions import IsApprovedVendor
 logger = logging.getLogger('her_area')
 
 
+class VendorRegistrationView(APIView):
+    """
+    Step 1 of Vendor Onboarding: Submit studio owner legal profile, initial business showroom details, 
+    address, and operation timings. Transitions studio status to PENDING review.
+    """
+    permission_classes = [IsVendorRole]
+
+    @extend_schema(
+        summary="Submit Partner Studio Onboarding Application",
+        description="Register legal identity and business showroom coordinates. Transitions account state to PENDING review.",
+        request=VendorOnboardingRegistrationSerializer,
+        responses={201: VendorProfileSerializer, 400: OpenApiResponse(description="Onboarding application already submitted.")}
+    )
+    def post(self, request):
+        if hasattr(request.user, 'vendor_profile') and request.user.vendor_profile:
+            raise exceptions.ValidationError(
+                f"Vendor onboarding registration already submitted. Current status: {request.user.vendor_profile.get_status_display()}."
+            )
+
+        serializer = VendorOnboardingRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            vendor = VendorProfile.objects.create(
+                user=request.user,
+                owner_name=data['owner_name'],
+                official_email=data['official_email'],
+                phone_number=data['phone_number'],
+                status=VendorStatus.PENDING,
+                created_by=request.user,
+                updated_by=request.user
+            )
+
+            BusinessProfile.objects.create(
+                vendor=vendor,
+                business_name=data['business_name'],
+                description=data.get('description', ''),
+                address_line_1=data['address_line_1'],
+                address_line_2=data.get('address_line_2', ''),
+                area=data.get('area') or data.get('city', ''),
+                city=data['city'],
+                state=data['state'],
+                postal_code=data.get('postal_code') or data.get('pincode', '500001'),
+                contact_email=data['contact_email'],
+                contact_phone=data['contact_phone'],
+                business_timings=data.get('business_timings', {}),
+                created_by=request.user,
+                updated_by=request.user
+            )
+
+        logger.info(f"Vendor Studio Onboarding submitted by {data['owner_name']} ({request.user.phone_number})")
+        response_serializer = VendorProfileSerializer(vendor)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class VendorProfileMeView(APIView):
@@ -104,20 +158,37 @@ class VendorSelfRegistrationView(APIView):
         responses={201: OpenApiResponse(description="Vendor registered successfully.")}
     )
     def post(self, request):
-        from apps.accounts.models import User, UserRole # Local import to avoid circular imports if any, or just import here
+        from apps.accounts.models import User, UserRole
+        from apps.accounts.utils import normalize_email, normalize_phone_number, get_phone_candidates
         from apps.vendors.serializers import VendorSelfRegistrationSerializer
         
         serializer = VendorSelfRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        email = data['email'].lower()
-        if User.objects.filter(email=email).exists():
+        email = normalize_email(data['email'])
+        phone = normalize_phone_number(data['phone_number'])
+        phone_candidates = get_phone_candidates(phone, raw_input=data['phone_number'])
+        otp = data['otp'].strip()
+
+        from apps.accounts.views import _make_otp_cache_key
+        from django.core.cache import cache
+
+        cache_key = _make_otp_cache_key(email)
+        cached_otp = cache.get(cache_key)
+
+        if not cached_otp or cached_otp != otp:
+            raise exceptions.ValidationError({"otp": ["Invalid or expired verification code. Please request a new code."]})
+
+        if User.objects.filter(email__iexact=email).exists() or VendorProfile.objects.filter(official_email__iexact=email).exists():
             raise exceptions.ValidationError({"email": ["A user with this email already exists."]})
             
-        phone = data['phone_number']
-        if User.objects.filter(phone_number=phone).exists():
+        if User.objects.filter(phone_number__in=phone_candidates).exists() or VendorProfile.objects.filter(phone_number__in=phone_candidates).exists():
             raise exceptions.ValidationError({"phone_number": ["A user with this phone number already exists."]})
+
+        # Invalidate OTP on successful verification
+        cache.delete(cache_key)
+        cache.delete(cache_key + '_ts')
 
         with transaction.atomic():
             user = User.objects.create(
@@ -126,7 +197,7 @@ class VendorSelfRegistrationView(APIView):
                 full_name=data['owner_name'],
                 role=UserRole.VENDOR,
                 is_active=True,
-                is_verified=False, # Wait, let's keep is_verified true for now or false, the prompt says no SMS OTP, so let's set is_verified=True or we might need email verification later.
+                is_verified=True,
                 must_change_password=False,
             )
             user.set_password(data['password'])
@@ -142,10 +213,7 @@ class VendorSelfRegistrationView(APIView):
                 updated_by=user
             )
 
-            # BusinessProfile creation is deferred until the Vendor completes
-            # the onboarding flow from the frontend via POST /api/v1/business/me/
-
-        logger.info(f"Vendor self-registered: {email}")
+        logger.info(f"Vendor self-registered: {email} ({phone})")
         
         return Response({
             "message": "Vendor registered successfully. Awaiting approval."

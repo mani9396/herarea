@@ -89,10 +89,26 @@ def _validate_password_strength(value):
     return value
 
 
-class CustomerLoginSerializer(serializers.Serializer):
-    """Email + password login for Customer accounts."""
-    email = serializers.EmailField(help_text="Registered customer email address")
+class LoginSerializer(serializers.Serializer):
+    """
+    Unified identifier (email or mobile number) + password login schema.
+    Supports email, identifier, or phone_number parameter names.
+    """
+    identifier = serializers.CharField(required=False, allow_blank=True, help_text="Registered email address or mobile number")
+    email = serializers.CharField(required=False, allow_blank=True, help_text="Registered email address or mobile number")
+    phone_number = serializers.CharField(required=False, allow_blank=True, help_text="Registered mobile number")
     password = serializers.CharField(write_only=True, help_text="Account password")
+    role = serializers.ChoiceField(choices=UserRole.choices, default=UserRole.CUSTOMER, required=False)
+
+    def validate(self, data):
+        raw_id = data.get('identifier') or data.get('email') or data.get('phone_number')
+        if not raw_id or not str(raw_id).strip():
+            raise serializers.ValidationError({"identifier": "Email or Mobile Number is required."})
+        data['raw_identifier'] = str(raw_id).strip()
+        return data
+
+
+CustomerLoginSerializer = LoginSerializer
 
 
 class CustomerRegisterCompleteSerializer(serializers.Serializer):

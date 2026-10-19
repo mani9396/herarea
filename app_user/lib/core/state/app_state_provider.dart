@@ -215,6 +215,8 @@ class NotificationItemModel {
   final String message;
   final String timeText;
   final bool isRead;
+  final String? actionUrl;
+  final String? category;
   final IconData iconData;
 
   NotificationItemModel({
@@ -223,6 +225,8 @@ class NotificationItemModel {
     required this.message,
     required this.timeText,
     required this.isRead,
+    this.actionUrl,
+    this.category,
     required this.iconData,
   });
 
@@ -233,6 +237,8 @@ class NotificationItemModel {
       message: message,
       timeText: timeText,
       isRead: isRead ?? this.isRead,
+      actionUrl: actionUrl,
+      category: category,
       iconData: iconData,
     );
   }
@@ -253,13 +259,27 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItemModel>> {
       final data = await _repository.getNotifications();
       if (data.isNotEmpty) {
         state = data.map((map) {
+          final cat = (map['category'] ?? map['notification_type'])?.toString().toUpperCase() ?? 'GENERAL';
+          IconData icon = Icons.notifications_active_rounded;
+          if (cat.contains('OFFER') || cat.contains('PROMO')) {
+            icon = Icons.local_offer_rounded;
+          } else if (cat.contains('ORDER') || cat.contains('BOOKING')) {
+            icon = Icons.shopping_bag_rounded;
+          } else if (cat.contains('CHAT')) {
+            icon = Icons.chat_bubble_rounded;
+          }
+
           return NotificationItemModel(
             id: map['id']?.toString() ?? '',
             title: map['title'] ?? 'Platform Notification',
             message: map['message'] ?? map['content'] ?? '',
-            timeText: map['created_at']?.toString().substring(0, 10) ?? 'Recent',
+            timeText: map['created_at'] != null && map['created_at'].toString().length >= 10
+                ? map['created_at'].toString().substring(0, 10)
+                : 'Recent',
             isRead: map['is_read'] as bool? ?? false,
-            iconData: Icons.notifications_active_rounded,
+            actionUrl: map['action_url']?.toString(),
+            category: cat,
+            iconData: icon,
           );
         }).toList();
         _isLoading = false;
@@ -279,11 +299,13 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItemModel>> {
     await _repository.markNotificationRead(id);
   }
 
-  void removeNotification(String id) {
+  Future<void> removeNotification(String id) async {
     state = state.where((item) => item.id != id).toList();
+    await _repository.deleteNotification(id);
   }
 
-  void clearAll() {
+  Future<void> clearAll() async {
     state = [];
+    await _repository.clearAllNotifications();
   }
 }
