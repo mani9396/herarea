@@ -50,7 +50,7 @@ class VendorWelcomeScreen extends StatelessWidget {
                       CustomButton(
                         label: 'Get Started — Register Studio ✨',
                         variant: ButtonVariant.primary,
-                        onPressed: () => context.push(VendorRoutePaths.signup),
+                        onPressed: () => context.go(VendorRoutePaths.signup),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       ElevatedButton(
@@ -61,7 +61,7 @@ class VendorWelcomeScreen extends StatelessWidget {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25), side: const BorderSide(color: AppColors.accentGold)),
                           elevation: 0,
                         ),
-                        onPressed: () => context.push(VendorRoutePaths.login),
+                        onPressed: () => context.go(VendorRoutePaths.login),
                         child: const Text('Existing Partner? Login Here', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                       const SizedBox(height: AppSpacing.lg),

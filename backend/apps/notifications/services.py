@@ -181,12 +181,23 @@ class NotificationEngine:
                         f"{promotion.title}{subtitle_part}. Tap to explore now!"
                     )
 
+                    action_url = "/home"
+                    if promotion.promotion_type == 'APP':
+                        if promotion.internal_destination_type == 'STORE' and promotion.internal_destination_id:
+                            action_url = f"/store-details/{promotion.internal_destination_id}"
+                        elif promotion.internal_destination_type == 'CATEGORY':
+                            action_url = "/categories"
+                        elif promotion.internal_destination_type == 'OFFER':
+                            action_url = "/home"
+                    elif promotion.promotion_type == 'EXTERNAL' and promotion.external_url:
+                        action_url = promotion.external_url
+
                     cls.send_notification(
                         recipient=customer,
                         title=title,
                         message=message,
                         notification_type=NotificationType.PROMOTION,
-                        action_url="/",
+                        action_url=action_url,
                         extra_data={
                             'promotion_id': str(promotion.id),
                             'promotion_title': str(promotion.title),

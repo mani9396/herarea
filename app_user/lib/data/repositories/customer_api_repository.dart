@@ -340,9 +340,18 @@ class CustomerApiRepository implements IStoreRepository {
   Future<List<Map<String, dynamic>>> getNotifications() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.notifications);
-      if (response['results'] is List) {
-        final list = response['results'] as List;
-        return list.map((e) => e as Map<String, dynamic>).toList();
+      if (response is List) {
+        return (response as List).map((e) => e as Map<String, dynamic>).toList();
+      }
+      if (response is Map<String, dynamic>) {
+        if (response['results'] is List) {
+          final list = response['results'] as List;
+          return list.map((e) => e as Map<String, dynamic>).toList();
+        }
+        if (response['data'] is List) {
+          final list = response['data'] as List;
+          return list.map((e) => e as Map<String, dynamic>).toList();
+        }
       }
     } catch (_) {}
     return [];
@@ -351,8 +360,8 @@ class CustomerApiRepository implements IStoreRepository {
   /// Mark notification as read
   Future<bool> markNotificationRead(String id) async {
     try {
-      final response = await _apiClient.post('${ApiEndpoints.notifications}$id/read/', body: {});
-      return (response['status_code'] as int? ?? 200) <= 204;
+      await _apiClient.post('${ApiEndpoints.notifications}$id/read/', body: {});
+      return true;
     } catch (_) {
       return false;
     }
@@ -361,8 +370,33 @@ class CustomerApiRepository implements IStoreRepository {
   /// Mark all notifications as read
   Future<bool> markAllNotificationsRead() async {
     try {
-      final response = await _apiClient.post('${ApiEndpoints.notifications}read-all/', body: {});
-      return (response['status_code'] as int? ?? 200) <= 204;
+      await _apiClient.post('${ApiEndpoints.notifications}read-all/', body: {});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Delete individual notification
+  Future<bool> deleteNotification(String id) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.notifications}$id/');
+      return true;
+    } catch (_) {
+      try {
+        await _apiClient.post('${ApiEndpoints.notifications}$id/delete/', body: {});
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  /// Clear all notifications from server
+  Future<bool> clearAllNotifications() async {
+    try {
+      await _apiClient.post('${ApiEndpoints.notifications}clear-all/', body: {});
+      return true;
     } catch (_) {
       return false;
     }

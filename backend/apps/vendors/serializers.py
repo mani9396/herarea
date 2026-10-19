@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.vendors.models import VendorProfile, KycDocument, KycDocType, ChatStatus
+from apps.vendors.models import VendorProfile, KycDocument, ChatStatus
 from apps.business.serializers import BusinessProfileSerializer
 
 class KycDocumentSerializer(serializers.ModelSerializer):
@@ -70,6 +70,9 @@ class AdminVendorCreateSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20, help_text="Primary business mobile handset")
     business_name = serializers.CharField(max_length=200, help_text="Official studio showroom brand title")
 
+from apps.accounts.serializers import _validate_password_strength
+import re
+
 class VendorSelfRegistrationSerializer(serializers.Serializer):
     """
     Schema for Vendor to self-register their account.
@@ -77,8 +80,25 @@ class VendorSelfRegistrationSerializer(serializers.Serializer):
     owner_name = serializers.CharField(max_length=150, help_text="Full legal studio owner name")
     email = serializers.EmailField(help_text="Official business correspondence email")
     phone_number = serializers.CharField(max_length=20, help_text="Primary business mobile handset")
-    password = serializers.CharField(write_only=True, min_length=8)
-    confirm_password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, validators=[_validate_password_strength])
+    confirm_password = serializers.CharField(write_only=True)
+    otp = serializers.CharField(max_length=6, min_length=6, required=True, help_text="6-digit verification code sent to email")
+
+    def validate_otp(self, value):
+        if not value.isdigit() or len(value) != 6:
+            raise serializers.ValidationError("Verification code must be a 6-digit number.")
+        return value
+
+    def validate_owner_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Owner name cannot be blank.")
+        return value.strip()
+
+    def validate_phone_number(self, value):
+        cleaned = re.sub(r'\D', '', value)
+        if len(cleaned) < 10:
+            raise serializers.ValidationError("Please provide a valid mobile number with at least 10 digits.")
+        return value.strip()
 
     def validate(self, data):
         if data.get('password') != data.get('confirm_password'):

@@ -41,6 +41,41 @@ class NotificationReadView(APIView):
         notification.save(update_fields=['is_read', 'updated_at'])
         return Response(NotificationSerializer(notification).data, status=status.HTTP_200_OK)
 
+    def post(self, request, pk):
+        return self.patch(request, pk)
+
+
+class NotificationDeleteView(APIView):
+    """Delete an individual notification record for authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(summary="Delete Notification", responses={200: OpenApiResponse(description="Notification deleted.")})
+    def delete(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, recipient=request.user)
+        except Notification.DoesNotExist:
+            raise exceptions.NotFound("Notification record not found.")
+        
+        notification.delete()
+        return Response({"status": "success", "message": "Notification deleted successfully."}, status=status.HTTP_200_OK)
+
+    def post(self, request, pk):
+        return self.delete(request, pk)
+
+
+class NotificationClearAllView(APIView):
+    """Delete all notifications for authenticated user."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(summary="Clear All Notifications", responses={200: OpenApiResponse(description="All notifications cleared.")})
+    def post(self, request):
+        count, _ = Notification.objects.filter(recipient=request.user).delete()
+        logger.info(f"User {request.user.email or request.user.phone_number} cleared {count} notifications.")
+        return Response({"status": "success", "cleared_count": count}, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        return self.post(request)
+
 
 class NotificationReadAllView(APIView):
     """Bulk mark all outstanding alerts as read for authenticated user."""
@@ -113,7 +148,7 @@ class NotificationTestPushView(APIView):
     def post(self, request):
         title = request.data.get('title', 'HER AREA Test Notification 🔔')
         message = request.data.get('message', 'Push notifications are working perfectly on your device!')
-        action_url = request.data.get('action_url', '/')
+        action_url = request.data.get('action_url', '/home')
         notification = NotificationEngine.send_notification(
             recipient=request.user,
             title=title,

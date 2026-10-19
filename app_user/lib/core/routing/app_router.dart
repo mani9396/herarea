@@ -112,7 +112,21 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/store/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? 'store_1';
+        return StoreDetailsScreen(storeId: id);
+      },
+    ),
+    GoRoute(
       path: RoutePaths.productDetails,
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return CustomerProductDetailScreen(productId: id);
+      },
+    ),
+    GoRoute(
+      path: '/product/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return CustomerProductDetailScreen(productId: id);

@@ -24,7 +24,13 @@ class AuthApiRepository {
 
   /// Send verification OTP challenge.
   /// Customers pass their email address; Vendors/Admins pass their phone number.
-  Future<bool> requestOtp(String identifier, {String role = 'CUSTOMER', String purpose = 'LOGIN', String? fullName}) async {
+  Future<bool> requestOtp(
+    String identifier, {
+    String role = 'CUSTOMER',
+    String purpose = 'LOGIN',
+    String? fullName,
+    String? phoneNumber,
+  }) async {
     if (identifier.isNotEmpty) {
       lastAttemptedIdentifier = identifier;
     }
@@ -35,6 +41,9 @@ class AuthApiRepository {
         body = {'email': identifier, 'role': role, 'purpose': purpose};
         if (fullName != null && fullName.isNotEmpty) {
           body['full_name'] = fullName;
+        }
+        if (phoneNumber != null && phoneNumber.isNotEmpty) {
+          body['phone_number'] = phoneNumber;
         }
       } else {
         body = {'phone_number': identifier, 'role': role, 'purpose': purpose};
@@ -79,22 +88,37 @@ class AuthApiRepository {
         body: body,
       );
 
-      return false;
+      return _processJwtResponse(response, targetIdentifier, role);
     } catch (_) {
       return false;
     }
   }
 
-  /// Login with email and password.
-  Future<bool> loginWithPassword(String email, String password, {String role = 'CUSTOMER'}) async {
-    lastAttemptedIdentifier = email;
+  /// Login with email or mobile number and password.
+  Future<bool> loginWithPassword(String identifier, String password, {String role = 'CUSTOMER'}) async {
+    lastAttemptedIdentifier = identifier;
+    lastErrorMessage = '';
     try {
       final response = await _apiClient.post(
         ApiEndpoints.customerLogin,
-        body: {'email': email, 'password': password, 'role': role},
+        body: {
+          'email': identifier,
+          'identifier': identifier,
+          'phone_number': identifier,
+          'password': password,
+          'role': role,
+        },
       );
-      return _processJwtResponse(response, email, role);
-    } catch (_) {
+      if (response.containsKey('error')) {
+        lastErrorMessage = response['error'].toString();
+        return false;
+      }
+      return _processJwtResponse(response, identifier, role);
+    } on ApiException catch (e) {
+      lastErrorMessage = e.message;
+      return false;
+    } catch (e) {
+      lastErrorMessage = e.toString();
       return false;
     }
   }
@@ -125,14 +149,16 @@ class AuthApiRepository {
     }
   }
 
-  /// Self-register a new Vendor account.
+  /// Self-register a new Vendor account with verified Email OTP.
   Future<String?> vendorSelfRegister({
     required String ownerName,
     required String email,
     required String phoneNumber,
     required String password,
     required String confirmPassword,
+    required String otp,
   }) async {
+    lastErrorMessage = '';
     try {
       await _apiClient.post(
         ApiEndpoints.vendorAuthRegister,
@@ -142,13 +168,16 @@ class AuthApiRepository {
           'phone_number': phoneNumber,
           'password': password,
           'confirm_password': confirmPassword,
+          'otp': otp,
         },
       );
-      // Registration successful, but requires login manually afterwards
+      // Registration successful, requires login manually afterwards
       return null; // Return null on success
     } on ApiException catch (e) {
+      lastErrorMessage = e.message;
       return e.message;
     } catch (e) {
+      lastErrorMessage = e.toString();
       return 'An unexpected error occurred: $e';
     }
   }
@@ -232,9 +261,9 @@ class AuthApiRepository {
           id: userId,
           email: email ?? (_isEmail(identifier) ? identifier : ''),
           phoneNumber: phone ?? (!_isEmail(identifier) ? identifier : ''),
-          fullName: 'HER AREA $resRole',
+          fullName: response['owner_name']?.toString() ?? 'HER AREA $resRole',
           role: UserRole.fromCode(resRole),
-          studioStatus: resRole.toUpperCase() == 'VENDOR' ? 'APPROVED' : null,
+          studioStatus: resRole.toUpperCase() == 'VENDOR' ? (response['vendor_status']?.toString() ?? 'APPROVED') : null,
           mustChangePassword: response['must_change_password'] == true,
         );
       }

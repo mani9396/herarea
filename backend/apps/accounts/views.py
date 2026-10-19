@@ -14,8 +14,10 @@ from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from apps.accounts.models import User, UserRole
+from apps.vendors.models import VendorProfile, VendorStatus
+from apps.accounts.utils import find_user_by_identifier, normalize_email, normalize_phone_number, get_phone_candidates
 from apps.accounts.serializers import (
-    CustomerLoginSerializer, CustomerRegisterCompleteSerializer,
+    LoginSerializer, CustomerLoginSerializer, CustomerRegisterCompleteSerializer,
     OtpVerifyForPurposeSerializer, PasswordResetCompleteSerializer,
     PasswordChangeSerializer, OtpSendSerializer, OtpVerifySerializer,
     LogoutSerializer, UserSerializer
@@ -84,30 +86,70 @@ class OtpSendView(APIView):
                             status=status.HTTP_403_FORBIDDEN
                         )
             elif purpose == 'PASSWORD_RESET':
-                existing_user = User.objects.filter(email=identifier).first()
-                if not existing_user:
-                    msg = "No account found with this email address. Please check your email or sign up."
+                user, _ = find_user_by_identifier(identifier, role=role)
+                if not user:
+                    other_user, _ = find_user_by_identifier(identifier, role=None)
+                    if other_user:
+                        if role in [UserRole.ADMIN, UserRole.SUPERADMIN] and other_user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                            user = other_user
+                        else:
+                            return Response(
+                                {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                                status=status.HTTP_403_FORBIDDEN
+                            )
+                    else:
+                        msg = "No account found with this email address. Please check your email or sign up."
+                        return Response(
+                            {"error": msg, "message": msg},
+                            status=status.HTTP_404_NOT_FOUND
+                        )
+                existing_user = user
+            elif purpose == 'REGISTRATION':
+                existing_user = User.objects.filter(email__iexact=identifier).first()
+                if not existing_user and role == UserRole.VENDOR:
+                    from apps.vendors.models import VendorProfile
+                    if VendorProfile.objects.filter(official_email__iexact=identifier).exists():
+                        existing_user = True
+                if existing_user:
                     return Response(
-                        {"error": msg, "message": msg},
-                        status=status.HTTP_404_NOT_FOUND
+                        {"error": "An account with this email address already exists. Please log in."},
+                        status=status.HTTP_400_BAD_REQUEST
                     )
+                if phone:
+                    from apps.accounts.utils import normalize_phone_number, get_phone_candidates
+                    cleaned_phone = normalize_phone_number(phone)
+                    phone_candidates = get_phone_candidates(cleaned_phone, raw_input=phone)
+                    phone_exists = User.objects.filter(phone_number__in=phone_candidates).exists()
+                    if not phone_exists and role == UserRole.VENDOR:
+                        from apps.vendors.models import VendorProfile
+                        phone_exists = VendorProfile.objects.filter(phone_number__in=phone_candidates).exists()
+                    if phone_exists:
+                        return Response(
+                            {"error": "An account with this mobile number already exists. Please log in or use a different number."},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
             cache.set(cache_key + '_ts', '1', timeout=60)  # 60-second resend cooldown
 
-            logger.info(f"OTP generated for Customer email: {identifier} (role={role})")
+            logger.info(f"OTP generated for identifier: {identifier} (role={role}, purpose={purpose})")
             if settings.DEBUG:
                 logger.info(f"Dev/Email OTP for {identifier}: {otp}")
 
-            # Determine customer name based on purpose
-            customer_name = "Customer"
+            # Determine recipient name based on role and available profile
+            recipient_name = None
             if purpose == 'REGISTRATION' and full_name_req:
-                customer_name = full_name_req.strip()
-            elif purpose == 'PASSWORD_RESET':
-                existing_user = User.objects.filter(email=identifier).first()
-                if existing_user and existing_user.full_name:
-                    customer_name = existing_user.full_name.strip()
+                recipient_name = full_name_req.strip()
+            elif existing_user:
+                if hasattr(existing_user, 'vendor_profile') and existing_user.vendor_profile and existing_user.vendor_profile.owner_name:
+                    recipient_name = existing_user.vendor_profile.owner_name.strip()
+                elif existing_user.full_name:
+                    recipient_name = existing_user.full_name.strip()
+
+            if not recipient_name:
+                recipient_name = "Partner" if role == UserRole.VENDOR else "Customer"
+            customer_name = recipient_name
 
             # Dispatch email
             try:
@@ -123,10 +165,15 @@ class OtpSendView(APIView):
                         "HER AREA Team"
                     )
                 else:
-                    subject = "HER AREA - Email Verification Code"
+                    if role == UserRole.VENDOR:
+                        subject = "HER AREA - Partner Studio Verification Code"
+                        reg_phrase = "complete your partner studio registration"
+                    else:
+                        subject = "HER AREA - Email Verification Code"
+                        reg_phrase = "complete your account registration"
                     text_message = (
                         f"Hello {customer_name},\n\n"
-                        "Your verification code to complete your account registration is: "
+                        f"Your verification code to {reg_phrase} is: "
                         f"{otp}\n\n"
                         "This code is valid for 5 minutes.\n\n"
                         "For your security, please do not share this code with anyone.\n\n"
@@ -440,61 +487,157 @@ class OtpVerifyView(APIView):
             }, status=status.HTTP_200_OK)
 
 
-class CustomerLoginView(APIView):
+class LoginView(APIView):
     """
-    Authenticate Customer using email and password.
+    Unified normal login for Vendors and Customers using Email or Mobile Number and Password.
+    Enforces strict RBAC role separation, active account status, and vendor status checks.
     """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
-        summary="Customer Email+Password Login",
-        request=CustomerLoginSerializer,
-        responses={200: OpenApiResponse(description="Successful login.")}
+        summary="User/Vendor Identifier+Password Login",
+        description="Authenticate vendor or customer using email or mobile number with password. Enforces role isolation.",
+        request=LoginSerializer,
+        responses={200: OpenApiResponse(description="Successful authentication with JWT token pair.")}
     )
     def post(self, request):
-        serializer = CustomerLoginSerializer(data=request.data)
+        serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        email = serializer.validated_data['email'].lower().strip()
+        raw_identifier = serializer.validated_data['raw_identifier']
         password = serializer.validated_data['password']
-        
-        user = User.objects.filter(email=email).first()
+        requested_role = serializer.validated_data.get('role', 'CUSTOMER')
+
+        # 1. Lookup user scoped to the requested role first
+        user, is_email = find_user_by_identifier(raw_identifier, role=requested_role)
+
+        # 2. If not found under the requested role, check if user exists under ANY role
         if not user:
-            return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
-            
-        requested_role = request.data.get('role', 'CUSTOMER')
-        with open('debug_login.txt', 'a') as f:
-            f.write(f"Email: {email}, User Role: {user.role}, Requested Role: {requested_role}\n")
-        
-        # Prevent cross-app login
-        if requested_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
-            pass
-        elif user.role != requested_role:
-            with open('debug_login.txt', 'a') as f:
-                f.write("Cross login prevented\n")
-            return Response(
-                {"error": "Account exists with a different role. Please use the appropriate app for your account."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            any_user, _ = find_user_by_identifier(raw_identifier, role=None)
+            if any_user:
+                # Allow Admin/Superadmin cross-admin equivalence
+                if requested_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and any_user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+                    user = any_user
+                else:
+                    logger.warning(f"Cross-role login prevented: identifier '{raw_identifier}' has role '{any_user.role}', attempted access to '{requested_role}'.")
+                    return Response(
+                        {"error": "Account exists with a different role. Please use the appropriate app for your account."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                return Response({"error": "Invalid email or mobile number or password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 3. Check password
         if not user.check_password(password):
-            return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
-            
+            return Response({"error": "Invalid email or mobile number or password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 4. Check active account status
         if not user.is_active:
             return Response({"error": "This account has been disabled."}, status=status.HTTP_403_FORBIDDEN)
-            
+
+        # 5. Check vendor-specific approval & operational status
+        vendor_profile = None
+        if user.role == UserRole.VENDOR:
+            vendor_profile = getattr(user, 'vendor_profile', None)
+            if not vendor_profile:
+                vendor_profile = VendorProfile.objects.filter(user=user).first()
+
+            if vendor_profile:
+                if vendor_profile.status == VendorStatus.SUSPENDED:
+                    reason = f" Reason: {vendor_profile.rejection_reason}" if vendor_profile.rejection_reason else ""
+                    return Response({"error": f"Vendor account is suspended.{reason}"}, status=status.HTTP_403_FORBIDDEN)
+                if vendor_profile.status == VendorStatus.REJECTED:
+                    reason = f" Reason: {vendor_profile.rejection_reason}" if vendor_profile.rejection_reason else ""
+                    return Response({"error": f"Vendor application was rejected.{reason}"}, status=status.HTTP_403_FORBIDDEN)
+
+        # 6. Issue JWT Tokens with role claims
         refresh = RefreshToken.for_user(user)
         refresh['role'] = user.role
-        refresh['email'] = email
-        
-        logger.info(f"Customer {user.id} authenticated via email/password.")
-        
-        return Response({
+        if user.email:
+            refresh['email'] = user.email
+        if user.phone_number:
+            refresh['phone_number'] = user.phone_number
+
+        logger.info(f"User {user.id} ({user.role}) authenticated successfully via identifier/password.")
+
+        response_data = {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "user_id": str(user.id),
             "role": user.role,
+            "email": user.email,
+            "phone_number": user.phone_number,
             "is_new_user": False,
-            "must_change_password": user.must_change_password
+            "must_change_password": user.must_change_password,
+        }
+        if user.role == UserRole.VENDOR and vendor_profile:
+            response_data["vendor_status"] = vendor_profile.status
+            response_data["is_approved"] = (vendor_profile.status == VendorStatus.APPROVED)
+            response_data["owner_name"] = vendor_profile.owner_name
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+CustomerLoginView = LoginView
+VendorLoginView = LoginView
+
+
+class RoleAwareTokenRefreshView(APIView):
+    """
+    Enforces RBAC role checks, user active status, and vendor approval/suspension status during token refresh.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary="Role-Aware Token Refresh",
+        description="Refresh JWT access token while strictly verifying role integrity and account status.",
+        responses={200: OpenApiResponse(description="New access token returned with role claims.")}
+    )
+    def post(self, request):
+        refresh_str = request.data.get('refresh')
+        if not refresh_str:
+            return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            refresh_token = RefreshToken(refresh_str)
+        except Exception:
+            return Response({"error": "Invalid or expired refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        user_id = refresh_token.get('user_id')
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response({"error": "User account no longer exists."}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        if not user.is_active:
+            return Response({"error": "This account has been disabled."}, status=status.HTTP_403_FORBIDDEN)
+            
+        token_role = refresh_token.get('role')
+        if token_role and token_role != user.role:
+            if not (token_role in [UserRole.ADMIN, UserRole.SUPERADMIN] and user.role in [UserRole.ADMIN, UserRole.SUPERADMIN]):
+                return Response({"error": "Account role mismatch. Session invalidated."}, status=status.HTTP_403_FORBIDDEN)
+                
+        if user.role == UserRole.VENDOR:
+            vendor_profile = getattr(user, 'vendor_profile', None)
+            if not vendor_profile:
+                vendor_profile = VendorProfile.objects.filter(user=user).first()
+            if vendor_profile:
+                if vendor_profile.status == VendorStatus.SUSPENDED:
+                    return Response({"error": "Vendor account is suspended."}, status=status.HTTP_403_FORBIDDEN)
+                if vendor_profile.status == VendorStatus.REJECTED:
+                    return Response({"error": "Vendor application was rejected."}, status=status.HTTP_403_FORBIDDEN)
+
+        new_refresh = RefreshToken.for_user(user)
+        new_refresh['role'] = user.role
+        if user.email:
+            new_refresh['email'] = user.email
+        if user.phone_number:
+            new_refresh['phone_number'] = user.phone_number
+
+        return Response({
+            "access": str(new_refresh.access_token),
+            "refresh": str(new_refresh) if getattr(settings, 'SIMPLE_JWT', {}).get('ROTATE_REFRESH_TOKENS', True) else refresh_str,
+            "role": user.role,
+            "user_id": str(user.id),
         }, status=status.HTTP_200_OK)
 
 
@@ -707,14 +850,19 @@ class PasswordResetCompleteView(APIView):
             
         user = User.objects.filter(email=email).first()
         if not user:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            vp = VendorProfile.objects.filter(official_email=email).first()
+            if vp and vp.user:
+                user = vp.user
+            else:
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
             
         user.set_password(password)
+        user.must_change_password = False
         user.save()
         
         cache.delete(token_key)
         
-        logger.info(f"Customer {user.id} password reset completed.")
+        logger.info(f"User {user.id} ({user.role}) password reset completed.")
         return Response({"success": True, "message": "Password updated successfully."}, status=status.HTTP_200_OK)
 
 class VendorForcePasswordChangeView(APIView):
