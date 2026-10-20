@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/constants/api_endpoints.dart';
 import 'package:shared/models/user_model.dart';
@@ -5,6 +6,17 @@ import 'package:shared/services/api_client_interface.dart';
 import 'package:shared/services/auth_token_storage.dart';
 import 'package:shared/services/dio_api_client.dart';
 import 'package:shared/exceptions/api_exception.dart';
+
+/// Global Listenable that notifies GoRouter to re-evaluate route redirection
+/// when the user session or authentication state changes.
+class AuthRouterListenable extends ChangeNotifier {
+  static final AuthRouterListenable instance = AuthRouterListenable._();
+  AuthRouterListenable._();
+
+  void notifyAuthChanged() {
+    notifyListeners();
+  }
+}
 
 /// Riverpod state controller for maintaining the active JWT Token and authenticated
 /// [UserModel] across all HER AREA applications (app_user, app_vendor, app_admin).
@@ -43,8 +55,23 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
   Future<void> _initRestore() async {
     final access = await _storage.getAccessToken();
     final refresh = await _storage.getRefreshToken();
+    final userName = await _storage.getUserName();
+    final userEmail = await _storage.getUserEmail();
+    final userRole = await _storage.getUserRole();
+    final userId = await _storage.getUserId();
     if (access != null && access.isNotEmpty) {
-      state = state.copyWith(accessToken: access, refreshToken: refresh);
+      UserModel? cachedUser;
+      if (userName != null && userName.isNotEmpty) {
+        cachedUser = UserModel(
+          id: userId ?? '',
+          phoneNumber: '',
+          fullName: userName,
+          email: userEmail ?? '',
+          role: UserRole.fromCode(userRole ?? 'CUSTOMER'),
+        );
+      }
+      state = state.copyWith(accessToken: access, refreshToken: refresh, currentUser: cachedUser);
+      AuthRouterListenable.instance.notifyAuthChanged();
     }
   }
 
@@ -52,19 +79,41 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
     state = state.copyWith(isRestoring: true);
     final access = await _storage.getAccessToken();
     final refresh = await _storage.getRefreshToken();
+    final userName = await _storage.getUserName();
+    final userEmail = await _storage.getUserEmail();
+    final userRole = await _storage.getUserRole();
+    final userId = await _storage.getUserId();
+
     if (access != null && access.isNotEmpty) {
-      state = state.copyWith(accessToken: access, refreshToken: refresh);
+      UserModel? cachedUser;
+      if (userName != null && userName.isNotEmpty) {
+        cachedUser = UserModel(
+          id: userId ?? '',
+          phoneNumber: '',
+          fullName: userName,
+          email: userEmail ?? '',
+          role: UserRole.fromCode(userRole ?? 'CUSTOMER'),
+        );
+      }
+      state = state.copyWith(accessToken: access, refreshToken: refresh, currentUser: cachedUser);
       apiClient.setAuthToken(access, refreshToken: refresh);
       try {
         final res = await apiClient.get(ApiEndpoints.userProfile);
         final user = UserModel.fromJson(res);
         state = state.copyWith(currentUser: user, isRestoring: false);
+        await _storage.saveUserData(
+          userName: user.fullName,
+          email: user.email,
+          userId: user.id,
+          role: user.role.code,
+        );
       } on ApiException catch (e) {
         if (e.statusCode == 401 || e.statusCode == 403) {
           // Token is strictly invalid or expired. Clear tokens completely.
           await _storage.clearTokens();
           apiClient.setAuthToken(null, refreshToken: null);
           state = const AuthSessionState(isRestoring: false);
+          AuthRouterListenable.instance.notifyAuthChanged();
         } else {
           state = state.copyWith(isRestoring: false);
         }
@@ -77,27 +126,52 @@ class AuthSessionNotifier extends StateNotifier<AuthSessionState> {
   }
 
   Future<void> setTokens(String access, {String? refresh, UserModel? user, String? role}) async {
-    await _storage.saveTokens(accessToken: access, refreshToken: refresh, role: role ?? user?.role.code);
+    await _storage.saveTokens(
+      accessToken: access,
+      refreshToken: refresh,
+      role: role ?? user?.role.code,
+      userName: user?.fullName,
+      email: user?.email,
+      userId: user?.id,
+    );
     state = state.copyWith(accessToken: access, refreshToken: refresh, currentUser: user);
+    AuthRouterListenable.instance.notifyAuthChanged();
   }
 
   void setUser(UserModel user) {
     state = state.copyWith(currentUser: user);
+    _storage.saveUserData(
+      userName: user.fullName,
+      email: user.email,
+      userId: user.id,
+      role: user.role.code,
+    );
   }
 
   Future<void> logout([IApiClient? apiClient]) async {
-    if (apiClient != null && state.accessToken != null) {
+    final oldRefresh = state.refreshToken;
+    await _storage.clearTokens();
+    state = const AuthSessionState();
+    apiClient?.setAuthToken(null, refreshToken: null);
+    AuthRouterListenable.instance.notifyAuthChanged();
+
+    if (apiClient != null && oldRefresh != null && oldRefresh.isNotEmpty) {
       try {
-        await apiClient.post(ApiEndpoints.logout, body: {'refresh': state.refreshToken});
+        await apiClient.post(ApiEndpoints.logout, body: {'refresh': oldRefresh});
       } catch (_) {
         // Ignore network failure on server logout during session termination
       }
     }
+  }
+
+  Future<void> clearLocalSession([IApiClient? apiClient]) async {
     await _storage.clearTokens();
     state = const AuthSessionState();
     apiClient?.setAuthToken(null, refreshToken: null);
+    AuthRouterListenable.instance.notifyAuthChanged();
   }
 }
+
 
 /// Singleton storage provider
 final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {

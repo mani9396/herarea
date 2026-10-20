@@ -65,7 +65,9 @@ class AppointmentBooking(AbstractBaseModel):
     """
     customer = models.ForeignKey(
         'accounts.User', 
-        on_delete=models.CASCADE, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True,
         related_name='appointments',
         db_index=True
     )
@@ -100,7 +102,8 @@ class AppointmentBooking(AbstractBaseModel):
             raise exceptions.ValidationError({"business_profile": "Service does not belong to the specified showroom profile."})
 
     def __str__(self):
-        return f"[{self.status}] {self.service.name} for {self.customer.phone_number} on {self.appointment_date} at {self.start_time}"
+        customer_ident = self.customer.phone_number if self.customer else "Deleted Customer"
+        return f"[{self.status}] {self.service.name} for {customer_ident} on {self.appointment_date} at {self.start_time}"
 
 
 class ProductEnquiry(AbstractBaseModel):
@@ -110,7 +113,9 @@ class ProductEnquiry(AbstractBaseModel):
     """
     customer = models.ForeignKey(
         'accounts.User', 
-        on_delete=models.CASCADE, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True,
         related_name='enquiries',
         db_index=True
     )
@@ -144,4 +149,5 @@ class ProductEnquiry(AbstractBaseModel):
             raise exceptions.ValidationError({"business_profile": "Product does not belong to the specified showroom profile."})
 
     def __str__(self):
-        return f"[{self.status}] Enquiry on {self.product.name} by {self.customer.phone_number}"
+        customer_ident = self.customer.phone_number if self.customer else "Deleted Customer"
+        return f"[{self.status}] Enquiry on {self.product.name} by {customer_ident}"

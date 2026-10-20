@@ -23,6 +23,7 @@ class ApiEndpoints {
   static const String tokenRefresh = '/api/v1/auth/token/refresh/';
   static const String logout = '/api/v1/auth/logout/';
   static const String userProfile = '/api/v1/auth/me/';
+  static const String customerDeleteAccount = '/api/v1/auth/delete-account/';
 
   // 3. Vendor Onboarding & Management (/api/v1/vendor/)
   static const String vendorAuthRegister = '/api/v1/vendor/auth/register/';

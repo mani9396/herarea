@@ -16,6 +16,7 @@ from apps.accounts.views import (
     SuperAdminRoleVerificationView,
     VendorForcePasswordChangeView,
     RoleAwareTokenRefreshView,
+    CustomerAccountDeleteView,
 )
 
 urlpatterns = [
@@ -34,6 +35,7 @@ urlpatterns = [
     path('token/refresh/', RoleAwareTokenRefreshView.as_view(), name='token-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),
     path('me/', UserProfileView.as_view(), name='auth-me'),
+    path('delete-account/', CustomerAccountDeleteView.as_view(), name='auth-customer-delete-account'),
 
     # RBAC Role Isolation Verification Endpoints
     path('rbac/customer/', CustomerRoleVerificationView.as_view(), name='rbac-test-customer'),

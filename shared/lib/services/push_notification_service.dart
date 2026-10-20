@@ -21,7 +21,14 @@ class PushNotificationService {
   static const String webVapidKey =
       'BNfqMILd34ERN7oFwiPTr-_vGKHEPPwEtIFwCoajM7XO_dTxc1IJsxiLPqTUxInHjg8Ly0dQLO_EK2qLLFg26JQ';
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? get _fcm {
+    try {
+      return FirebaseMessaging.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
   String? _lastToken;
 
   String? get currentToken => _lastToken;
@@ -32,11 +39,13 @@ class PushNotificationService {
     void Function(String actionUrl)? onNotificationTap,
     void Function(RemoteMessage message)? onForegroundMessage,
   }) async {
+    final fcm = _fcm;
+    if (fcm == null) return;
     try {
       final effectiveVapidKey = vapidKey ?? (kIsWeb ? webVapidKey : null);
 
       // 1. Request user permission
-      final settings = await _fcm.requestPermission(
+      final settings = await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -50,7 +59,7 @@ class PushNotificationService {
       // 2. Fetch initial token if permitted
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        _lastToken = await _fcm.getToken(vapidKey: effectiveVapidKey);
+        _lastToken = await fcm.getToken(vapidKey: effectiveVapidKey);
         if (kDebugMode) {
           print('FCM Registration Token: $_lastToken');
         }
@@ -73,7 +82,7 @@ class PushNotificationService {
       });
 
       // 5. Terminated app click (app launched from closed state)
-      final initialMessage = await _fcm.getInitialMessage();
+      final initialMessage = await fcm.getInitialMessage();
       if (initialMessage != null) {
         final actionUrl = initialMessage.data['action_url']?.toString();
         if (actionUrl != null && actionUrl.isNotEmpty) {
@@ -82,7 +91,7 @@ class PushNotificationService {
       }
 
       // 6. Listen for token refresh events
-      _fcm.onTokenRefresh.listen((newToken) {
+      fcm.onTokenRefresh.listen((newToken) {
         _lastToken = newToken;
       });
     } catch (e) {
@@ -101,7 +110,7 @@ class PushNotificationService {
     try {
       final effectiveVapidKey = vapidKey ?? (kIsWeb ? webVapidKey : null);
       if (_lastToken == null || _lastToken!.isEmpty) {
-        _lastToken = await _fcm.getToken(vapidKey: effectiveVapidKey);
+        _lastToken = await _fcm?.getToken(vapidKey: effectiveVapidKey);
       }
       if (_lastToken == null || _lastToken!.isEmpty) {
         return false;

@@ -109,7 +109,13 @@ class UserLocationState {
 final userProfileProvider = StateNotifierProvider<UserProfileNotifier, UserProfileState>((ref) {
   final repo = ref.watch(customerApiRepositoryProvider);
   final authRepo = ref.watch(authApiRepositoryProvider);
-  return UserProfileNotifier(repo, authRepo);
+  final sessionUser = ref.watch(authSessionProvider).currentUser;
+  return UserProfileNotifier(
+    repo,
+    authRepo,
+    initialName: sessionUser?.fullName ?? '',
+    initialEmail: sessionUser?.email ?? '',
+  );
 });
 
 class UserProfileState {
@@ -152,11 +158,15 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
   final CustomerApiRepository _repository;
   final AuthApiRepository _authRepository;
 
-  UserProfileNotifier(this._repository, this._authRepository)
-      : super(const UserProfileState(
-          name: '',
+  UserProfileNotifier(
+    this._repository,
+    this._authRepository, {
+    String initialName = '',
+    String initialEmail = '',
+  }) : super(UserProfileState(
+          name: initialName,
           phone: '',
-          email: '',
+          email: initialEmail,
           locality: '',
           bio: '',
           avatarUrl: '',
@@ -166,16 +176,37 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
 
   Future<void> loadProfile() async {
     try {
+      // 1. Instantly use cached user name from storage if available to avoid any "Welcome" flicker
+      if (state.name.isEmpty) {
+        final cachedName = await AuthTokenStorage().getUserName();
+        final cachedEmail = await AuthTokenStorage().getUserEmail();
+        if (cachedName != null && cachedName.isNotEmpty && state.name.isEmpty) {
+          state = state.copyWith(
+            name: cachedName,
+            email: cachedEmail ?? state.email,
+          );
+        }
+      }
+
+      // 2. Fetch fresh profile from backend
       final data = await _repository.getProfile();
       if (data != null) {
+        final fetchedName = data['full_name'] ?? data['name'] ?? data['username'] ?? '';
         state = state.copyWith(
-          name: data['full_name'] ?? data['name'] ?? data['username'] ?? state.name,
+          name: fetchedName.isNotEmpty ? fetchedName : state.name,
           phone: data['phone_number'] ?? data['phone'] ?? state.phone,
           email: data['email'] ?? state.email,
           locality: data['city'] ?? data['locality'] ?? state.locality,
           bio: data['bio'] ?? state.bio,
           avatarUrl: data['avatar'] ?? data['avatar_url'] ?? state.avatarUrl,
         );
+        if (fetchedName.isNotEmpty) {
+          await AuthTokenStorage().saveUserData(
+            userName: fetchedName,
+            email: data['email']?.toString(),
+            userId: data['id']?.toString(),
+          );
+        }
       }
     } catch (_) {}
   }

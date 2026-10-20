@@ -153,3 +153,23 @@ class PasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
 
+
+class CustomerAccountDeleteSerializer(serializers.Serializer):
+    """Payload for authenticated customer permanent account deletion."""
+    confirmation = serializers.BooleanField(
+        required=True,
+        help_text="Explicit confirmation flag (must be True) to confirm permanent account deletion."
+    )
+    password = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        write_only=True,
+        help_text="Customer password for secure re-authentication (required if password is set)."
+    )
+
+    def validate_confirmation(self, value):
+        if value is not True:
+            raise serializers.ValidationError("Explicit confirmation is required to permanently delete your account.")
+        return value
+
+

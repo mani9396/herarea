@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
+import 'package:her_area/features/profile/presentation/widgets/delete_account_dialog.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
@@ -151,6 +152,38 @@ class SettingsScreen extends ConsumerWidget {
                       subtitle: Text('Current discovery zone: ${location.cityName}'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () => context.push(RoutePaths.locationPermission),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              _buildSectionHeader(context, 'ACCOUNT PRIVACY & SECURITY'),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      key: const Key('settings_delete_account_tile'),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.errorRed.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.delete_forever_rounded, color: AppColors.errorRed, size: 22),
+                      ),
+                      title: const Text(
+                        'Delete Account',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.errorRed),
+                      ),
+                      subtitle: const Text('Permanently remove your account and eligible personal data'),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.errorRed),
+                      onTap: () => DeleteAccountDialog.show(context),
                     ),
                   ],
                 ),

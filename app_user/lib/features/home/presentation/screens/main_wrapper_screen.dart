@@ -1,21 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared/theme/app_theme.dart';
+import 'package:shared/shared.dart';
 
-class MainWrapperScreen extends StatelessWidget {
+class MainWrapperScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
   const MainWrapperScreen({super.key, required this.navigationShell});
 
   @override
+  ConsumerState<MainWrapperScreen> createState() => _MainWrapperScreenState();
+}
+
+class _MainWrapperScreenState extends ConsumerState<MainWrapperScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authApiRepositoryProvider).restoreSession();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
+        selectedIndex: widget.navigationShell.currentIndex,
         onDestinationSelected: (idx) {
-          navigationShell.goBranch(
+          widget.navigationShell.goBranch(
             idx,
-            initialLocation: idx == navigationShell.currentIndex,
+            initialLocation: idx == widget.navigationShell.currentIndex,
           );
         },
         indicatorColor: AppTheme.blushPink,
