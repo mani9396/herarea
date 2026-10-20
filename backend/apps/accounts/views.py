@@ -3,6 +3,7 @@ import random
 import hashlib
 import uuid
 import requests
+from django.db import transaction
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.conf import settings
@@ -20,7 +21,7 @@ from apps.accounts.serializers import (
     LoginSerializer, CustomerLoginSerializer, CustomerRegisterCompleteSerializer,
     OtpVerifyForPurposeSerializer, PasswordResetCompleteSerializer,
     PasswordChangeSerializer, OtpSendSerializer, OtpVerifySerializer,
-    LogoutSerializer, UserSerializer
+    LogoutSerializer, UserSerializer, CustomerAccountDeleteSerializer
 )
 from apps.accounts.permissions import IsCustomerRole, IsVendorRole, IsAdminRole, IsSuperAdminRole
 
@@ -713,10 +714,16 @@ class CustomerRegisterCompleteView(APIView):
         if not cache.get(verified_key):
             return Response({"error": "Email has not been verified or verification expired."}, status=status.HTTP_400_BAD_REQUEST)
             
-        user = User.objects.filter(email=email).first()
+        user = User.all_objects.filter(email__iexact=email).first()
         created = False
+        if user and user.is_deleted:
+            user.hard_delete()
+            user = None
+
         if not user:
             dummy_phone = '+00' + hashlib.md5(email.encode()).hexdigest()[:12]
+            if User.all_objects.filter(phone_number=dummy_phone).exists():
+                dummy_phone = '+00' + uuid.uuid4().hex[:12]
             user = User.objects.create(
                 email=email,
                 phone_number=dummy_phone,
@@ -925,6 +932,199 @@ class UserProfileView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Permanently Delete Current Customer Identity",
+        request=CustomerAccountDeleteSerializer,
+        responses={200: OpenApiResponse(description="Customer account permanently deleted.")}
+    )
+    def delete(self, request):
+        return CustomerAccountDeleteView()._perform_deletion(request)
+
+
+def execute_permanent_customer_deletion(user):
+    """
+    Executes atomic permanent deletion of a customer user account and all eligible personal data.
+    Shared business records (e.g. AppointmentBooking, ProductEnquiry) are disassociated and anonymized.
+    """
+    with transaction.atomic():
+        user_id = str(user.id)
+        user_email = user.email
+        user_phone = user.phone_number
+
+        # 1. Blacklist & revoke all outstanding JWT tokens
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+            outstanding_tokens = OutstandingToken.objects.filter(user=user)
+            for tok in outstanding_tokens:
+                BlacklistedToken.objects.get_or_create(token=tok)
+        except Exception as e:
+            logger.warning(f"Error blacklisting outstanding tokens for user {user_id}: {e}")
+
+        def _purge(qs):
+            try:
+                if hasattr(qs, 'hard_delete'):
+                    qs.hard_delete()
+                else:
+                    qs.delete()
+            except Exception as e:
+                logger.warning(f"Error purging personal data: {e}")
+
+        # 2. Delete device tokens (FCM / APNs)
+        _purge(user.device_tokens.all())
+
+        # 3. Delete in-app notifications
+        _purge(user.notifications.all())
+
+        # 4. Delete wishlists & bookmarks (Favorites)
+        _purge(user.favorites.all())
+
+        # 5. Delete recently viewed stores & store visits
+        _purge(user.recently_viewed_stores.all())
+        _purge(user.store_visits.all())
+
+        # 6. Delete customer reviews
+        _purge(user.reviews.all())
+
+        # 7. Delete customer chat conversations and messages
+        _purge(user.customer_conversations.all())
+        _purge(user.sent_messages.all())
+
+        # 8. Delete games progress, stats, and participations
+        _purge(user.saved_game_progress.all())
+        _purge(user.game_statistics.all())
+        _purge(user.game_participations.all())
+        _purge(user.hosted_game_sessions.all())
+
+        # 9. Disassociate and anonymize shared business records (Appointments and Enquiries)
+        try:
+            from apps.operations.models import BookingStatus
+            for appt in user.appointments.all():
+                if appt.status in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
+                    appt.status = BookingStatus.CANCELLED
+                appt.customer_notes = "[Customer account permanently deleted]"
+                appt.customer = None
+                appt.save(update_fields=['status', 'customer_notes', 'customer', 'updated_at'])
+
+            for enq in user.enquiries.all():
+                enq.message = "[Customer account permanently deleted]"
+                enq.customer = None
+                enq.save(update_fields=['message', 'customer', 'updated_at'])
+        except Exception as e:
+            logger.warning(f"Error anonymizing appointments/enquiries for user {user_id}: {e}")
+
+        # 10. Clean up any cached OTPs
+        if user_email:
+            cache.delete(f"{OTP_CACHE_PREFIX}{user_email}")
+        if user_phone:
+            cache.delete(f"{OTP_CACHE_PREFIX}{user_phone}")
+
+        # 11. Delete the User record itself permanently from PostgreSQL storage
+        if hasattr(user, 'hard_delete'):
+            user.hard_delete()
+        else:
+            user.delete()
+        logger.info(f"Customer user {user_id} ({user_email} / {user_phone}) successfully deleted permanently.")
+        return user_id
+
+
+class CustomerAccountDeleteView(APIView):
+    """
+    Permanently deletes an authenticated customer's account and eligible personal data.
+    Requires explicit confirmation flag and password re-authentication (if password is set).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Permanently Delete Customer Account",
+        request=CustomerAccountDeleteSerializer,
+        responses={
+            200: OpenApiResponse(description="Account permanently deleted successfully."),
+            400: OpenApiResponse(description="Confirmation missing or invalid password."),
+            403: OpenApiResponse(description="Unauthorized role (non-customer accounts)."),
+        }
+    )
+    def post(self, request):
+        return self._perform_deletion(request)
+
+    @extend_schema(
+        summary="Permanently Delete Customer Account (DELETE method)",
+        request=CustomerAccountDeleteSerializer,
+        responses={
+            200: OpenApiResponse(description="Account permanently deleted successfully."),
+            400: OpenApiResponse(description="Confirmation missing or invalid password."),
+            403: OpenApiResponse(description="Unauthorized role (non-customer accounts)."),
+        }
+    )
+    def delete(self, request):
+        return self._perform_deletion(request)
+
+    def _perform_deletion(self, request):
+        user = request.user
+
+        # 1. Authorize: Only CUSTOMER role accounts can be deleted via this endpoint
+        if user.role != UserRole.CUSTOMER:
+            return Response(
+                {
+                    "error": "Unauthorized role: Only customer accounts can be deleted via this endpoint. "
+                             "Partner studio vendor accounts and administrators cannot be deleted here."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = CustomerAccountDeleteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Explicit confirmation check
+        confirmation = serializer.validated_data.get('confirmation')
+        if not confirmation:
+            return Response(
+                {"error": "Explicit confirmation is required to permanently delete your account."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Password re-authentication (if customer has a set password)
+        password = serializer.validated_data.get('password')
+        if user.has_usable_password():
+            if not password:
+                return Response(
+                    {
+                        "error": "Password re-authentication is required to permanently delete your account.",
+                        "requires_password": True
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if not user.check_password(password):
+                return Response(
+                    {
+                        "error": "Incorrect password. Account deletion denied.",
+                        "requires_password": True
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # 4. Perform atomic deletion
+        try:
+            deleted_id = execute_permanent_customer_deletion(user)
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Your customer account and associated personal data have been permanently deleted.",
+                    "deleted_account_id": deleted_id,
+                    "retention_policy_notice": "In compliance with legal, accounting, and financial auditing standards, "
+                                               "non-identifying transaction metadata (such as completed appointment records) "
+                                               "has been anonymized and disassociated from your identity."
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.error(f"Failed to permanently delete customer account {user.id}: {e}", exc_info=True)
+            return Response(
+                {"error": "An error occurred while deleting your account. Please try again or contact support."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
 # RBAC Verification Endpoints for Automated Test and Swagger Auditing

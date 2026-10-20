@@ -469,3 +469,251 @@ class AuthenticationAndRBACTests(TestCase):
         }, format='json')
         self.assertEqual(login_phone_res.status_code, status.HTTP_200_OK)
 
+
+class CustomerPermanentAccountDeletionTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.delete_url = reverse('auth-customer-delete-account')
+        self.me_url = reverse('auth-me')
+        self.login_url = reverse('auth-customer-login')
+
+        # Create a customer with a usable password
+        self.customer = User.objects.create_user(
+            phone_number="+919555555501",
+            email="cust_to_delete@example.com",
+            full_name="Ananya Sharma",
+            role=UserRole.CUSTOMER,
+            password="SecurePassword123!"
+        )
+
+        # Create an authorized vendor to test role isolation
+        self.vendor_user = User.objects.create_user(
+            phone_number="+919555555502",
+            email="vendor_owner@studio.com",
+            full_name="Boutique Owner",
+            role=UserRole.VENDOR,
+            password="SecurePassword123!"
+        )
+        self.vendor_profile = VendorProfile.objects.create(
+            user=self.vendor_user,
+            owner_name="Boutique Owner",
+            official_email="vendor_owner@studio.com",
+            phone_number="+919555555502",
+            status=VendorStatus.APPROVED
+        )
+
+        # Create an unrelated customer who should remain completely unaffected
+        self.other_customer = User.objects.create_user(
+            phone_number="+919555555503",
+            email="other_cust@example.com",
+            full_name="Pooja Rao",
+            role=UserRole.CUSTOMER,
+            password="SecurePassword123!"
+        )
+
+    def test_unauthenticated_deletion_denied(self):
+        """Unauthenticated requests must be rejected with 401 Unauthorized."""
+        response = self.client.post(self.delete_url, {"confirmation": True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_vendor_cannot_delete_via_customer_endpoint(self):
+        """Vendors cannot delete accounts via the customer deletion endpoint."""
+        token = RefreshToken.for_user(self.vendor_user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        response = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("Unauthorized role", response.data['error'])
+        # Verify vendor still exists
+        self.assertTrue(User.objects.filter(id=self.vendor_user.id).exists())
+
+    def test_missing_confirmation_denied(self):
+        """Account deletion requires explicit confirmation."""
+        token = RefreshToken.for_user(self.customer).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        # Missing confirmation
+        response = self.client.post(self.delete_url, {
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Confirmation false
+        response_false = self.client.post(self.delete_url, {
+            "confirmation": False,
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(response_false.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_password_denied(self):
+        """Account deletion with incorrect password must be rejected."""
+        token = RefreshToken.for_user(self.customer).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        response = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "WrongPassword999!"
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Incorrect password", response.data['error'])
+
+        # Verify customer account still exists
+        self.assertTrue(User.objects.filter(id=self.customer.id).exists())
+
+    def test_successful_permanent_deletion_purges_user_and_personal_data(self):
+        """
+        Comprehensive test: Customer with bookmarks, notifications, device tokens,
+        and appointments permanently deletes their account.
+        Verifies:
+        - Customer user record is deleted from PostgreSQL.
+        - Personal data (notifications, device tokens, favorites) is purged.
+        - Vendor appointment records are preserved and anonymized.
+        - Unrelated customer and vendor are untouched.
+        """
+        from apps.business.models import BusinessProfile
+        from apps.catalog.models import Product, CatalogItemType
+        from apps.interactions.models import Favorite, Review
+        from apps.notifications.models import Notification, DeviceToken
+        from apps.operations.models import AppointmentBooking, BookingStatus
+
+        # Setup vendor store & service
+        business = BusinessProfile.objects.create(
+            vendor=self.vendor_profile,
+            business_name="Heritage Silk Studio",
+            city="Hyderabad"
+        )
+        service = Product.objects.create(
+            business_profile=business,
+            name="Bridal Saree Draping & Styling",
+            price=2500.00,
+            item_type=CatalogItemType.SERVICE
+        )
+
+        # Setup customer personal data
+        Favorite.objects.create(user=self.customer, store=business)
+        Notification.objects.create(recipient=self.customer, title="Welcome", message="Welcome to HER AREA!")
+        DeviceToken.objects.create(user=self.customer, token="fcm_sample_token_12345", platform="WEB")
+        Review.objects.create(user=self.customer, store=business, rating=5, comment="Wonderful craftsmanship!")
+
+        # Setup appointment
+        appt = AppointmentBooking.objects.create(
+            customer=self.customer,
+            business_profile=business,
+            service=service,
+            appointment_date="2026-11-01",
+            start_time="14:00:00",
+            status=BookingStatus.CONFIRMED,
+            customer_notes="Please arrange gold jewelry styling as well."
+        )
+
+        # Authenticate as customer
+        token = RefreshToken.for_user(self.customer).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        # Perform deletion
+        response = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "SecurePassword123!"
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn("permanently deleted", response.data['message'])
+
+        # 1. Customer record is completely removed from DB (including all_objects, not soft-deleted)
+        self.assertFalse(User.objects.filter(id=self.customer.id).exists())
+        self.assertFalse(User.all_objects.filter(id=self.customer.id).exists())
+
+        # 2. Personal records deleted
+        self.assertFalse(Favorite.objects.filter(user_id=self.customer.id).exists())
+        self.assertFalse(Notification.objects.filter(recipient_id=self.customer.id).exists())
+        self.assertFalse(DeviceToken.objects.filter(user_id=self.customer.id).exists())
+        self.assertFalse(Review.objects.filter(user_id=self.customer.id).exists())
+
+        # 3. Vendor appointment preserved for audit, but anonymized and cancelled
+        appt.refresh_from_db()
+        self.assertIsNone(appt.customer)
+        self.assertEqual(appt.status, BookingStatus.CANCELLED)
+        self.assertIn("[Customer account permanently deleted]", appt.customer_notes)
+        self.assertEqual(str(appt), f"[{BookingStatus.CANCELLED}] {service.name} for Deleted Customer on 2026-11-01 at 14:00:00")
+
+        # 4. Other customer & vendor untouched
+        self.assertTrue(User.objects.filter(id=self.other_customer.id).exists())
+        self.assertTrue(User.objects.filter(id=self.vendor_user.id).exists())
+        self.assertTrue(BusinessProfile.objects.filter(id=business.id).exists())
+
+    def test_deleted_customer_cannot_login_or_use_old_tokens(self):
+        """Once deleted, the customer cannot log in and existing JWT tokens are rejected."""
+        customer_id = self.customer.id
+        token = RefreshToken.for_user(self.customer)
+        access_token = str(token.access_token)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+        del_res = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(del_res.status_code, status.HTTP_200_OK)
+
+        # 1. Attempt to access authenticated endpoint with old token -> 401
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+        me_res = self.client.get(self.me_url)
+        self.assertEqual(me_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # 2. Attempt to log in again -> 401 Unauthorized
+        self.client.credentials()  # clear headers
+        login_res = self.client.post(self.login_url, {
+            "identifier": "cust_to_delete@example.com",
+            "password": "SecurePassword123!",
+            "role": "CUSTOMER"
+        }, format='json')
+        self.assertEqual(login_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # 3. Repeated deletion request with old token is rejected
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+        repeat_res = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(repeat_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_deleted_customer_can_register_again_with_same_email(self):
+        """After permanent deletion, the email is released and can be registered as a new customer."""
+        import hashlib
+        from django.core.cache import cache
+
+        email = self.customer.email
+        token = RefreshToken.for_user(self.customer)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+
+        del_res = self.client.post(self.delete_url, {
+            "confirmation": True,
+            "password": "SecurePassword123!"
+        }, format='json')
+        self.assertEqual(del_res.status_code, status.HTTP_200_OK)
+
+        # Confirm user is completely erased from all_objects
+        self.assertFalse(User.all_objects.filter(email=email).exists())
+
+        # Simulate OTP verified registration cache key
+        verified_key = f"verified_reg_{hashlib.md5(email.encode()).hexdigest()}"
+        cache.set(verified_key, True, timeout=600)
+
+        # Complete registration with same email
+        reg_url = reverse('auth-customer-register')
+        self.client.credentials()  # unauthenticated
+        reg_res = self.client.post(reg_url, {
+            "email": email,
+            "password": "BrandNewPassword456!",
+            "confirm_password": "BrandNewPassword456!",
+            "full_name": "Re-registered Ananya",
+            "date_of_birth": "1998-05-15",
+            "gender": "FEMALE"
+        }, format='json')
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.filter(email=email).exists())
+
+

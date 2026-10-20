@@ -100,6 +100,23 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                                 } else if (sessionUser != null && sessionUser.isNotEmpty && sessionUser != 'HER AREA User') {
                                   greetingName = sessionUser.split(' ').first;
                                 }
+
+                                if (greetingName == 'Welcome') {
+                                  return FutureBuilder<String?>(
+                                    future: AuthTokenStorage().getUserName(),
+                                    builder: (context, snapshot) {
+                                      final cached = snapshot.data;
+                                      final name = (cached != null && cached.isNotEmpty && cached != 'Guest' && cached != 'HER AREA User')
+                                          ? cached.split(' ').first
+                                          : 'Welcome';
+                                      return Text(
+                                        'Hi, $name ✨',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      );
+                                    },
+                                  );
+                                }
+
                                 return Text(
                                   'Hi, $greetingName ✨',
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

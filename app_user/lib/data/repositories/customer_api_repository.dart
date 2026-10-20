@@ -425,6 +425,37 @@ class CustomerApiRepository implements IStoreRepository {
       return false;
     }
   }
+
+  /// Permanently delete customer account and purge personal data
+  Future<Map<String, dynamic>> deleteAccount({
+    required String password,
+    bool confirmation = true,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.customerDeleteAccount,
+        body: {
+          'confirmation': confirmation,
+          'password': password,
+        },
+      );
+      return {
+        'success': true,
+        'message': response['message']?.toString() ?? 'Account successfully deleted permanently.',
+        'details': response,
+      };
+    } on ApiException catch (e) {
+      return {
+        'success': false,
+        'message': e.message,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to delete account. Please verify your credentials and try again.',
+      };
+    }
+  }
 }
 
 /// Singleton Customer API Repository Provider

@@ -308,6 +308,45 @@ class AuthApiRepository {
     await _authNotifier.logout(_apiClient);
   }
 
+  /// Permanently delete customer account and purge personal data
+  Future<Map<String, dynamic>> deleteAccount({
+    required String password,
+    bool confirmation = true,
+  }) async {
+    lastErrorMessage = '';
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.customerDeleteAccount,
+        body: {
+          'confirmation': confirmation,
+          'password': password,
+        },
+      );
+
+      // Unregister push token and clear local session & tokens
+      unawaited(PushNotificationService().unregisterDeviceToken(apiClient: _apiClient));
+      await _authNotifier.clearLocalSession(_apiClient);
+
+      return {
+        'success': true,
+        'message': response['message']?.toString() ?? 'Your account has been permanently deleted.',
+        'details': response,
+      };
+    } on ApiException catch (e) {
+      lastErrorMessage = e.message;
+      return {
+        'success': false,
+        'message': e.message,
+      };
+    } catch (e) {
+      lastErrorMessage = e.toString();
+      return {
+        'success': false,
+        'message': 'Failed to delete account. Please verify your credentials and try again.',
+      };
+    }
+  }
+
   /// Admin OTP request
   Future<bool> adminRequestOtp(String email, String adminName) async {
     try {

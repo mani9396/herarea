@@ -81,7 +81,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
       ));
       
       if (mounted) {
-        context.push(RoutePaths.interestSelection);
+        context.go(RoutePaths.home);
       }
     } catch (e) {
       if (mounted) {
@@ -204,6 +204,20 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                       icon: Icons.my_location_rounded,
                       isLoading: _isLoading,
                       onPressed: _onAllowGps,
+                    ),
+
+                    const SizedBox(height: AppSpacing.sm),
+
+                    TextButton(
+                      onPressed: () => context.go(RoutePaths.home),
+                      child: Text(
+                        'Skip for now & explore home',
+                        style: TextStyle(
+                          color: isDark ? AppColors.accentGoldLight : AppColors.primaryRuby,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: AppSpacing.md),

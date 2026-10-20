@@ -16,7 +16,7 @@ class AppointmentBookingSerializer(serializers.ModelSerializer):
     service_price = serializers.DecimalField(source='service.price', max_digits=12, decimal_places=2, read_only=True)
     service_duration_minutes = serializers.IntegerField(source='service.service_duration_minutes', read_only=True)
     store_name = serializers.CharField(source='business_profile.business_name', read_only=True)
-    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True, default='Deleted Customer')
     business_profile = serializers.UUIDField(source='business_profile.id', read_only=True)
 
     class Meta:
@@ -57,7 +57,7 @@ class ProductEnquirySerializer(serializers.ModelSerializer):
     product_price = serializers.DecimalField(source='product.price', max_digits=12, decimal_places=2, read_only=True)
     product_image_url = serializers.URLField(source='product.image_url', read_only=True)
     store_name = serializers.CharField(source='business_profile.business_name', read_only=True)
-    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone_number', read_only=True, default='Deleted Customer')
     business_profile = serializers.UUIDField(source='business_profile.id', read_only=True)
 
     class Meta:
