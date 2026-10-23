@@ -1,3 +1,4 @@
+import re
 import logging
 import random
 import hashlib
@@ -129,6 +130,10 @@ class OtpSendView(APIView):
                             {"error": "An account with this mobile number already exists. Please log in or use a different number."},
                             status=status.HTTP_400_BAD_REQUEST
                         )
+                    # Cache validated phone for customer registration completion
+                    core_phone = normalize_phone_number(phone)
+                    cache.set(f"pending_reg_phone_{identifier}", core_phone, timeout=1800)
+                    logger.info(f"Cached pending registration phone for {identifier}: {core_phone}")
 
             otp = str(random.randint(100000, 999999))
             cache.set(cache_key, otp, timeout=OTP_TTL_SECONDS)
@@ -561,13 +566,25 @@ class LoginView(APIView):
 
         logger.info(f"User {user.id} ({user.role}) authenticated successfully via identifier/password.")
 
+        if not user.avatar:
+            default_avatar = 'assets/images/avatars/avatar_women_1.png'
+            if user.gender == 'MALE':
+                default_avatar = 'assets/images/avatars/avatar_men_1.png'
+            elif user.gender == 'PREFER_NOT_TO_SAY':
+                default_avatar = 'assets/images/avatars/avatar_default.png'
+            user.avatar = default_avatar
+            user.save(update_fields=['avatar'])
+
         response_data = {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "user_id": str(user.id),
             "role": user.role,
             "email": user.email,
-            "phone_number": user.phone_number,
+            "phone_number": '' if user.phone_number and user.phone_number.startswith('+00') else user.phone_number,
+            "full_name": user.full_name,
+            "gender": user.gender,
+            "avatar": user.avatar,
             "is_new_user": False,
             "must_change_password": user.must_change_password,
         }
@@ -709,6 +726,9 @@ class CustomerRegisterCompleteView(APIView):
         full_name = serializer.validated_data['full_name']
         date_of_birth = serializer.validated_data['date_of_birth']
         gender = serializer.validated_data['gender']
+        phone_input = serializer.validated_data.get('phone_number')
+        if not phone_input or not str(phone_input).strip():
+            phone_input = cache.get(f"pending_reg_phone_{email}")
         
         verified_key = f"verified_reg_{hashlib.md5(email.encode()).hexdigest()}"
         if not cache.get(verified_key):
@@ -720,17 +740,51 @@ class CustomerRegisterCompleteView(APIView):
             user.hard_delete()
             user = None
 
+        default_avatar = 'assets/images/avatars/avatar_women_1.png'
+        if gender == 'MALE':
+            default_avatar = 'assets/images/avatars/avatar_men_1.png'
+        elif gender == 'PREFER_NOT_TO_SAY':
+            default_avatar = 'assets/images/avatars/avatar_default.png'
+
+        cleaned_phone = None
+        if phone_input and str(phone_input).strip():
+            raw_phone = str(phone_input).strip()
+            digits = re.sub(r'\D', '', raw_phone)
+            if digits.startswith('91') and len(digits) == 12:
+                digits = digits[2:]
+            elif digits.startswith('0') and len(digits) == 11:
+                digits = digits[1:]
+            if len(digits) == 10:
+                cleaned_phone = f"+91{digits}"
+            elif raw_phone.startswith('+'):
+                cleaned_phone = raw_phone
+            elif digits:
+                cleaned_phone = f"+{digits}"
+
+        if cleaned_phone:
+            from apps.accounts.utils import get_phone_candidates
+            phone_candidates = get_phone_candidates(cleaned_phone, raw_input=phone_input)
+            existing_phone = User.all_objects.filter(phone_number__in=phone_candidates).exclude(email__iexact=email).first()
+            if existing_phone:
+                return Response(
+                    {"error": "An account with this mobile number already exists. Please log in or use a different number."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         if not user:
-            dummy_phone = '+00' + hashlib.md5(email.encode()).hexdigest()[:12]
-            if User.all_objects.filter(phone_number=dummy_phone).exists():
-                dummy_phone = '+00' + uuid.uuid4().hex[:12]
+            final_phone = cleaned_phone
+            if not final_phone:
+                final_phone = '+00' + hashlib.md5(email.encode()).hexdigest()[:12]
+                if User.all_objects.filter(phone_number=final_phone).exists():
+                    final_phone = '+00' + uuid.uuid4().hex[:12]
             user = User.objects.create(
                 email=email,
-                phone_number=dummy_phone,
+                phone_number=final_phone,
                 role=UserRole.CUSTOMER,
                 full_name=full_name,
                 date_of_birth=date_of_birth,
                 gender=gender,
+                avatar=default_avatar,
                 is_verified=True,
             )
             user.set_password(password)
@@ -743,10 +797,15 @@ class CustomerRegisterCompleteView(APIView):
             user.full_name = full_name
             user.date_of_birth = date_of_birth
             user.gender = gender
+            if cleaned_phone:
+                user.phone_number = cleaned_phone
+            if not user.avatar:
+                user.avatar = default_avatar
             user.is_verified = True
             user.save()
             
         cache.delete(verified_key)
+        cache.delete(f"pending_reg_phone_{email}")
         
         refresh = RefreshToken.for_user(user)
         refresh['role'] = user.role
@@ -826,6 +885,10 @@ class CustomerRegisterCompleteView(APIView):
             "refresh": str(refresh),
             "user_id": str(user.id),
             "role": user.role,
+            "full_name": user.full_name,
+            "gender": user.gender,
+            "avatar": user.avatar,
+            "phone_number": '' if user.phone_number and user.phone_number.startswith('+00') else user.phone_number,
             "is_new_user": created,
         }, status=status.HTTP_200_OK)
 
@@ -930,7 +993,22 @@ class UserProfileView(APIView):
 
     @extend_schema(summary="Get Current Authenticated Identity", responses=UserSerializer)
     def get(self, request):
+        if not request.user.avatar:
+            default_avatar = 'assets/images/avatars/avatar_women_1.png'
+            if request.user.gender == 'MALE':
+                default_avatar = 'assets/images/avatars/avatar_men_1.png'
+            elif request.user.gender == 'PREFER_NOT_TO_SAY':
+                default_avatar = 'assets/images/avatars/avatar_default.png'
+            request.user.avatar = default_avatar
+            request.user.save(update_fields=['avatar'])
         serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(summary="Update Current Authenticated Identity Profile", request=UserSerializer, responses=UserSerializer)
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(

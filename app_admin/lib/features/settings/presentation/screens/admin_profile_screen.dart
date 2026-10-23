@@ -3,11 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_spacing.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared/widgets/custom_button.dart';
 import 'package:shared/widgets/custom_text_field.dart';
 
-final adminNameProvider = StateProvider<String>((ref) => 'Dhanisha IT Executive');
-final adminPhoneProvider = StateProvider<String>((ref) => '+91 98765 43210');
+const String kAdminOfficialNameKey = 'admin_official_name';
+const String kAdminContactPhoneKey = 'admin_contact_phone';
+const String kAdminAuthorityDeptKey = 'admin_authority_dept';
+
+final adminNameProvider = StateProvider<String>((ref) => 'Jyothsna Kiran');
+final adminPhoneProvider = StateProvider<String>((ref) => '+91 95421 20130');
 final adminDeptProvider = StateProvider<String>((ref) => 'Founder HQ');
 
 class AdminProfileScreen extends ConsumerStatefulWidget {
@@ -21,6 +26,7 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _deptController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -28,6 +34,88 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
     _nameController = TextEditingController(text: ref.read(adminNameProvider));
     _phoneController = TextEditingController(text: ref.read(adminPhoneProvider));
     _deptController = TextEditingController(text: ref.read(adminDeptProvider));
+
+    _nameController.addListener(() {
+      if (mounted) setState(() {});
+    });
+
+    _loadPersistedProfile();
+  }
+
+  Future<void> _loadPersistedProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString(kAdminOfficialNameKey);
+    final savedPhone = prefs.getString(kAdminContactPhoneKey);
+    final savedDept = prefs.getString(kAdminAuthorityDeptKey);
+
+    if (savedName != null && savedName.isNotEmpty) {
+      ref.read(adminNameProvider.notifier).state = savedName;
+      _nameController.text = savedName;
+    }
+    if (savedPhone != null && savedPhone.isNotEmpty) {
+      ref.read(adminPhoneProvider.notifier).state = savedPhone;
+      _phoneController.text = savedPhone;
+    }
+    if (savedDept != null && savedDept.isNotEmpty) {
+      ref.read(adminDeptProvider.notifier).state = savedDept;
+      _deptController.text = savedDept;
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _saveProfileAlterations() async {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final dept = _deptController.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Administrator Official Name cannot be empty.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contact Phone Number cannot be empty.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kAdminOfficialNameKey, name);
+      await prefs.setString(kAdminContactPhoneKey, phone);
+      await prefs.setString(kAdminAuthorityDeptKey, dept.isNotEmpty ? dept : 'Founder HQ');
+
+      // Sync common session storage keys
+      await prefs.setString('auth_user_name', name);
+      await prefs.setString('auth_user_phone', phone);
+
+      // Update Riverpod states
+      ref.read(adminNameProvider.notifier).state = name;
+      ref.read(adminPhoneProvider.notifier).state = phone;
+      ref.read(adminDeptProvider.notifier).state = dept.isNotEmpty ? dept : 'Founder HQ';
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Executive profile credentials saved successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving credentials: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -40,6 +128,9 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentName = _nameController.text.trim();
+    final avatarInitial = currentName.isNotEmpty ? currentName[0].toUpperCase() : 'J';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Executive Profile & Security Credentials'),
@@ -64,9 +155,16 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                           Container(
                             width: 110,
                             height: 110,
-                            decoration: BoxDecoration(color: AppColors.primaryRuby, shape: BoxShape.circle, border: Border.all(color: AppColors.accentGold, width: 3)),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryRuby,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.accentGold, width: 3),
+                            ),
                             alignment: Alignment.center,
-                            child: const Text('D', style: TextStyle(color: Colors.white, fontSize: 50, fontWeight: FontWeight.w900)),
+                            child: Text(
+                              avatarInitial,
+                              style: const TextStyle(color: Colors.white, fontSize: 50, fontWeight: FontWeight.w900),
+                            ),
                           ),
                         ],
                       ),
@@ -74,13 +172,13 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                     const SizedBox(height: 28),
                     CustomTextField(
                       label: 'Administrator Official Name',
-                      hintText: 'Dhanisha IT Executive',
+                      hintText: 'Jyothsna Kiran',
                       controller: _nameController,
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
                       label: 'Contact Phone Number',
-                      hintText: '+91 98765 43210',
+                      hintText: '+91 95421 20130',
                       controller: _phoneController,
                     ),
                     const SizedBox(height: 16),
@@ -93,18 +191,15 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton(onPressed: () => context.pop(), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: _isSaving ? null : () => context.pop(),
+                          child: const Text('Cancel'),
+                        ),
                         const SizedBox(width: 16),
                         CustomButton(
-                          label: 'Save Profile Alterations 💾',
+                          label: _isSaving ? 'Saving...' : 'Save Profile Alterations 💾',
                           isFullWidth: false,
-                          onPressed: () {
-                            ref.read(adminNameProvider.notifier).state = _nameController.text;
-                            ref.read(adminPhoneProvider.notifier).state = _phoneController.text;
-                            ref.read(adminDeptProvider.notifier).state = _deptController.text;
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Executive credentials updated!')));
-                            context.pop();
-                          },
+                          onPressed: _isSaving ? () {} : _saveProfileAlterations,
                         ),
                       ],
                     ),
@@ -118,3 +213,4 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
     );
   }
 }
+

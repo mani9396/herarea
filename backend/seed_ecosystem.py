@@ -38,8 +38,9 @@ def run():
     # 1. Seed Real Admin
     # Ensure only the production admin exists in seeded data
     admin_user = User.objects.create(
-        phone_number="+919000000000",
+        phone_number="+919542120130",
         email="admin@herarea.com",
+        full_name="Jyothsna Kiran",
         role=UserRole.ADMIN,
         is_active=True,
         is_verified=True,

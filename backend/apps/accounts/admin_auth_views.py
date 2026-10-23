@@ -59,15 +59,15 @@ class AdminOtpRequestView(APIView):
                         admin_user.save(update_fields=['role', 'is_active'])
                         logger.info("ADMIN OTP DEBUG: updated existing admin@herarea.com to role=ADMIN, is_active=True")
                 else:
-                    phone = '+919999999999'
+                    phone = '+919542120130'
                     if User.objects.filter(phone_number=phone).exists():
-                        phone = f'+9199999{random.randint(10000, 99999)}'
+                        phone = f'+9195421{random.randint(10000, 99999)}'
                     User.objects.create(
                         phone_number=phone,
                         email=identifier,
                         role=UserRole.ADMIN,
                         is_active=True,
-                        full_name="HER AREA Admin"
+                        full_name="Jyothsna Kiran"
                     )
                     logger.info("ADMIN OTP DEBUG: created new admin@herarea.com with role=ADMIN, is_active=True")
             except Exception as e:

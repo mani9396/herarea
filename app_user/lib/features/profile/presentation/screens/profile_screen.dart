@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:her_area/core/constants/avatar_constants.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 import 'package:her_area/core/state/app_state_provider.dart';
 import 'package:shared/shared.dart';
@@ -19,7 +20,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My VIP Dashboard', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w700)),
+        title: const Text('My Profile', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w700)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -31,7 +32,7 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // VIP Profile Hero Card
+                  // Profile Hero Card
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.xl),
                     decoration: BoxDecoration(
@@ -59,7 +60,7 @@ class ProfileScreen extends ConsumerWidget {
                                 radius: 36,
                                 backgroundColor: Colors.white24,
                                 backgroundImage: profile.avatarUrl.trim().isNotEmpty
-                                    ? NetworkImage(profile.avatarUrl.trim())
+                                    ? UserAvatars.getImageProvider(profile.avatarUrl)
                                     : null,
                                 child: profile.avatarUrl.trim().isEmpty
                                     ? const Icon(Icons.person_rounded, size: 36, color: Colors.white)
@@ -90,53 +91,95 @@ class ProfileScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(profile.phone, style: const TextStyle(color: AppColors.blushPink, fontSize: 13, fontWeight: FontWeight.w600)),
-                                  Text(profile.locality, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                  if (profile.phone.isNotEmpty && !profile.phone.startsWith('+00'))
+                                    Text(profile.phone, style: const TextStyle(color: AppColors.blushPink, fontSize: 13, fontWeight: FontWeight.w600)),
+                                  if (profile.email.isNotEmpty)
+                                    Text(profile.email, style: const TextStyle(color: Colors.white70, fontSize: 13)),
                                 ],
                               ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.edit_rounded, color: AppColors.accentGoldLight),
-                              tooltip: 'Edit VIP Profile',
+                              tooltip: 'Edit Profile',
                               onPressed: () => context.push(RoutePaths.editProfile),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '"${profile.bio}"',
-                            style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 12),
-                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  // O2O Activity Stats
-                  Row(
-                    children: [
-                      _buildStatTile(context, '${favIds.length}', 'Saved Stores', Icons.favorite_rounded, () => context.push(RoutePaths.favorites)),
-                      const SizedBox(width: 12),
-                      _buildStatTile(context, '4', 'Consultations', Icons.calendar_today_rounded, () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Viewing 4 completed home fabric consultation records.'), behavior: SnackBarBehavior.floating),
-                        );
-                      }),
-                      const SizedBox(width: 12),
-                      _buildStatTile(context, '8', 'Reviews', Icons.star_rounded, () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Viewing your 8 verified artisan review posts.'), behavior: SnackBarBehavior.floating),
-                        );
-                      }),
-                    ],
+                  // Saved Stores Quick Access Card
+                  InkWell(
+                    onTap: () => context.push(RoutePaths.favorites),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceVariantDark : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryRuby.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.favorite_rounded, color: AppColors.primaryRuby, size: 24),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Saved Stores',
+                                  style: TextStyle(
+                                    fontFamily: AppTypography.displayFont,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : AppColors.textHighLight,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${favIds.length} boutique${favIds.length == 1 ? '' : 's'} bookmarked in your area',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.primaryRuby.withValues(alpha: 0.25) : AppColors.blushPink.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${favIds.length}',
+                              style: const TextStyle(
+                                fontFamily: AppTypography.displayFont,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.primaryRuby,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.chevron_right_rounded, color: Colors.grey, size: 22),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
 
@@ -175,14 +218,6 @@ class ProfileScreen extends ConsumerWidget {
                           title: 'Recently Viewed Stores',
                           subtitle: 'Your browsing history of boutiques',
                           onTap: () => context.push(RoutePaths.recentlyViewed),
-                        ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          context,
-                          icon: Icons.tune_rounded,
-                          title: 'Personalized Style Interests',
-                          subtitle: 'Sarees, Maggam, Tailoring & Bridal makeup',
-                          onTap: () => context.push(RoutePaths.interestSelection),
                         ),
                         const Divider(height: 1),
                         _buildMenuTile(
@@ -257,7 +292,7 @@ class ProfileScreen extends ConsumerWidget {
                         decoration: BoxDecoration(color: AppColors.errorRed.withValues(alpha: 0.1), shape: BoxShape.circle),
                         child: const Icon(Icons.logout_rounded, color: AppColors.errorRed, size: 22),
                       ),
-                      title: const Text('Sign Out of VIP Account', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.errorRed)),
+                      title: const Text('Sign Out of Her Account', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.errorRed)),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.errorRed),
                       onTap: () => _showLogoutDialog(context, ref),
                     ),
@@ -266,44 +301,6 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatTile(BuildContext context, String count, String label, IconData icon, VoidCallback onTap) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceVariantDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.primaryRuby, size: 22),
-              const SizedBox(height: 6),
-              Text(
-                count,
-                style: const TextStyle(fontFamily: AppTypography.displayFont, fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(fontSize: 11, color: isDark ? AppColors.textMediumDark : AppColors.textMediumLight, fontWeight: FontWeight.w600),
-              ),
-            ],
           ),
         ),
       ),
@@ -351,8 +348,8 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Sign Out', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w800)),
-        content: const Text('Are you sure you want to sign out of your HER AREA account? Your saved favorites will remain securely backed up.'),
+        title: const Text('Sign Out of Her Account', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w800)),
+        content: const Text('Are you sure you want to sign out of Her Account? Your saved favorites will remain securely backed up.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

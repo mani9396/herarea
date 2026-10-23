@@ -5,7 +5,8 @@ import 'package:shared/theme/app_spacing.dart';
 import 'package:shared/theme/app_typography.dart';
 
 class TermsPrivacyScreen extends StatelessWidget {
-  const TermsPrivacyScreen({super.key});
+  final int initialIndex;
+  const TermsPrivacyScreen({super.key, this.initialIndex = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +15,7 @@ class TermsPrivacyScreen extends StatelessWidget {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: initialIndex,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Legal & Privacy', style: TextStyle(fontFamily: AppTypography.displayFont, fontWeight: FontWeight.w700)),

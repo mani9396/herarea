@@ -232,8 +232,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Find "Sign Out of VIP Account" tile and scroll into view
-      final signOutTile = find.text('Sign Out of VIP Account');
+      // Find "Sign Out of Her Account" tile and scroll into view
+      final signOutTile = find.text('Sign Out of Her Account');
       expect(signOutTile, findsOneWidget);
 
       await tester.scrollUntilVisible(signOutTile, 500);
@@ -241,8 +241,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Sign Out alert dialog is displayed
-      expect(find.text('Sign Out'), findsWidgets);
-      expect(find.text('Are you sure you want to sign out of your HER AREA account? Your saved favorites will remain securely backed up.'), findsOneWidget);
+      expect(find.text('Sign Out of Her Account'), findsWidgets);
+      expect(find.text('Are you sure you want to sign out of Her Account? Your saved favorites will remain securely backed up.'), findsOneWidget);
 
       // Tap the "Sign Out" confirmation button
       final confirmButton = find.widgetWithText(ElevatedButton, 'Sign Out');

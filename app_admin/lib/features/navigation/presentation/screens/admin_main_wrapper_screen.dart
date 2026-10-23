@@ -1,18 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_admin/core/routing/admin_route_paths.dart';
+import 'package:app_admin/features/settings/presentation/screens/admin_profile_screen.dart';
 import 'package:shared/theme/app_colors.dart';
 import 'package:shared/theme/app_typography.dart';
 
-class AdminMainWrapperScreen extends StatelessWidget {
+class AdminMainWrapperScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const AdminMainWrapperScreen({super.key, required this.navigationShell});
 
+  @override
+  ConsumerState<AdminMainWrapperScreen> createState() => _AdminMainWrapperScreenState();
+}
+
+class _AdminMainWrapperScreenState extends ConsumerState<AdminMainWrapperScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadPersistedAdminInfo();
+  }
+
+  Future<void> _loadPersistedAdminInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString(kAdminOfficialNameKey);
+    final savedPhone = prefs.getString(kAdminContactPhoneKey);
+    final savedDept = prefs.getString(kAdminAuthorityDeptKey);
+
+    if (savedName != null && savedName.isNotEmpty) {
+      ref.read(adminNameProvider.notifier).state = savedName;
+    }
+    if (savedPhone != null && savedPhone.isNotEmpty) {
+      ref.read(adminPhoneProvider.notifier).state = savedPhone;
+    }
+    if (savedDept != null && savedDept.isNotEmpty) {
+      ref.read(adminDeptProvider.notifier).state = savedDept;
+    }
+  }
+
   void _onItemTapped(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
@@ -20,6 +51,9 @@ class AdminMainWrapperScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 860;
+    final navigationShell = widget.navigationShell;
+    final adminName = ref.watch(adminNameProvider);
+    final topInitial = adminName.trim().isNotEmpty ? adminName.trim()[0].toUpperCase() : 'J';
 
     return Scaffold(
       appBar: AppBar(
@@ -72,10 +106,10 @@ class AdminMainWrapperScreen extends StatelessWidget {
             child: InkWell(
               onTap: () => context.push(AdminRoutePaths.adminProfile),
               borderRadius: BorderRadius.circular(20),
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.primaryRuby,
-                child: Text('A', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(topInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ),

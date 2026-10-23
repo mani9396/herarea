@@ -104,30 +104,23 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              _buildSectionHeader(context, 'NOTIFICATIONS & ALERTS'),
+              _buildSectionHeader(context, 'NOTIFICATIONS'),
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Booking & Consultation Alerts', style: TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: const Text('Real-time updates on home measurement appointments and tailoring status.'),
-                      value: pushEnabled,
-                      activeThumbColor: AppColors.primaryRuby,
-                      secondary: const Icon(Icons.event_available_rounded, color: AppColors.primaryRuby),
-                      onChanged: (val) => ref.read(pushNotificationsProvider.notifier).state = val,
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      title: const Text('VIP Offers & New Weave Drops', style: TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: const Text('Receive notifications when top neighborhood boutiques introduce seasonal collections.'),
-                      value: promosEnabled,
-                      activeThumbColor: AppColors.primaryRuby,
-                      secondary: const Icon(Icons.card_giftcard_rounded, color: AppColors.accentGold),
-                      onChanged: (val) => ref.read(promotionalAlertsProvider.notifier).state = val,
-                    ),
-                  ],
+                child: SwitchListTile(
+                  title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: AppTypography.displayFont)),
+                  subtitle: Text(pushEnabled ? 'Notifications are turned on' : 'Notifications are turned off'),
+                  value: pushEnabled,
+                  activeThumbColor: AppColors.primaryRuby,
+                  secondary: Icon(
+                    pushEnabled ? Icons.notifications_active_rounded : Icons.notifications_off_rounded,
+                    color: AppColors.primaryRuby,
+                  ),
+                  onChanged: (val) {
+                    ref.read(pushNotificationsProvider.notifier).state = val;
+                    ref.read(promotionalAlertsProvider.notifier).state = val;
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -138,14 +131,6 @@ class SettingsScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight)),
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: const Icon(Icons.style_rounded, color: AppColors.primaryRuby),
-                      title: const Text('Personalized Style Interests', style: TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: const Text('Modify your selected fashion categories and artisanal preferences.'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => context.push(RoutePaths.interestSelection),
-                    ),
-                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.location_city_rounded, color: AppColors.primaryRuby),
                       title: const Text('Location Permissions & Hubs', style: TextStyle(fontWeight: FontWeight.w700)),

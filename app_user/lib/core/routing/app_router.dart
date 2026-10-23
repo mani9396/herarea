@@ -102,7 +102,14 @@ final appRouter = GoRouter(
     GoRoute(path: RoutePaths.settings, builder: (context, state) => const SettingsScreen()),
     GoRoute(path: RoutePaths.helpSupport, builder: (context, state) => const HelpSupportScreen()),
     GoRoute(path: RoutePaths.about, builder: (context, state) => const AboutScreen()),
-    GoRoute(path: RoutePaths.termsPrivacy, builder: (context, state) => const TermsPrivacyScreen()),
+    GoRoute(
+      path: RoutePaths.termsPrivacy,
+      builder: (context, state) {
+        final tabStr = state.uri.queryParameters['tab'];
+        final initialIndex = tabStr == 'privacy' ? 1 : 0;
+        return TermsPrivacyScreen(initialIndex: initialIndex);
+      },
+    ),
 
     GoRoute(
       path: RoutePaths.storeDetails,

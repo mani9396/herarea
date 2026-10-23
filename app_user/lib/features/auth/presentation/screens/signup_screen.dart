@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:her_area/core/routing/route_paths.dart';
@@ -15,6 +16,7 @@ class SignupScreen extends ConsumerStatefulWidget {
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -26,6 +28,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   DateTime? _selectedDate;
 
   void _onSignup() async {
+    final formValid = _formKey.currentState?.validate() ?? false;
+
+    if (!formValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please check the form and correct any invalid fields.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -50,11 +66,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
 
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-      final email = _emailController.text.trim();
-      final fullName = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final fullName = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
       final dobStr =
           "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
       final gender = _selectedGender == 'Female'
@@ -68,37 +84,53 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             role: 'CUSTOMER',
             purpose: 'REGISTRATION',
             fullName: fullName,
+            phoneNumber: phone,
           );
 
       if (mounted) {
         setState(() => _isLoading = false);
         if (success) {
-          ref.read(pendingRegistrationProvider.notifier).state = PendingRegistration(
+          final pending = PendingRegistration(
             fullName: fullName,
             email: email,
+            phoneNumber: phone,
             dateOfBirth: dobStr,
             gender: gender,
           );
-          context.push(RoutePaths.otpVerification, extra: {'purpose': 'REGISTRATION'});
+          ref.read(pendingRegistrationProvider.notifier).state = pending;
+          await AuthTokenStorage().savePendingRegistration(
+            fullName: fullName,
+            email: email,
+            phoneNumber: phone,
+            dateOfBirth: dobStr,
+            gender: gender,
+          );
+          if (mounted) {
+            context.push(RoutePaths.otpVerification, extra: {'purpose': 'REGISTRATION'});
+          }
         } else {
+          final err = AuthApiRepository.lastErrorMessage;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to send verification email. Please check the address and try again.'),
+            SnackBar(
+              content: Text(err.isNotEmpty ? err : 'Failed to send verification email. Please check your details and try again.'),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
       }
-    }
   }
 
   Future<void> _selectDateOfBirth() async {
+    final now = DateTime.now();
+    final eighteenYearsAgo = DateTime(now.year - 18, now.month, now.day);
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 18 * 365)),
+      initialDate: (_selectedDate != null && !_selectedDate!.isAfter(eighteenYearsAgo))
+          ? _selectedDate!
+          : eighteenYearsAgo,
       firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      lastDate: eighteenYearsAgo,
       builder: (context, child) {
         final theme = Theme.of(context);
         return Theme(
@@ -125,6 +157,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _dobController.dispose();
     super.dispose();
   }
@@ -189,7 +222,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             // Compact brand header with official logo
                             const AuthBrandHeader(
                               compact: true,
-                              customHeadline: 'Join our exclusive women-first local community',
+                              showHeadline: false,
                             ),
                             const SizedBox(height: 20),
 
@@ -215,6 +248,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   Widget _buildSignupForm(bool isDark) {
     return Form(
       key: _formKey,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -251,53 +285,104 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Create your verified account to unlock direct appointments, home measurement bookings, and private trial suites.',
-            style: TextStyle(
-              fontFamily: AppTypography.bodyFont,
-              fontSize: 13,
-              color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
-              height: 1.4,
-            ),
-          ),
           const SizedBox(height: 20),
 
-          // Full Name Input
+          // Full Name Input (Alphabets and spacing only, max 20 chars)
           AuthTextField(
             label: 'Full Name',
             hintText: 'e.g. Priya Nambiar',
             controller: _nameController,
             prefixIcon: Icons.person_outline_rounded,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z ]')),
+              LengthLimitingTextInputFormatter(20),
+            ],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your full name';
+              }
+              final trimmed = value.trim();
+              if (trimmed.length > 20) {
+                return 'Full name cannot exceed 20 characters';
+              }
+              if (!RegExp(r'^[a-zA-Z ]+$').hasMatch(trimmed)) {
+                return 'Only alphabets and spaces are allowed';
+              }
+              if (trimmed.replaceAll(' ', '').isEmpty) {
+                return 'Please enter a valid name';
               }
               return null;
             },
           ),
 
-          // Email Input
+          // Email Input (Small letters only, numbers, and allowed special characters)
           AuthTextField(
             label: 'Email Address',
             hintText: 'e.g. priya@gmail.com',
             helperText: 'A 6-digit verification code will be sent to confirm ownership.',
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            textCapitalization: TextCapitalization.none,
             prefixIcon: Icons.email_outlined,
+            inputFormatters: const [
+              LowerCaseEmailInputFormatter(),
+            ],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email address';
               }
-              final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-              if (!emailRegex.hasMatch(value.trim())) {
-                return 'Please enter a valid email address';
+              final clean = value.trim();
+              if (clean.contains(RegExp(r'[A-Z]'))) {
+                return 'Email must contain small letters only (no capital letters)';
+              }
+              if (clean.contains(' ')) {
+                return 'Email cannot contain spaces';
+              }
+              final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
+              if (!emailRegex.hasMatch(clean)) {
+                return 'Please enter a valid email address (e.g. name@domain.com)';
               }
               return null;
             },
           ),
 
-          // Date of Birth
+          // Mobile Number Input (Original 10-digit Indian Mobile number only starting with 6-9)
+          AuthTextField(
+            label: 'Mobile Number',
+            hintText: 'e.g. 9840123456',
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            prefixIcon: Icons.phone_android_rounded,
+            inputFormatters: const [
+              IndianMobileInputFormatter(),
+            ],
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your mobile number';
+              }
+              final clean = value.replaceAll(RegExp(r'\D'), '');
+              if (clean.length < 10) {
+                return 'Mobile number must be exactly 10 digits';
+              }
+              if (!RegExp(r'^[6-9]').hasMatch(clean)) {
+                return 'Indian mobile numbers must start with 6, 7, 8, or 9';
+              }
+              if (!RegExp(r'^[6-9]\d{9}$').hasMatch(clean)) {
+                return 'Please enter a valid 10-digit Indian mobile number';
+              }
+              // Disallow repeated dummy numbers like 9999999999, 8888888888, 7777777777, 6666666666, 1111111111
+              if (RegExp(r'^(\d)\1{9}$').hasMatch(clean)) {
+                return 'Please enter a valid original mobile number (cannot be repeating digits)';
+              }
+              // Disallow sequential dummies
+              if (clean == '1234567890' || clean == '0123456789') {
+                return 'Please enter your original mobile number';
+              }
+              return null;
+            },
+          ),
+
+          // Date of Birth (18 years and above from current date)
           AuthTextField(
             label: 'Date of Birth',
             hintText: 'Select your date of birth',
@@ -309,8 +394,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               if (value == null || value.trim().isEmpty || _selectedDate == null) {
                 return 'Please select your date of birth';
               }
-              if (_selectedDate!.isAfter(DateTime.now())) {
-                return 'Date of birth cannot be in the future';
+              final now = DateTime.now();
+              final eighteenYearsAgo = DateTime(now.year - 18, now.month, now.day);
+              if (_selectedDate!.isAfter(eighteenYearsAgo)) {
+                return 'You must be at least 18 years old to register';
               }
               return null;
             },
@@ -415,26 +502,42 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
-                  child: RichText(
-                    text: TextSpan(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+                      child: Text(
+                        'I agree to the HER AREA ',
+                        style: TextStyle(
+                          fontFamily: AppTypography.bodyFont,
+                          fontSize: 12.5,
+                          color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => context.push('${RoutePaths.termsPrivacy}?tab=terms'),
+                      child: const Text(
+                        'Terms & Conditions',
+                        style: TextStyle(
+                          fontFamily: AppTypography.bodyFont,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AuthTokens.brandMagenta,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '.',
                       style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
                         fontSize: 12.5,
                         color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
-                        height: 1.4,
                       ),
-                      children: const [
-                        TextSpan(text: 'I agree to the HER AREA '),
-                        TextSpan(
-                          text: 'Terms & Conditions',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: AuthTokens.brandMagenta),
-                        ),
-                        TextSpan(text: '.'),
-                      ],
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -457,26 +560,42 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
-                  child: RichText(
-                    text: TextSpan(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _agreedToPrivacyPolicy = !_agreedToPrivacyPolicy),
+                      child: Text(
+                        'I agree to the HER AREA ',
+                        style: TextStyle(
+                          fontFamily: AppTypography.bodyFont,
+                          fontSize: 12.5,
+                          color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => context.push('${RoutePaths.termsPrivacy}?tab=privacy'),
+                      child: const Text(
+                        'Privacy Policy',
+                        style: TextStyle(
+                          fontFamily: AppTypography.bodyFont,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AuthTokens.brandMagenta,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '.',
                       style: TextStyle(
                         fontFamily: AppTypography.bodyFont,
                         fontSize: 12.5,
                         color: isDark ? AppColors.textMediumDark : AuthTokens.textDark,
-                        height: 1.4,
                       ),
-                      children: const [
-                        TextSpan(text: 'I agree to the HER AREA '),
-                        TextSpan(
-                          text: 'Privacy Policy',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: AuthTokens.brandMagenta),
-                        ),
-                        TextSpan(text: '.'),
-                      ],
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -544,7 +663,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: const [
-                    AuthBrandHeader(compact: false),
+                    AuthBrandHeader(compact: false, showHeadline: false),
                     SizedBox(height: 36),
                     AuthFeatureBadgesRow(),
                   ],
