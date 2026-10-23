@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,6 +53,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF880E4F),
+      resizeToAvoidBottomInset: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;
@@ -87,12 +88,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           }
 
-          // Mobile-First Pink Gradient Layout: adaptively fits 100% in one screen
-          final availableHeight = constraints.maxHeight;
-          final isCompact = availableHeight < 880;
+          // Mobile-First Pink Gradient Layout: adaptively fits on any screen
           final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+          final isCompact = constraints.maxHeight < 760 || keyboardOpen;
 
           return Container(
+            width: double.infinity,
+            height: double.infinity,
             decoration: const BoxDecoration(
               gradient: AuthTokens.backgroundGradient,
             ),
@@ -100,34 +102,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const AuthBackgroundDecoration(),
                 SafeArea(
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.topCenter,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: keyboardOpen
-                          ? SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              child: _buildMobileContent(isDark, compact: true),
-                            )
-                          : LayoutBuilder(
-                              builder: (context, innerConstraints) {
-                                return SizedBox(
-                                  height: innerConstraints.maxHeight,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.center,
-                                    child: Container(
-                                      width: math.min(innerConstraints.maxWidth, 440.0),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: isCompact ? 6 : 14,
-                                      ),
-                                      child: _buildMobileContent(isDark, compact: isCompact),
-                                    ),
-                                  ),
-                                );
-                              },
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: isCompact ? 10 : 20,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(height: isCompact ? 4 : 12),
+                            // Prominent official HER AREA logo and header
+                            AuthBrandHeader(compact: isCompact),
+                            // When keyboard is open, hide badges so user has direct visibility of fields
+                            if (!keyboardOpen) ...[
+                              SizedBox(height: isCompact ? 8 : 18),
+                              AuthFeatureBadgesRow(compact: isCompact),
+                            ],
+                            SizedBox(height: isCompact ? 10 : 20),
+                            // Clean White / Light-Pink Form Card
+                            AuthFormCard(
+                              compact: isCompact,
+                              child: _buildLoginForm(isDark, compact: isCompact),
                             ),
+                            SizedBox(height: isCompact ? 8 : 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -136,29 +143,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildMobileContent(bool isDark, {required bool compact}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(height: compact ? 4 : 12),
-        // Prominent official HER AREA logo and header
-        AuthBrandHeader(compact: compact),
-        SizedBox(height: compact ? 10 : 20),
-
-        // Mobile Feature Pills
-        AuthFeatureBadgesRow(compact: compact),
-        SizedBox(height: compact ? 12 : 24),
-
-        // Clean White / Light-Pink Form Card
-        AuthFormCard(
-          compact: compact,
-          child: _buildLoginForm(isDark, compact: compact),
-        ),
-        SizedBox(height: compact ? 6 : 16),
-      ],
     );
   }
 

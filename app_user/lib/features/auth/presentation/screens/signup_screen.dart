@@ -168,6 +168,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF880E4F),
+      resizeToAvoidBottomInset: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;
@@ -202,6 +204,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
           // Mobile-First Layout
           return Container(
+            width: double.infinity,
+            height: double.infinity,
             decoration: const BoxDecoration(
               gradient: AuthTokens.backgroundGradient,
             ),
@@ -209,11 +213,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               children: [
                 const AuthBackgroundDecoration(),
                 SafeArea(
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.topCenter,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 520),
                       child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        physics: const ClampingScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
