@@ -5,6 +5,7 @@ import 'package:shared/models/user_model.dart';
 import 'package:shared/services/api_client_interface.dart';
 import 'package:shared/services/api_providers.dart';
 import 'package:shared/services/push_notification_service.dart';
+import 'package:shared/services/auth_token_storage.dart';
 import 'package:shared/exceptions/api_exception.dart';
 
 class AuthApiRepository {
@@ -126,6 +127,7 @@ class AuthApiRepository {
   /// Complete registration with password after email verification.
   Future<void> completeRegistration({
     required String email,
+    String? phoneNumber,
     required String password,
     required String confirmPassword,
     required String fullName,
@@ -136,6 +138,8 @@ class AuthApiRepository {
       ApiEndpoints.customerRegister,
       body: {
         'email': email,
+        if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
+          'phone_number': phoneNumber.trim(),
         'password': password,
         'confirm_password': confirmPassword,
         'full_name': fullName,
@@ -257,12 +261,15 @@ class AuthApiRepository {
         final resRole = response['role']?.toString() ?? role;
         final email = response['email']?.toString();
         final phone = response['phone_number']?.toString();
+        final avatar = response['avatar']?.toString() ?? response['avatar_url']?.toString();
+        final fullName = response['full_name']?.toString() ?? response['owner_name']?.toString() ?? 'HER AREA $resRole';
         user = UserModel(
           id: userId,
           email: email ?? (_isEmail(identifier) ? identifier : ''),
           phoneNumber: phone ?? (!_isEmail(identifier) ? identifier : ''),
-          fullName: response['owner_name']?.toString() ?? 'HER AREA $resRole',
+          fullName: fullName,
           role: UserRole.fromCode(resRole),
+          avatarUrl: avatar,
           studioStatus: resRole.toUpperCase() == 'VENDOR' ? (response['vendor_status']?.toString() ?? 'APPROVED') : null,
           mustChangePassword: response['must_change_password'] == true,
         );
@@ -270,11 +277,17 @@ class AuthApiRepository {
 
       await _authNotifier.setTokens(access, refresh: refresh, user: user, role: user.role.code);
       _apiClient.setAuthToken(access, refreshToken: refresh);
+      if (user.avatarUrl != null && user.avatarUrl!.isNotEmpty) {
+        await AuthTokenStorage().saveUserData(avatar: user.avatarUrl);
+      }
 
       try {
         final meRes = await _apiClient.get(ApiEndpoints.userProfile);
         final meUser = UserModel.fromJson(meRes);
         _authNotifier.setUser(meUser);
+        if (meUser.avatarUrl != null && meUser.avatarUrl!.isNotEmpty) {
+          await AuthTokenStorage().saveUserData(avatar: meUser.avatarUrl);
+        }
       } catch (_) {
         // Maintain verified session even if profile fetch has a network delay
       }

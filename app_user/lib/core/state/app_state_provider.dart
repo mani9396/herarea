@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared/shared.dart';
 import 'package:her_area/data/repositories/customer_api_repository.dart';
+import 'package:her_area/core/constants/avatar_constants.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:dio/dio.dart';
 
@@ -176,7 +177,11 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
 
   Future<void> loadProfile() async {
     try {
-      // 1. Instantly use cached user name from storage if available to avoid any "Welcome" flicker
+      // 1. Instantly use cached user name and avatar from storage if available
+      final cachedAvatar = await AuthTokenStorage().getUserAvatar();
+      if (cachedAvatar != null && cachedAvatar.isNotEmpty && state.avatarUrl.isEmpty) {
+        state = state.copyWith(avatarUrl: cachedAvatar);
+      }
       if (state.name.isEmpty) {
         final cachedName = await AuthTokenStorage().getUserName();
         final cachedEmail = await AuthTokenStorage().getUserEmail();
@@ -192,34 +197,43 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
       final data = await _repository.getProfile();
       if (data != null) {
         final fetchedName = data['full_name'] ?? data['name'] ?? data['username'] ?? '';
+        final fetchedGender = data['gender']?.toString();
+        String fetchedAvatar = (data['avatar'] ?? data['avatar_url'] ?? '').toString().trim();
+        if (fetchedAvatar.isEmpty) {
+          fetchedAvatar = UserAvatars.getDefaultAvatarForGender(fetchedGender);
+        }
         state = state.copyWith(
           name: fetchedName.isNotEmpty ? fetchedName : state.name,
           phone: data['phone_number'] ?? data['phone'] ?? state.phone,
           email: data['email'] ?? state.email,
           locality: data['city'] ?? data['locality'] ?? state.locality,
           bio: data['bio'] ?? state.bio,
-          avatarUrl: data['avatar'] ?? data['avatar_url'] ?? state.avatarUrl,
+          avatarUrl: fetchedAvatar,
         );
-        if (fetchedName.isNotEmpty) {
-          await AuthTokenStorage().saveUserData(
-            userName: fetchedName,
-            email: data['email']?.toString(),
-            userId: data['id']?.toString(),
-          );
-        }
+        await AuthTokenStorage().saveUserData(
+          userName: fetchedName.isNotEmpty ? fetchedName : null,
+          email: data['email']?.toString(),
+          userId: data['id']?.toString(),
+          avatar: fetchedAvatar,
+          gender: fetchedGender,
+        );
       }
     } catch (_) {}
   }
 
   Future<bool> updateProfile(UserProfileState newProfile) async {
     state = newProfile;
+    await AuthTokenStorage().saveUserData(
+      userName: newProfile.name,
+      email: newProfile.email,
+      avatar: newProfile.avatarUrl,
+    );
     try {
       final success = await _repository.updateProfile({
         'full_name': newProfile.name,
         'email': newProfile.email,
         'phone_number': newProfile.phone,
-        'city': newProfile.locality,
-        'bio': newProfile.bio,
+        'avatar': newProfile.avatarUrl,
       });
       return success;
     } catch (_) {

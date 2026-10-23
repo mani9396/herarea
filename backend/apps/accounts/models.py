@@ -24,6 +24,7 @@ class User(AbstractBaseUser, PermissionsMixin, AbstractTimestampUUIDModel):
     full_name = models.CharField(max_length=200, null=True, blank=True, help_text='Customer display name')
     date_of_birth = models.DateField(null=True, blank=True, help_text='Customer date of birth')
     gender = models.CharField(max_length=20, choices=GenderChoices.choices, null=True, blank=True)
+    avatar = models.CharField(max_length=255, null=True, blank=True, help_text='Avatar vector identifier or asset path')
     role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.CUSTOMER, db_index=True)
     
     is_active = models.BooleanField(default=True, help_text='Designates whether this account is active')

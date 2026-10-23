@@ -169,50 +169,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  'Welcome Back',
-                  style: TextStyle(
-                    fontFamily: AppTypography.displayFont,
-                    fontSize: compact ? 18 : 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
-                    letterSpacing: -0.3,
-                  ),
-                ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Welcome Back',
+              style: TextStyle(
+                fontFamily: AppTypography.displayFont,
+                fontSize: compact ? 18 : 22,
+                fontWeight: FontWeight.w800,
+                color: isDark ? AppColors.textHighDark : AuthTokens.textDark,
+                letterSpacing: -0.3,
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 2 : 4),
-                decoration: BoxDecoration(
-                  color: AuthTokens.brandPink.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Member',
-                  style: TextStyle(
-                    fontFamily: AppTypography.bodyFont,
-                    fontSize: compact ? 10 : 11,
-                    fontWeight: FontWeight.w700,
-                    color: AuthTokens.brandMagenta,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: compact ? 2 : 4),
-          Text(
-            'Sign in to access your local boutiques, private trial suites, and artisan chat.',
-            style: TextStyle(
-              fontFamily: AppTypography.bodyFont,
-              fontSize: compact ? 11.5 : 13,
-              color: isDark ? AppColors.textMediumDark : AuthTokens.textMuted,
-              height: 1.25,
             ),
           ),
-          SizedBox(height: compact ? 8 : 18),
+          SizedBox(height: compact ? 12 : 20),
 
           // Email Input Field
           AuthTextField(
@@ -220,14 +190,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             hintText: 'Enter your registered email',
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            textCapitalization: TextCapitalization.none,
             prefixIcon: Icons.email_outlined,
             compact: compact,
+            inputFormatters: const [
+              LowerCaseEmailInputFormatter(),
+            ],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email address';
               }
-              final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}$');
-              if (!emailRegex.hasMatch(value.trim())) {
+              final clean = value.trim();
+              if (clean.contains(RegExp(r'[A-Z]'))) {
+                return 'Email must contain small letters only';
+              }
+              final emailRegex = RegExp(r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$');
+              if (!emailRegex.hasMatch(clean)) {
                 return 'Please enter a valid email address';
               }
               return null;

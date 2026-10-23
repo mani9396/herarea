@@ -57,12 +57,21 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
     }
 
     if (_formKey.currentState?.validate() ?? false) {
-      final pendingReg = ref.read(pendingRegistrationProvider);
+      PendingRegistration? pendingReg = ref.read(pendingRegistrationProvider);
       if (pendingReg == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration session expired. Please start over.'), backgroundColor: AppColors.error),
-        );
-        context.go(RoutePaths.signup);
+        pendingReg = await AuthTokenStorage().getPendingRegistration();
+        if (pendingReg != null) {
+          ref.read(pendingRegistrationProvider.notifier).state = pendingReg;
+        }
+      }
+
+      if (pendingReg == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registration session expired. Please start over.'), backgroundColor: AppColors.error),
+          );
+          context.go(RoutePaths.signup);
+        }
         return;
       }
 
@@ -71,6 +80,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
       try {
         await ref.read(authApiRepositoryProvider).completeRegistration(
           email: pendingReg.email,
+          phoneNumber: pendingReg.phoneNumber,
           password: _passwordController.text,
           confirmPassword: _confirmPasswordController.text,
           fullName: pendingReg.fullName,
@@ -82,6 +92,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
           setState(() => _isLoading = false);
           // Clear pending registration
           ref.read(pendingRegistrationProvider.notifier).state = null;
+          await AuthTokenStorage().clearPendingRegistration();
           context.go(RoutePaths.locationPermission);
         }
       } catch (e) {

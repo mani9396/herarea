@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared/shared.dart';
 
 /// Centralized UI design tokens for HER AREA mobile-first authentication screens.
@@ -120,11 +121,13 @@ class AuthBackgroundDecoration extends StatelessWidget {
 class AuthBrandHeader extends StatelessWidget {
   final bool compact;
   final String? customHeadline;
+  final bool showHeadline;
 
   const AuthBrandHeader({
     super.key,
     this.compact = false,
     this.customHeadline,
+    this.showHeadline = true,
   });
 
   @override
@@ -193,43 +196,30 @@ class AuthBrandHeader extends StatelessWidget {
             height: 1.1,
           ),
         ),
-        SizedBox(height: compact ? 3 : 6),
-
-        // Tagline: DISCOVER · CONNECT · GROW
-        Text(
-          'DISCOVER · CONNECT · GROW',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: AppTypography.bodyFont,
-            fontSize: compact ? 9.5 : 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: compact ? 1.8 : 2.4,
-            color: Colors.white.withValues(alpha: 0.92),
-          ),
-        ),
-        SizedBox(height: compact ? 5 : 12),
-
-        // Headline: A Safer, Brighter Everyday for Every Woman
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
-          child: Text(
-            customHeadline ?? 'A Safer, Brighter Everyday for Every Woman',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppTypography.bodyFont,
-              fontSize: compact ? 11.5 : 14.5,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
-              color: Colors.white.withValues(alpha: 0.95),
+        // Headline: Everything You Need, All in One Place.
+        if (showHeadline && (customHeadline == null || customHeadline!.isNotEmpty)) ...[
+          SizedBox(height: compact ? 6 : 10),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+            child: Text(
+              customHeadline ?? 'Everything You Need, All in One Place.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppTypography.bodyFont,
+                fontSize: compact ? 11.5 : 14.5,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+                color: Colors.white.withValues(alpha: 0.95),
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
 }
 
-/// Feature pills for mobile-first brand showcase (Find, Connect, Work, Grow)
+/// Feature pills for mobile-first brand showcase (Find, Explore, Connect)
 class AuthFeatureBadgesRow extends StatelessWidget {
   final bool compact;
   const AuthFeatureBadgesRow({super.key, this.compact = false});
@@ -240,9 +230,8 @@ class AuthFeatureBadgesRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Expanded(child: _FeaturePill(icon: Icons.search_rounded, title: 'Find', subtitle: 'Local Stores', compact: compact)),
+        Expanded(child: _FeaturePill(icon: Icons.explore_rounded, title: 'Explore', subtitle: 'Curated Styles', compact: compact)),
         Expanded(child: _FeaturePill(icon: Icons.people_alt_rounded, title: 'Connect', subtitle: 'With Vendors', compact: compact)),
-        Expanded(child: _FeaturePill(icon: Icons.work_outline_rounded, title: 'Work', subtitle: 'Opportunities', compact: compact)),
-        Expanded(child: _FeaturePill(icon: Icons.favorite_rounded, title: 'Grow', subtitle: 'Together', compact: compact)),
       ],
     );
   }
@@ -486,6 +475,9 @@ class AuthTextField extends StatefulWidget {
   final Widget? suffixWidget;
   final VoidCallback? onTap;
   final bool compact;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextCapitalization textCapitalization;
+  final AutovalidateMode? autovalidateMode;
 
   const AuthTextField({
     super.key,
@@ -501,6 +493,9 @@ class AuthTextField extends StatefulWidget {
     this.suffixWidget,
     this.onTap,
     this.compact = false,
+    this.inputFormatters,
+    this.textCapitalization = TextCapitalization.none,
+    this.autovalidateMode,
   });
 
   @override
@@ -542,6 +537,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
             obscureText: _obscureText,
             readOnly: widget.readOnly,
             keyboardType: widget.keyboardType,
+            inputFormatters: widget.inputFormatters,
+            textCapitalization: widget.textCapitalization,
+            autovalidateMode: widget.autovalidateMode,
             onTap: widget.onTap,
             style: TextStyle(
               fontFamily: AppTypography.bodyFont,
@@ -631,6 +629,69 @@ class _AuthTextFieldState extends State<AuthTextField> {
         ],
       ),
     );
+  }
+}
+
+/// Formatter for email that strictly allows only small letters (a-z), numbers (0-9),
+/// and standard email special characters, completely blocking capital letters and spaces.
+class LowerCaseEmailInputFormatter extends TextInputFormatter {
+  const LowerCaseEmailInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    // Disallow capital letters (A-Z) and spaces
+    if (RegExp(r'[A-Z\s]').hasMatch(text)) {
+      return oldValue;
+    }
+
+    // Allow only small letters, numbers, and standard email special characters
+    if (!RegExp(r'''^[a-z0-9@._+\-!#$%&'*+/=?^_`{|}~]*$''').hasMatch(text)) {
+      return oldValue;
+    }
+
+    return newValue;
+  }
+}
+
+/// Formatter for 10-digit Indian mobile numbers:
+/// - First digit MUST be 6, 7, 8, or 9 (rejects 0, 1, 2, 3, 4, 5).
+/// - Only digits (0-9) allowed.
+/// - Maximum 10 digits allowed.
+class IndianMobileInputFormatter extends TextInputFormatter {
+  const IndianMobileInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) {
+      return newValue;
+    }
+
+    // Only digits allowed
+    if (!RegExp(r'^\d+$').hasMatch(text)) {
+      return oldValue;
+    }
+
+    // First digit must be 6, 7, 8, or 9
+    if (!RegExp(r'^[6-9]').hasMatch(text)) {
+      return oldValue;
+    }
+
+    // Maximum 10 digits
+    if (text.length > 10) {
+      return oldValue;
+    }
+
+    return newValue;
   }
 }
 

@@ -14,7 +14,7 @@ sys.path.insert(0, str(BASE_DIR / 'apps'))
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'her-area-secure-dev-key-9a8c7b6a-e5f4-3d2c-1b0f')
 
-DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
+DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',')]
 
@@ -309,14 +309,21 @@ ZEPTOMAIL_API_URL = config(
     default='https://api.zeptomail.in/v1.1/email'
 )
 # Channels Configuration
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [config('REDIS_URL', default='redis://127.0.0.1:6379/1')],
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Firebase Cloud Messaging (FCM) Configuration
 FIREBASE_SERVICE_ACCOUNT_KEY = config(

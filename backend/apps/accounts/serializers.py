@@ -6,8 +6,40 @@ from apps.accounts.models import User, UserRole, GenderChoices
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'phone_number', 'email', 'full_name', 'role', 'is_active', 'is_verified', 'created_at']
-        read_only_fields = ['id', 'is_verified', 'created_at']
+        fields = ['id', 'phone_number', 'email', 'full_name', 'gender', 'avatar', 'date_of_birth', 'role', 'is_active', 'is_verified', 'created_at']
+        read_only_fields = ['id', 'phone_number', 'email', 'role', 'is_verified', 'created_at']
+
+    def validate_phone_number(self, value):
+        if value:
+            cleaned = re.sub(r'\D', '', str(value).strip())
+            if len(cleaned) == 12 and cleaned.startswith('91'):
+                cleaned = cleaned[2:]
+            elif len(cleaned) == 11 and cleaned.startswith('0'):
+                cleaned = cleaned[1:]
+
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
+            if not re.match(r'^[6-9]\d{9}$', cleaned):
+                raise serializers.ValidationError("Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.")
+            if re.match(r'^(\d)\1{9}$', cleaned):
+                raise serializers.ValidationError("Please enter a valid original mobile number (cannot be repeating digits).")
+
+            formatted = f"+91{cleaned}"
+            user = self.instance
+            qs = User.all_objects.filter(phone_number=formatted)
+            if user:
+                qs = qs.exclude(id=user.id)
+            if qs.exists():
+                raise serializers.ValidationError("An account with this mobile number already exists.")
+            return formatted
+        return value
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        phone = data.get('phone_number')
+        if phone and str(phone).startswith('+00'):
+            data['phone_number'] = ''
+        return data
 
 
 class OtpSendSerializer(serializers.Serializer):
@@ -37,9 +69,26 @@ class OtpSendSerializer(serializers.Serializer):
             raise serializers.ValidationError("Either 'email' or 'phone_number' must be provided.")
         return data
 
+    def validate_email(self, value):
+        if value:
+            if any(c.isupper() for c in value):
+                raise serializers.ValidationError("Email must contain small letters only.")
+        return value
+
     def validate_phone_number(self, value):
-        if value and len(value) < 10:
-            raise serializers.ValidationError("Phone number must contain at least 10 digits.")
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) == 12 and cleaned.startswith('91'):
+                cleaned = cleaned[2:]
+            elif len(cleaned) == 11 and cleaned.startswith('0'):
+                cleaned = cleaned[1:]
+
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
+            if not re.match(r'^[6-9]\d{9}$', cleaned):
+                raise serializers.ValidationError("Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.")
+            if re.match(r'^(\d)\1{9}$', cleaned):
+                raise serializers.ValidationError("Please enter a valid original mobile number (cannot be repeating digits).")
         return value
 
 
@@ -117,6 +166,7 @@ class CustomerRegisterCompleteSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, validators=[_validate_password_strength])
     confirm_password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=200, help_text="Customer's full display name")
+    phone_number = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True, help_text="Customer's mobile phone number")
     date_of_birth = serializers.DateField(required=True, help_text="Customer's date of birth")
     gender = serializers.ChoiceField(choices=GenderChoices.choices, required=True, help_text="Customer's gender")
 
@@ -124,6 +174,28 @@ class CustomerRegisterCompleteSerializer(serializers.Serializer):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
         return data
+
+    def validate_email(self, value):
+        if value:
+            if any(c.isupper() for c in value):
+                raise serializers.ValidationError("Email must contain small letters only.")
+        return value
+
+    def validate_phone_number(self, value):
+        if value:
+            cleaned = re.sub(r'\D', '', value)
+            if len(cleaned) == 12 and cleaned.startswith('91'):
+                cleaned = cleaned[2:]
+            elif len(cleaned) == 11 and cleaned.startswith('0'):
+                cleaned = cleaned[1:]
+
+            if len(cleaned) != 10:
+                raise serializers.ValidationError("Mobile number must be exactly 10 digits.")
+            if not re.match(r'^[6-9]\d{9}$', cleaned):
+                raise serializers.ValidationError("Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.")
+            if re.match(r'^(\d)\1{9}$', cleaned):
+                raise serializers.ValidationError("Please enter a valid original mobile number (cannot be repeating digits).")
+        return value
 
 
 class PasswordResetCompleteSerializer(serializers.Serializer):

@@ -716,4 +716,88 @@ class CustomerPermanentAccountDeletionTests(TestCase):
         self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
         self.assertTrue(User.objects.filter(email=email).exists())
 
+    def test_customer_registration_preserves_mobile_number_and_caches_from_otp_send(self):
+        """Verify mobile number provided during OTP send is cached and saved during registration."""
+        import hashlib
+        email = "testcustomerphone@example.com"
+        phone = "9876543210"
+        
+        # 1. Otp send with phone_number
+        send_url = reverse('auth-otp-send')
+        send_res = self.client.post(send_url, {
+            "email": email,
+            "role": "CUSTOMER",
+            "purpose": "REGISTRATION",
+            "full_name": "Test Mobile Customer",
+            "phone_number": phone,
+        }, format='json')
+        self.assertEqual(send_res.status_code, status.HTTP_200_OK)
+        
+        # Verify phone was cached for registration
+        cached_phone = cache.get(f"pending_reg_phone_{email}")
+        self.assertEqual(cached_phone, "9876543210")
+
+        # 2. Simulate OTP verified
+        verified_key = f"verified_reg_{hashlib.md5(email.encode()).hexdigest()}"
+        cache.set(verified_key, True, timeout=600)
+
+        # 3. Complete registration WITHOUT explicitly passing phone_number (relies on cached phone)
+        reg_url = reverse('auth-customer-register')
+        reg_res = self.client.post(reg_url, {
+            "email": email,
+            "password": "SecurePassword123!",
+            "confirm_password": "SecurePassword123!",
+            "full_name": "Test Mobile Customer",
+            "date_of_birth": "1999-01-01",
+            "gender": "MALE",
+        }, format='json')
+        self.assertEqual(reg_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(reg_res.data['phone_number'], "+919876543210")
+
+        user = User.objects.get(email=email)
+        self.assertEqual(user.phone_number, "+919876543210")
+
+        # 4. Profile endpoint returns clean phone number
+        token = reg_res.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        profile_res = self.client.get(reverse('auth-me'))
+        self.assertEqual(profile_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile_res.data['phone_number'], "+919876543210")
+
+    def test_mobile_and_email_are_readonly_name_is_editable(self):
+        """Verify mobile number and email address cannot be edited once signed up, but full_name is editable."""
+        user = User.objects.create_user(
+            email="mani_locked@example.com",
+            phone_number="+919840123456",
+            password="SecurePassword123!",
+            role=UserRole.CUSTOMER,
+            full_name="Mani Original",
+            gender="MALE",
+        )
+        token = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
+
+        # 1. GET /api/v1/auth/me/ returns current profile
+        profile_res = self.client.get(reverse('auth-me'))
+        self.assertEqual(profile_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile_res.data['phone_number'], '+919840123456')
+        self.assertEqual(profile_res.data['email'], 'mani_locked@example.com')
+        self.assertEqual(profile_res.data['full_name'], 'Mani Original')
+
+        # 2. PATCH /api/v1/auth/me/ attempting to change phone or email is ignored (read-only), but full_name updates
+        update_res = self.client.patch(reverse('auth-me'), {
+            "full_name": "Mani Updated",
+            "phone_number": "+919999999999",
+            "email": "hacked@example.com",
+        }, format='json')
+        self.assertEqual(update_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_res.data['full_name'], 'Mani Updated')
+        self.assertEqual(update_res.data['phone_number'], '+919840123456')
+        self.assertEqual(update_res.data['email'], 'mani_locked@example.com')
+
+        user.refresh_from_db()
+        self.assertEqual(user.full_name, 'Mani Updated')
+        self.assertEqual(user.phone_number, '+919840123456')
+        self.assertEqual(user.email, 'mani_locked@example.com')
+
 

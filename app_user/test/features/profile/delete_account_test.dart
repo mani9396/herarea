@@ -240,7 +240,7 @@ void main() {
       expect(find.text('Delete Account'), findsNothing);
 
       // Verify Sign Out is still present
-      expect(find.text('Sign Out of VIP Account'), findsOneWidget);
+      expect(find.text('Sign Out of Her Account'), findsOneWidget);
 
       addTearDown(() {
         tester.view.resetPhysicalSize();

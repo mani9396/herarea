@@ -23,8 +23,10 @@ void main() {
       // Verify Brand Header & Taglines
       expect(find.byType(AuthBrandHeader), findsOneWidget);
       expect(find.textContaining('Her Area'), findsWidgets);
-      expect(find.text('DISCOVER · CONNECT · GROW'), findsOneWidget);
-      expect(find.text('A Safer, Brighter Everyday for Every Woman'), findsOneWidget);
+      expect(find.text('DISCOVER · CONNECT · GROW'), findsNothing);
+      expect(find.text('Everything You Need, All in One Place.'), findsOneWidget);
+      expect(find.text('Member'), findsNothing);
+      expect(find.textContaining('Sign in to access your local boutiques'), findsNothing);
 
       // Verify Existing Form Inputs & Labels
       expect(find.text('Email Address'), findsOneWidget);
@@ -65,16 +67,67 @@ void main() {
       // Verify Registration Form Fields
       expect(find.text('Full Name'), findsOneWidget);
       expect(find.text('Email Address'), findsOneWidget);
+      expect(find.text('Mobile Number'), findsOneWidget);
       expect(find.text('Date of Birth'), findsOneWidget);
       expect(find.text('Gender'), findsOneWidget);
       expect(find.text('Send Verification OTP Token'), findsOneWidget);
       expect(find.text('Sign In'), findsWidgets);
 
-      // Verify Checkboxes
+      // Verify Checkboxes and Links
       expect(find.byType(Checkbox), findsNWidgets(2));
+      expect(find.text('Terms & Conditions'), findsOneWidget);
+      expect(find.text('Privacy Policy'), findsOneWidget);
 
-      // Verify 'I\'m a Business Owner' is completely REMOVED
+      // Verify removed header and subtitle texts
+      expect(find.textContaining('Join our exclusive women-first'), findsNothing);
+      expect(find.textContaining('Create your verified account to unlock'), findsNothing);
       expect(find.textContaining("Business Owner"), findsNothing);
+
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+    });
+
+    testWidgets('SignupScreen enforces lowercase email and Indian mobile formatters', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: SignupScreen(),
+          ),
+        ),
+      );
+
+      // Test Email Input: Capital letters should NOT be allowed; only small letters, numbers, and symbols
+      final emailField = find.widgetWithText(AuthTextField, 'Email Address');
+      expect(emailField, findsOneWidget);
+
+      await tester.enterText(find.descendant(of: emailField, matching: find.byType(TextFormField)), 'YHBGKJ');
+      await tester.pump();
+      // Capital letters 'YHBGKJ' should have been blocked
+      expect(find.text('YHBGKJ'), findsNothing);
+
+      // Typing small letters, numbers, and special chars works
+      await tester.enterText(find.descendant(of: emailField, matching: find.byType(TextFormField)), 'priya.test12@gmail.com');
+      await tester.pump();
+      expect(find.text('priya.test12@gmail.com'), findsOneWidget);
+
+      // Test Mobile Input: Typing '111111111' should NOT be accepted (first digit must be 6-9)
+      final mobileField = find.widgetWithText(AuthTextField, 'Mobile Number');
+      expect(mobileField, findsOneWidget);
+
+      await tester.enterText(find.descendant(of: mobileField, matching: find.byType(TextFormField)), '111111111');
+      await tester.pump();
+      // '111111111' starting with 1 should have been rejected
+      expect(find.text('111111111'), findsNothing);
+
+      // Valid Indian mobile starting with 9 accepted
+      await tester.enterText(find.descendant(of: mobileField, matching: find.byType(TextFormField)), '9840123456');
+      await tester.pump();
+      expect(find.text('9840123456'), findsOneWidget);
 
       addTearDown(() {
         tester.view.resetPhysicalSize();

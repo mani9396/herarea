@@ -10,6 +10,7 @@ import 'package:her_area/core/state/app_state_provider.dart';
 import 'package:shared/widgets/category_icon_widget.dart';
 import 'package:her_area/features/home/presentation/screens/story_viewer_screen.dart';
 import 'package:her_area/core/state/viewed_stories_provider.dart';
+import 'package:her_area/core/constants/avatar_constants.dart';
 import 'package:her_area/core/routing/route_paths.dart';
 
 class HomeDashboardScreen extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                             child: CircleAvatar(
                               radius: 19,
                               backgroundColor: AppColors.primaryRuby.withValues(alpha: 0.12),
-                              backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                              backgroundImage: avatarUrl.isNotEmpty ? UserAvatars.getImageProvider(avatarUrl) : null,
                               child: avatarUrl.isEmpty
                                   ? const Icon(Icons.person_rounded, size: 22, color: AppColors.primaryRuby)
                                   : null,

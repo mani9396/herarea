@@ -16,6 +16,7 @@ dependencies:
   intl: ^0.20.3
   shared:
     path: ../shared
+  shared_preferences: ^2.3.2
   firebase_core: ^3.12.0
 
 dev_dependencies:
